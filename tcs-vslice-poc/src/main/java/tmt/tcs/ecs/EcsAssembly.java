@@ -48,6 +48,7 @@ import scala.PartialFunction;
 import scala.runtime.BoxedUnit;
 import tmt.tcs.common.AssemblyContext;
 import tmt.tcs.common.BaseAssembly;
+import tmt.tcs.mcs.McsDiagnosticPublisher;
 
 /**
  * Top Level Actor for ECS Assembly
@@ -75,7 +76,7 @@ public class EcsAssembly extends BaseAssembly {
 	private final Optional<ITelemetryService> badTelemetryService = Optional.empty();
 	private Optional<ITelemetryService> telemetryService = badTelemetryService;
 
-	private ActorRef diagPublsher;
+	private ActorRef diagnosticPublisher;
 
 	public static File ecsConfigFile = new File("ecs/assembly/ecsAssembly.conf");
 	public static File resource = new File("ecsAssembly.conf");
@@ -114,7 +115,7 @@ public class EcsAssembly extends BaseAssembly {
 			commandHandler = context()
 					.actorOf(EcsCommandHandler.props(assemblyContext, ecsHcd, Optional.of(eventPublisher)));
 
-			diagPublsher = context()
+			diagnosticPublisher = context()
 					.actorOf(EcsDiagnosticPublisher.props(assemblyContext, ecsHcd, Optional.of(eventPublisher)));
 
 			LocationSubscriberActor.trackConnections(info.connections(), trackerSubscriber);
@@ -200,8 +201,23 @@ public class EcsAssembly extends BaseAssembly {
 	 * @return a partial function
 	 */
 	private PartialFunction<Object, BoxedUnit> runningReceive() {
-		return locationReceive().orElse(diagReceive()).orElse(controllerReceive()).orElse(lifecycleReceivePF(supervisor))
+		return locationReceive().orElse(diagnosticReceive()).orElse(controllerReceive()).orElse(lifecycleReceivePF(supervisor))
 				.orElse(unhandledPF());
+	}
+	
+	/**
+	 * This is used for handling the diagnostic commands
+	 *
+	 * @return a partial function
+	 */
+	public PartialFunction<Object, BoxedUnit> diagnosticReceive() {
+		return ReceiveBuilder.match(AssemblyMessages.DiagnosticMode.class, t -> {
+			log.debug("Inside EcsAssembly diagnosticReceive: diagnostic mode: " + t.hint());
+			diagnosticPublisher.tell(new EcsDiagnosticPublisher.DiagnosticState(), self());
+		}).matchEquals(JAssemblyMessages.OperationsMode, t -> {
+			log.debug("Inside EcsAssembly diagnosticReceive: operations mode");
+			diagnosticPublisher.tell(new EcsDiagnosticPublisher.OperationsState(), self());
+		}).build();
 	}
 
 	/**

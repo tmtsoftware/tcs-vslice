@@ -14,6 +14,7 @@ import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import akka.japi.Creator;
 import akka.japi.pf.ReceiveBuilder;
+import csw.services.ccs.AssemblyMessages;
 import csw.services.ccs.Validation;
 import csw.services.loc.LocationService.Location;
 import csw.services.loc.LocationService.ResolvedAkkaLocation;
@@ -27,6 +28,7 @@ import csw.services.pkg.Supervisor;
 import csw.util.config.Configurations.SetupConfig;
 import csw.util.config.Configurations.SetupConfigArg;
 import javacsw.services.alarms.IAlarmService;
+import javacsw.services.ccs.JAssemblyMessages;
 import javacsw.services.ccs.JValidation;
 import javacsw.services.events.IEventService;
 import javacsw.services.events.ITelemetryService;
@@ -62,7 +64,7 @@ public class TcsAssembly extends BaseAssembly {
 	private final Optional<ITelemetryService> badTelemetryService = Optional.empty();
 	private Optional<ITelemetryService> telemetryService = badTelemetryService;
 
-	private ActorRef diagPublsher;
+	private ActorRef diagnosticPublisher;
 
 	public static File tcsConfigFile = new File("tcs/assembly/tcsAssembly.conf");
 	public static File resource = new File("tcsAssembly.conf");
@@ -101,8 +103,8 @@ public class TcsAssembly extends BaseAssembly {
 			commandHandler = context()
 					.actorOf(TcsCommandHandler.props(assemblyContext, referedActor, Optional.of(eventPublisher)));
 
-			diagPublsher = context()
-					.actorOf(TcsDiagPublisher.props(assemblyContext, referedActor, Optional.of(eventPublisher)));
+			diagnosticPublisher = context()
+					.actorOf(TcsDiagnosticPublisher.props(assemblyContext, referedActor, Optional.of(eventPublisher)));
 
 			LocationSubscriberActor.trackConnections(info.connections(), trackerSubscriber);
 			LocationSubscriberActor.trackConnection(IEventService.eventServiceConnection(), trackerSubscriber);
@@ -187,8 +189,23 @@ public class TcsAssembly extends BaseAssembly {
 	 * @return a partial function
 	 */
 	private PartialFunction<Object, BoxedUnit> runningReceive() {
-		return locationReceive().orElse(diagReceive()).orElse(controllerReceive())
+		return locationReceive().orElse(diagnosticReceive()).orElse(controllerReceive())
 				.orElse(lifecycleReceivePF(supervisor)).orElse(unhandledPF());
+	}
+	
+	/**
+	 * This is used for handling the diagnostic commands
+	 *
+	 * @return a partial function
+	 */
+	public PartialFunction<Object, BoxedUnit> diagnosticReceive() {
+		return ReceiveBuilder.match(AssemblyMessages.DiagnosticMode.class, t -> {
+			log.debug("Inside McsAssembly diagnosticReceive: diagnostic mode: " + t.hint());
+			diagnosticPublisher.tell(new TcsDiagnosticPublisher.DiagnosticState(), self());
+		}).matchEquals(JAssemblyMessages.OperationsMode, t -> {
+			log.debug("Inside McsAssembly diagnosticReceive: operations mode");
+			diagnosticPublisher.tell(new TcsDiagnosticPublisher.OperationsState(), self());
+		}).build();
 	}
 
 	/**

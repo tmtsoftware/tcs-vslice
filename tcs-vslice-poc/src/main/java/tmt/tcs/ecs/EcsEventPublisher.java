@@ -11,21 +11,22 @@ import akka.japi.Creator;
 import akka.japi.pf.ReceiveBuilder;
 import csw.services.loc.LocationService;
 import csw.services.loc.LocationService.ResolvedTcpLocation;
-import csw.util.config.DoubleItem;
-import csw.util.config.Events.SystemEvent;
+import csw.util.config.ChoiceItem;
+import csw.util.config.Events.StatusEvent;
 import javacsw.services.events.IEventService;
 import javacsw.services.events.ITelemetryService;
 import scala.PartialFunction;
 import scala.runtime.BoxedUnit;
 import tmt.tcs.common.AssemblyContext;
+import tmt.tcs.common.AssemblyStateActor.AssemblyState;
 import tmt.tcs.common.BaseEventPublisher;
-import tmt.tcs.ecs.EcsDiagnosticPublisher.EcsStateUpdate;
 
 /**
  * This is an actor class that provides the publishing interface specific to ECS
  * to the Event Service and Telemetry Service.
  */
 public class EcsEventPublisher extends BaseEventPublisher {
+
 	LoggingAdapter log = Logging.getLogger(getContext().system(), this);
 
 	@SuppressWarnings("unused")
@@ -37,6 +38,7 @@ public class EcsEventPublisher extends BaseEventPublisher {
 		log.debug("Inside EcsEventPublisher");
 
 		subscribeToLocationUpdates();
+		context().system().eventStream().subscribe(self(), AssemblyState.class);
 		this.assemblyContext = assemblyContext;
 
 		log.debug("Inside EcsEventPublisher Event Service in: " + eventServiceIn);
@@ -50,7 +52,8 @@ public class EcsEventPublisher extends BaseEventPublisher {
 	 */
 	public PartialFunction<Object, BoxedUnit> publishingEnabled(Optional<IEventService> eventService,
 			Optional<ITelemetryService> telemetryService) {
-		return ReceiveBuilder.match(EcsStateUpdate.class, t -> publishEcsState(eventService, t.az, t.el, t.time))
+		return ReceiveBuilder.match(EcsStateUpdate.class, t -> publishEcsState(telemetryService, t.state))
+				.match(AssemblyState.class, t -> publishAssemblyState(telemetryService, t))
 				.match(LocationService.Location.class,
 						location -> handleLocations(location, eventService, telemetryService))
 				.
@@ -98,13 +101,27 @@ public class EcsEventPublisher extends BaseEventPublisher {
 	}
 
 	/**
-	 * This method helps creating System Event object for Event publishing
+	 * This method helps publishing ECS State as State Event using Telementry
+	 * Service
 	 */
-	private void publishEcsState(Optional<IEventService> eventService, DoubleItem az, DoubleItem el, DoubleItem time) {
-		SystemEvent ste = jadd(new SystemEvent(EcsConfig.ecsStateEventPrefix), az, el, time);
-		log.debug("Inside EcsEventPublisher " + EcsConfig.ecsStateEventPrefix + ": " + ste);
-		eventService.ifPresent(e -> e.publish(ste).handle((x, ex) -> {
-			log.error("Inside EcsEventPublisher failed to publish mcs state: " + ste, ex);
+	private void publishEcsState(Optional<ITelemetryService> telemetryService, ChoiceItem state) {
+		StatusEvent ste = jadd(new StatusEvent(EcsConfig.ecsStateEventPrefix), state);
+		log.debug("Inside publishEcsState " + EcsConfig.ecsStateEventPrefix + ": " + ste);
+		telemetryService.ifPresent(e -> e.publish(ste).handle((x, ex) -> {
+			log.error("Inside publishEcsState failed to publish mcs state: " + ste, ex);
+			return null;
+		}));
+	}
+
+	/**
+	 * This method helps publishing ECS Assembly State as State Event using
+	 * Telementry Service
+	 */
+	private void publishAssemblyState(Optional<ITelemetryService> telemetryService, AssemblyState ts) {
+		StatusEvent ste = jadd(new StatusEvent(EcsConfig.ecsStateEventPrefix), ts.az, ts.el);
+		log.debug("Inside publishAssemblyState publishState: " + EcsConfig.ecsStateEventPrefix + ": " + ste);
+		telemetryService.ifPresent(e -> e.publish(ste).handle((x, ex) -> {
+			log.error("Inside publishAssemblyState publishState: failed to publish state: " + ste, ex);
 			return null;
 		}));
 	}
@@ -119,6 +136,14 @@ public class EcsEventPublisher extends BaseEventPublisher {
 				return new EcsEventPublisher(assemblyContext, eventService, telemetryService);
 			}
 		});
+	}
+
+	public static class EcsStateUpdate {
+		public final ChoiceItem state;
+
+		public EcsStateUpdate(ChoiceItem state) {
+			this.state = state;
+		}
 	}
 
 }

@@ -14,6 +14,7 @@ import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import akka.japi.Creator;
 import akka.japi.pf.ReceiveBuilder;
+import csw.services.ccs.AssemblyMessages;
 import csw.services.ccs.Validation;
 import csw.services.loc.LocationService.Location;
 import csw.services.loc.LocationService.ResolvedAkkaLocation;
@@ -27,6 +28,7 @@ import csw.services.pkg.Supervisor;
 import csw.util.config.Configurations.SetupConfig;
 import csw.util.config.Configurations.SetupConfigArg;
 import javacsw.services.alarms.IAlarmService;
+import javacsw.services.ccs.JAssemblyMessages;
 import javacsw.services.ccs.JValidation;
 import javacsw.services.events.IEventService;
 import javacsw.services.events.ITelemetryService;
@@ -48,7 +50,7 @@ import tmt.tcs.common.BaseAssembly;
 public class M3Assembly extends BaseAssembly {
 
 	private LoggingAdapter log = Logging.getLogger(getContext().system(), this);
-	
+
 	private final ActorRef supervisor;
 	private final AssemblyContext assemblyContext;
 	private ActorRef commandHandler;
@@ -62,7 +64,7 @@ public class M3Assembly extends BaseAssembly {
 	private final Optional<ITelemetryService> badTelemetryService = Optional.empty();
 	private Optional<ITelemetryService> telemetryService = badTelemetryService;
 
-	private ActorRef diagPublsher;
+	private ActorRef diagnosticPublisher;
 
 	public static File m3ConfigFile = new File("m3/assembly/m3Assembly.conf");
 	public static File resource = new File("m3Assembly.conf");
@@ -101,7 +103,7 @@ public class M3Assembly extends BaseAssembly {
 			commandHandler = context()
 					.actorOf(M3CommandHandler.props(assemblyContext, m3Hcd, Optional.of(eventPublisher)));
 
-			diagPublsher = context()
+			diagnosticPublisher = context()
 					.actorOf(M3DiagnosticPublisher.props(assemblyContext, m3Hcd, Optional.of(eventPublisher)));
 
 			LocationSubscriberActor.trackConnections(info.connections(), trackerSubscriber);
@@ -187,8 +189,23 @@ public class M3Assembly extends BaseAssembly {
 	 * @return a partial function
 	 */
 	private PartialFunction<Object, BoxedUnit> runningReceive() {
-		return locationReceive().orElse(diagReceive()).orElse(controllerReceive())
+		return locationReceive().orElse(diagnosticReceive()).orElse(controllerReceive())
 				.orElse(lifecycleReceivePF(supervisor)).orElse(unhandledPF());
+	}
+
+	/**
+	 * This is used for handling the diagnostic commands
+	 *
+	 * @return a partial function
+	 */
+	public PartialFunction<Object, BoxedUnit> diagnosticReceive() {
+		return ReceiveBuilder.match(AssemblyMessages.DiagnosticMode.class, t -> {
+			log.debug("Inside M3Assembly diagnosticReceive: diagnostic mode: " + t.hint());
+			diagnosticPublisher.tell(new M3DiagnosticPublisher.DiagnosticState(), self());
+		}).matchEquals(JAssemblyMessages.OperationsMode, t -> {
+			log.debug("Inside M3Assembly diagnosticReceive: operations mode");
+			diagnosticPublisher.tell(new M3DiagnosticPublisher.OperationsState(), self());
+		}).build();
 	}
 
 	/**

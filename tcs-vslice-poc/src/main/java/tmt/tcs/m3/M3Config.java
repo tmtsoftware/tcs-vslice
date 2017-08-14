@@ -1,13 +1,12 @@
 package tmt.tcs.m3;
 
-import static javacsw.util.config.JConfigDSL.cs;
-import static javacsw.util.config.JItems.jset;
-
 import csw.util.config.BooleanKey;
+import csw.util.config.Choice;
+import csw.util.config.ChoiceKey;
+import csw.util.config.Choices;
 import csw.util.config.Configurations.ConfigKey;
 import csw.util.config.DoubleKey;
 import csw.util.config.IntKey;
-import csw.util.config.StateVariable.CurrentState;
 
 /*
  * This class contains all the configurations specific to M3 Assembly
@@ -16,7 +15,7 @@ public class M3Config {
 	public static final String m3Prefix = "tcs.m3";
 	public static final String m3TpkPrefix = "tcs.str.m3";
 	public static final String initPrefix = m3Prefix + ".init";
-	public static final String movePrefix = m3Prefix + ".move";
+	public static final String followPrefix = m3Prefix + ".follow";
 	public static final String offsetPrefix = m3Prefix + ".offset";
 	public static final String m3StatePrefix = m3Prefix + ".m3State";
 	public static final String m3StatsPrefix = m3Prefix + ".stats";
@@ -28,7 +27,7 @@ public class M3Config {
 
 	public static final ConfigKey dummyCK = new ConfigKey(m3Prefix);
 	public static final ConfigKey initCK = new ConfigKey(initPrefix);
-	public static final ConfigKey moveCK = new ConfigKey(movePrefix);
+	public static final ConfigKey followCK = new ConfigKey(followPrefix);
 	public static final ConfigKey offsetCK = new ConfigKey(offsetPrefix);
 	public static final ConfigKey m3StateCK = new ConfigKey(m3StatePrefix);
 	public static final ConfigKey m3StatsCK = new ConfigKey(m3StatsPrefix);
@@ -57,6 +56,15 @@ public class M3Config {
 	public static final IntKey tiltPosDmdErrcnt = new IntKey("tcs.m3.tilt_pos_dmd_errcnt");
 	public static final DoubleKey posTimeKey = new DoubleKey("tcs.m3.time");
 
-	public static final CurrentState defaultM3StatsState = cs(m3StatsCK.prefix(), jset(rotation, 1.0));
+	// Refered by M3 HCD
+	public static final Choice M3_IDLE = new Choice(M3State.M3_IDLE.toString());
+	public static final Choice M3_MOVING = new Choice(M3State.M3_MOVING.toString());
+	public static final Choice M3_ERROR = new Choice(M3State.M3_ERROR.toString());
+	public static final ChoiceKey m3StateKey = new ChoiceKey("m3State",
+			Choices.from(M3_IDLE.toString(), M3_MOVING.toString(), M3_ERROR.toString()));
+
+	public enum M3State {
+		M3_IDLE, M3_MOVING, M3_ERROR,
+	}
 
 }

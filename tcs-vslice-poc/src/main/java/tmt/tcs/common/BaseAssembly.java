@@ -17,12 +17,10 @@ import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import akka.japi.pf.ReceiveBuilder;
 import akka.util.Timeout;
-import csw.services.ccs.AssemblyMessages;
 import csw.services.ccs.SequentialExecutor;
 import csw.services.pkg.Supervisor;
 import csw.util.config.Configurations.SetupConfigArg;
 import javacsw.services.ccs.JAssemblyController;
-import javacsw.services.ccs.JAssemblyMessages;
 import javacsw.services.cs.akka.JConfigServiceClient;
 import scala.PartialFunction;
 import scala.runtime.BoxedUnit;
@@ -43,13 +41,7 @@ public abstract class BaseAssembly extends JAssemblyController {
 	 *
 	 * @return a partial function
 	 */
-	public PartialFunction<Object, BoxedUnit> diagReceive() {
-		return ReceiveBuilder.match(AssemblyMessages.DiagnosticMode.class, t -> {
-			log.debug("Inside BaseAssembly diagReceive: diagnostic mode: " + t.hint());
-		}).matchEquals(JAssemblyMessages.OperationsMode, t -> {
-			log.debug("Inside BaseAssembly diagReceive: operations mode");
-		}).build();
-	}
+	public abstract PartialFunction<Object, BoxedUnit> diagnosticReceive();
 
 	/**
 	 * This tracks the life cycle of Assembly
@@ -86,13 +78,13 @@ public abstract class BaseAssembly extends JAssemblyController {
 	 * Gets the assembly configurations from the config service, or a resource
 	 * file, if not found and returns the two parsed objects.
 	 */
-	public Config getAssemblyConfigs(File mcsConfigFile, File resource) throws Exception {
+	public Config getAssemblyConfigs(File configFile, File resource) throws Exception {
 		Timeout timeout = new Timeout(3, TimeUnit.SECONDS);
-		Optional<Config> configOpt = JConfigServiceClient.getConfigFromConfigService(mcsConfigFile, Optional.empty(),
+		Optional<Config> configOpt = JConfigServiceClient.getConfigFromConfigService(configFile, Optional.empty(),
 				Optional.of(resource), context().system(), timeout).get();
 		if (configOpt.isPresent())
 			return configOpt.get();
-		throw new RuntimeException("Failed to get from config service: " + mcsConfigFile);
+		throw new RuntimeException("Failed to get from config service: " + configFile);
 	}
 
 	/**

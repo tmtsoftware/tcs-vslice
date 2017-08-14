@@ -20,7 +20,7 @@ public class McsConfig {
 	public static final String mcsPrefix = "tcs.mcs";
 	public static final String mcsTpkPrefix = "tcs.str.mcs";
 	public static final String initPrefix = mcsPrefix + ".init";
-	public static final String movePrefix = mcsPrefix + ".move";
+	public static final String followPrefix = mcsPrefix + ".follow";
 	public static final String offsetPrefix = mcsPrefix + ".offset";
 	public static final String mcsStatePrefix = mcsPrefix + ".mcsState";
 	public static final String mcsStatsPrefix = mcsPrefix + ".stats";
@@ -32,7 +32,7 @@ public class McsConfig {
 
 	public static final ConfigKey dummyCK = new ConfigKey(mcsPrefix);
 	public static final ConfigKey initCK = new ConfigKey(initPrefix);
-	public static final ConfigKey moveCK = new ConfigKey(movePrefix);
+	public static final ConfigKey followCK = new ConfigKey(followPrefix);
 	public static final ConfigKey offsetCK = new ConfigKey(offsetPrefix);
 	public static final ConfigKey mcsStateCK = new ConfigKey(mcsStatePrefix);
 	public static final ConfigKey mcsStatsCK = new ConfigKey(mcsStatsPrefix);

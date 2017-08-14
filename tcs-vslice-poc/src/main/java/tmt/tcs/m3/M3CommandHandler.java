@@ -1,9 +1,16 @@
 package tmt.tcs.m3;
 
 import static akka.pattern.PatternsCS.ask;
+import static javacsw.services.ccs.JCommandStatus.Completed;
 import static javacsw.util.config.JItems.jadd;
 import static javacsw.util.config.JItems.jset;
 import static scala.compat.java8.OptionConverters.toJava;
+import static tmt.tcs.common.AssemblyStateActor.azDrivePowerOn;
+import static tmt.tcs.common.AssemblyStateActor.azItem;
+import static tmt.tcs.common.AssemblyStateActor.elDrivePowerOn;
+import static tmt.tcs.common.AssemblyStateActor.elItem;
+import static tmt.tcs.m3.M3Config.M3_IDLE;
+import static tmt.tcs.m3.M3Config.m3StateKey;
 
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -32,6 +39,8 @@ import scala.PartialFunction;
 import scala.runtime.BoxedUnit;
 import tmt.tcs.common.AssemblyContext;
 import tmt.tcs.common.AssemblyStateActor;
+import tmt.tcs.common.AssemblyStateActor.AssemblySetState;
+import tmt.tcs.common.AssemblyStateActor.AssemblyState;
 import tmt.tcs.common.BaseCommandHandler;
 
 /*
@@ -66,6 +75,7 @@ public class M3CommandHandler extends BaseCommandHandler {
 		m3StateActor = context().actorOf(AssemblyStateActor.props());
 
 		subscribeToLocationUpdates();
+		context().system().eventStream().subscribe(self(), AssemblyState.class);
 
 		receive(initReceive());
 	}
@@ -110,29 +120,41 @@ public class M3CommandHandler extends BaseCommandHandler {
 	 * @return
 	 */
 	private PartialFunction<Object, BoxedUnit> initReceive() {
-		return ReceiveBuilder.match(Location.class, this::handleLocations).match(ExecuteOne.class, t -> {
+		return stateReceive()
+				.orElse(ReceiveBuilder.match(Location.class, this::handleLocations).match(ExecuteOne.class, t -> {
 
-			SetupConfig sc = t.sc();
-			Optional<ActorRef> commandOriginator = toJava(t.commandOriginator());
-			ConfigKey configKey = sc.configKey();
+					SetupConfig sc = t.sc();
+					Optional<ActorRef> commandOriginator = toJava(t.commandOriginator());
+					ConfigKey configKey = sc.configKey();
 
-			log.debug("Inside M3CommandHandler initReceive: ExecuteOne: SetupConfig is: " + sc + ": configKey is: "
-					+ configKey);
+					log.debug("Inside M3CommandHandler initReceive: ExecuteOne: SetupConfig is: " + sc
+							+ ": configKey is: " + configKey);
 
-			if (configKey.equals(M3Config.positionDemandCK)) {
-				log.debug("Inside M3CommandHandler initReceive: ExecuteOne: moveCK Command ");
-				ActorRef moveActorRef = context().actorOf(
-						M3MoveCommand.props(assemblyContext, sc, m3Hcd, currentState(), Optional.of(m3StateActor)));
-				context().become(actorExecutingReceive(moveActorRef, commandOriginator));
-			} else if (configKey.equals(M3Config.offsetDemandCK)) {
-				log.debug("Inside M3CommandHandler initReceive: ExecuteOne: offsetCK Command ");
-				ActorRef offsetActorRef = context().actorOf(
-						M3OffsetCommand.props(assemblyContext, sc, m3Hcd, currentState(), Optional.of(m3StateActor)));
-				context().become(actorExecutingReceive(offsetActorRef, commandOriginator));
-			}
+					if (configKey.equals(M3Config.initCK)) {
+						log.info(
+								"Inside M3CommandHandler initReceive: Init not fully implemented -- only sets state ready!");
+						try {
+							ask(m3StateActor, new AssemblySetState(azItem(azDrivePowerOn), elItem(elDrivePowerOn)),
+									5000).toCompletableFuture().get();
+						} catch (Exception e) {
+							log.error(e, "Inside M3CommandHandler Error setting state");
+						}
+						commandOriginator.ifPresent(actorRef -> actorRef.tell(Completed, self()));
 
-			self().tell(JSequentialExecutor.CommandStart(), self());
-		}).build();
+					} else if (configKey.equals(M3Config.positionDemandCK)) {
+						log.debug("Inside M3CommandHandler initReceive: ExecuteOne: moveCK Command ");
+						ActorRef moveActorRef = context().actorOf(M3FollowCommand.props(assemblyContext, sc, m3Hcd,
+								currentState(), Optional.of(m3StateActor)));
+						context().become(actorExecutingReceive(moveActorRef, commandOriginator));
+					} else if (configKey.equals(M3Config.offsetDemandCK)) {
+						log.debug("Inside M3CommandHandler initReceive: ExecuteOne: offsetCK Command ");
+						ActorRef offsetActorRef = context().actorOf(M3OffsetCommand.props(assemblyContext, sc, m3Hcd,
+								currentState(), Optional.of(m3StateActor)));
+						context().become(actorExecutingReceive(offsetActorRef, commandOriginator));
+					}
+
+					self().tell(JSequentialExecutor.CommandStart(), self());
+				}).build());
 	}
 
 	/**
@@ -199,8 +221,9 @@ public class M3CommandHandler extends BaseCommandHandler {
 	public static DemandMatcher posMatcher(double az, double el, double time) {
 		System.out.println("Inside M3CommandHandler posMatcher Move: Starts");
 
-		DemandState ds = jadd(new DemandState(M3Config.m3StateCK.prefix()), jset(M3Config.rotation, az),
-				jset(M3Config.tilt, el), jset(M3Config.time, time));
+		DemandState ds = jadd(new DemandState(M3Config.m3StatePrefix), jset(m3StateKey, M3_IDLE));
+
+		System.out.println("Inside M3CommandHandler posMatcher Move: DemandState is: " + ds);
 		return new DemandMatcher(ds, false);
 	}
 
@@ -216,7 +239,8 @@ public class M3CommandHandler extends BaseCommandHandler {
 	public static DemandMatcher posMatcher(double x, double y) {
 		System.out.println("Inside M3CommandHandler posMatcher Offset: Starts");
 
-		DemandState ds = jadd(new DemandState(M3Config.m3StateCK.prefix()), jset(M3Config.rotation, x), jset(M3Config.tilt, y));
+		DemandState ds = jadd(new DemandState(M3Config.m3StateCK.prefix()), jset(M3Config.rotation, x),
+				jset(M3Config.tilt, y));
 		return new DemandMatcher(ds, false);
 	}
 

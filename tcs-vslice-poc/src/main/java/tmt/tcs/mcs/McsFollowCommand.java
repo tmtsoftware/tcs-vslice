@@ -37,7 +37,6 @@ import csw.services.ccs.Validation.WrongInternalStateIssue;
 import csw.util.config.Configurations.SetupConfig;
 import csw.util.config.DoubleItem;
 import javacsw.services.ccs.JSequentialExecutor;
-import javacsw.services.events.IEventService;
 import scala.PartialFunction;
 import scala.runtime.BoxedUnit;
 import tmt.tcs.common.AssemblyContext;
@@ -45,19 +44,15 @@ import tmt.tcs.common.AssemblyStateActor.AssemblySetState;
 import tmt.tcs.common.AssemblyStateActor.AssemblyState;
 import tmt.tcs.common.BaseCommand;
 
-/*
+/**
  * This is an actor class which receives command specific to Move Operation
  * And after any modifications if required, redirect the same to MCS HCD
  */
-@SuppressWarnings("unused")
-public class McsMoveCommand extends BaseCommand {
+public class McsFollowCommand extends BaseCommand {
 
 	private LoggingAdapter log = Logging.getLogger(getContext().system(), this);
 
-	private final AssemblyContext ac;
 	private final Optional<ActorRef> mcsStateActor;
-	private final Optional<ActorRef> eventPublisher;
-	private final IEventService eventService;
 
 	/**
 	 * Constructor Methods helps subscribing to events checks for Assembly state
@@ -70,18 +65,11 @@ public class McsMoveCommand extends BaseCommand {
 	 * @param mcsHcd
 	 * @param mcsStartState
 	 * @param stateActor
-	 * @param eventPublisher
-	 * @param eventService
 	 */
-	public McsMoveCommand(AssemblyContext ac, SetupConfig sc, ActorRef mcsHcd, AssemblyState mcsStartState,
-			Optional<ActorRef> stateActor, Optional<ActorRef> eventPublisher, IEventService eventService) {
+	public McsFollowCommand(AssemblyContext ac, SetupConfig sc, ActorRef mcsHcd, AssemblyState mcsStartState,
+			Optional<ActorRef> stateActor) {
 
-		this.ac = ac;
 		this.mcsStateActor = stateActor;
-		this.eventPublisher = eventPublisher;
-		this.eventService = eventService;
-
-		ActorRef initialEventSubscriber = createEventSubscriber(self(), eventService);
 
 		receive(processCommand(sc, mcsHcd, mcsStartState));
 	}
@@ -97,6 +85,7 @@ public class McsMoveCommand extends BaseCommand {
 				log.debug("Inside McsMoveCommand: Error Message is: " + errorMessage);
 				sender().tell(new NoLongerValid(new WrongInternalStateIssue(errorMessage)), self());
 			} else {
+				ActorRef mySender = sender();
 				log.debug("Inside McsMoveCommand: Move command -- START: " + t);
 
 				DoubleItem azItem = jitem(sc, McsConfig.azDemandKey);
@@ -111,7 +100,7 @@ public class McsMoveCommand extends BaseCommand {
 						+ ": time is: " + time);
 
 				DemandMatcher stateMatcher = McsCommandHandler.posMatcher(az, el, time);
-				SetupConfig scOut = jadd(sc(McsConfig.movePrefix), jset(McsConfig.az, az), jset(McsConfig.el, el),
+				SetupConfig scOut = jadd(sc(McsConfig.followPrefix), jset(McsConfig.az, az), jset(McsConfig.el, el),
 						jset(McsConfig.time, time));
 
 				sendState(mcsStateActor, new AssemblySetState(azItem(azFollowing), elItem(elFollowing)));
@@ -119,7 +108,7 @@ public class McsMoveCommand extends BaseCommand {
 				mcsHcd.tell(new HcdController.Submit(scOut), self());
 
 				Timeout timeout = new Timeout(5, TimeUnit.SECONDS);
-				McsCommandHandler.executeMatch(context(), stateMatcher, mcsHcd, Optional.of(sender()), timeout,
+				McsCommandHandler.executeMatch(context(), stateMatcher, mcsHcd, Optional.of(mySender), timeout,
 						status -> {
 							log.debug("Inside McsMoveCommand: Move Command status is: " + status);
 							if (status == Completed) {
@@ -137,19 +126,14 @@ public class McsMoveCommand extends BaseCommand {
 		}).matchAny(t -> log.debug("Inside McsMoveCommand: Unknown message received: " + t)).build();
 	}
 
-	private ActorRef createEventSubscriber(ActorRef followActor, IEventService eventService) {
-		return context().actorOf(McsEventSubscriber.props(ac, Optional.of(followActor), eventService),
-				"eventsubscriber");
-	}
-
 	public static Props props(AssemblyContext ac, SetupConfig sc, ActorRef mcsHcd, AssemblyState mcsState,
-			Optional<ActorRef> stateActor, Optional<ActorRef> eventPublisher, IEventService eventService) {
-		return Props.create(new Creator<McsMoveCommand>() {
+			Optional<ActorRef> stateActor) {
+		return Props.create(new Creator<McsFollowCommand>() {
 			private static final long serialVersionUID = 1L;
 
 			@Override
-			public McsMoveCommand create() throws Exception {
-				return new McsMoveCommand(ac, sc, mcsHcd, mcsState, stateActor, eventPublisher, eventService);
+			public McsFollowCommand create() throws Exception {
+				return new McsFollowCommand(ac, sc, mcsHcd, mcsState, stateActor);
 			}
 		});
 	}

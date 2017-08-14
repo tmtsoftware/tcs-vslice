@@ -1,9 +1,16 @@
 package tmt.tcs.ecs;
 
 import static akka.pattern.PatternsCS.ask;
+import static javacsw.services.ccs.JCommandStatus.Completed;
 import static javacsw.util.config.JItems.jadd;
 import static javacsw.util.config.JItems.jset;
 import static scala.compat.java8.OptionConverters.toJava;
+import static tmt.tcs.common.AssemblyStateActor.azDrivePowerOn;
+import static tmt.tcs.common.AssemblyStateActor.azItem;
+import static tmt.tcs.common.AssemblyStateActor.elDrivePowerOn;
+import static tmt.tcs.common.AssemblyStateActor.elItem;
+import static tmt.tcs.ecs.EcsConfig.ECS_IDLE;
+import static tmt.tcs.ecs.EcsConfig.ecsStateKey;
 
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -32,6 +39,8 @@ import scala.PartialFunction;
 import scala.runtime.BoxedUnit;
 import tmt.tcs.common.AssemblyContext;
 import tmt.tcs.common.AssemblyStateActor;
+import tmt.tcs.common.AssemblyStateActor.AssemblySetState;
+import tmt.tcs.common.AssemblyStateActor.AssemblyState;
 import tmt.tcs.common.BaseCommandHandler;
 
 /*
@@ -66,6 +75,7 @@ public class EcsCommandHandler extends BaseCommandHandler {
 		ecsStateActor = context().actorOf(AssemblyStateActor.props());
 
 		subscribeToLocationUpdates();
+		context().system().eventStream().subscribe(self(), AssemblyState.class);
 
 		receive(initReceive());
 	}
@@ -110,29 +120,41 @@ public class EcsCommandHandler extends BaseCommandHandler {
 	 * @return
 	 */
 	private PartialFunction<Object, BoxedUnit> initReceive() {
-		return ReceiveBuilder.match(Location.class, this::handleLocations).match(ExecuteOne.class, t -> {
+		return stateReceive()
+				.orElse(ReceiveBuilder.match(Location.class, this::handleLocations).match(ExecuteOne.class, t -> {
 
-			SetupConfig sc = t.sc();
-			Optional<ActorRef> commandOriginator = toJava(t.commandOriginator());
-			ConfigKey configKey = sc.configKey();
+					SetupConfig sc = t.sc();
+					Optional<ActorRef> commandOriginator = toJava(t.commandOriginator());
+					ConfigKey configKey = sc.configKey();
 
-			log.debug("Inside EcsCommandHandler initReceive: ExecuteOne: SetupConfig is: " + sc + ": configKey is: "
-					+ configKey);
+					log.debug("Inside EcsCommandHandler initReceive: ExecuteOne: SetupConfig is: " + sc
+							+ ": configKey is: " + configKey);
 
-			if (configKey.equals(EcsConfig.positionDemandCK)) {
-				log.debug("Inside EcsCommandHandler initReceive: ExecuteOne: moveCK Command ");
-				ActorRef moveActorRef = context().actorOf(
-						EcsMoveCommand.props(assemblyContext, sc, ecsHcd, currentState(), Optional.of(ecsStateActor)));
-				context().become(actorExecutingReceive(moveActorRef, commandOriginator));
-			} else if (configKey.equals(EcsConfig.offsetDemandCK)) {
-				log.debug("Inside EcsCommandHandler initReceive: ExecuteOne: offsetCK Command ");
-				ActorRef offsetActorRef = context().actorOf(EcsOffsetCommand.props(assemblyContext, sc, ecsHcd,
-						currentState(), Optional.of(ecsStateActor)));
-				context().become(actorExecutingReceive(offsetActorRef, commandOriginator));
-			}
+					if (configKey.equals(EcsConfig.initCK)) {
+						log.info(
+								"Inside EcsCommandHandler initReceive: Init not fully implemented -- only sets state ready!");
+						try {
+							ask(ecsStateActor, new AssemblySetState(azItem(azDrivePowerOn), elItem(elDrivePowerOn)),
+									5000).toCompletableFuture().get();
+						} catch (Exception e) {
+							log.error(e, "Inside EcsCommandHandler Error setting state");
+						}
+						commandOriginator.ifPresent(actorRef -> actorRef.tell(Completed, self()));
 
-			self().tell(JSequentialExecutor.CommandStart(), self());
-		}).build();
+					} else if (configKey.equals(EcsConfig.positionDemandCK)) {
+						log.debug("Inside EcsCommandHandler initReceive: ExecuteOne: moveCK Command ");
+						ActorRef moveActorRef = context().actorOf(EcsFollowCommand.props(assemblyContext, sc, ecsHcd,
+								currentState(), Optional.of(ecsStateActor)));
+						context().become(actorExecutingReceive(moveActorRef, commandOriginator));
+						self().tell(JSequentialExecutor.CommandStart(), self());
+					} else if (configKey.equals(EcsConfig.offsetDemandCK)) {
+						log.debug("Inside EcsCommandHandler initReceive: ExecuteOne: offsetCK Command ");
+						ActorRef offsetActorRef = context().actorOf(EcsOffsetCommand.props(assemblyContext, sc, ecsHcd,
+								currentState(), Optional.of(ecsStateActor)));
+						context().become(actorExecutingReceive(offsetActorRef, commandOriginator));
+						self().tell(JSequentialExecutor.CommandStart(), self());
+					}
+				}).build());
 	}
 
 	/**
@@ -199,8 +221,9 @@ public class EcsCommandHandler extends BaseCommandHandler {
 	public static DemandMatcher posMatcher(double az, double el, double time) {
 		System.out.println("Inside EcsCommandHandler posMatcher Move: Starts");
 
-		DemandState ds = jadd(new DemandState(EcsConfig.ecsStateCK.prefix()), jset(EcsConfig.az, az),
-				jset(EcsConfig.el, el), jset(EcsConfig.time, time));
+		DemandState ds = jadd(new DemandState(EcsConfig.ecsStatePrefix), jset(ecsStateKey, ECS_IDLE));
+
+		System.out.println("Inside EcsCommandHandler posMatcher Move: DemandState is: " + ds);
 		return new DemandMatcher(ds, false);
 	}
 

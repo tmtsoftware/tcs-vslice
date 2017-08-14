@@ -14,6 +14,7 @@ import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import akka.japi.Creator;
 import akka.japi.pf.ReceiveBuilder;
+import csw.services.ccs.AssemblyMessages;
 import csw.services.ccs.Validation;
 import csw.services.loc.LocationService.Location;
 import csw.services.loc.LocationService.ResolvedAkkaLocation;
@@ -27,6 +28,7 @@ import csw.services.pkg.Supervisor;
 import csw.util.config.Configurations.SetupConfig;
 import csw.util.config.Configurations.SetupConfigArg;
 import javacsw.services.alarms.IAlarmService;
+import javacsw.services.ccs.JAssemblyMessages;
 import javacsw.services.ccs.JValidation;
 import javacsw.services.events.IEventService;
 import javacsw.services.events.ITelemetryService;
@@ -62,7 +64,7 @@ public class McsAssembly extends BaseAssembly {
 	private final Optional<ITelemetryService> badTelemetryService = Optional.empty();
 	private Optional<ITelemetryService> telemetryService = badTelemetryService;
 
-	private ActorRef diagPublsher;
+	private ActorRef diagnosticPublisher;
 
 	public static File mcsConfigFile = new File("mcs/assembly/mcsAssembly.conf");
 	public static File resource = new File("mcsAssembly.conf");
@@ -95,16 +97,21 @@ public class McsAssembly extends BaseAssembly {
 			ActorRef trackerSubscriber = context().actorOf(LocationSubscriberActor.props());
 			trackerSubscriber.tell(JLocationSubscriberActor.Subscribe, self());
 
+			// This actor handles all telemetry and system event publishing
 			ActorRef eventPublisher = context()
 					.actorOf(McsEventPublisher.props(assemblyContext, Optional.empty(), Optional.empty()));
 
+			// Setup command handler for assembly
 			commandHandler = context()
 					.actorOf(McsCommandHandler.props(assemblyContext, mcsHcd, Optional.of(eventPublisher)));
 
-			diagPublsher = context()
+			// This sets up the diagnostic data publisher
+			diagnosticPublisher = context()
 					.actorOf(McsDiagnosticPublisher.props(assemblyContext, mcsHcd, Optional.of(eventPublisher)));
 
+			// This tracks the HCD
 			LocationSubscriberActor.trackConnections(info.connections(), trackerSubscriber);
+			// This tracks required services
 			LocationSubscriberActor.trackConnection(IEventService.eventServiceConnection(), trackerSubscriber);
 			LocationSubscriberActor.trackConnection(ITelemetryService.telemetryServiceConnection(), trackerSubscriber);
 			LocationSubscriberActor.trackConnection(IAlarmService.alarmServiceConnection(), trackerSubscriber);
@@ -187,8 +194,23 @@ public class McsAssembly extends BaseAssembly {
 	 * @return a partial function
 	 */
 	private PartialFunction<Object, BoxedUnit> runningReceive() {
-		return locationReceive().orElse(diagReceive()).orElse(controllerReceive())
+		return locationReceive().orElse(diagnosticReceive()).orElse(controllerReceive())
 				.orElse(lifecycleReceivePF(supervisor)).orElse(unhandledPF());
+	}
+	
+	/**
+	 * This is used for handling the diagnostic commands
+	 *
+	 * @return a partial function
+	 */
+	public PartialFunction<Object, BoxedUnit> diagnosticReceive() {
+		return ReceiveBuilder.match(AssemblyMessages.DiagnosticMode.class, t -> {
+			log.debug("Inside McsAssembly diagnosticReceive: diagnostic mode: " + t.hint());
+			diagnosticPublisher.tell(new McsDiagnosticPublisher.DiagnosticState(), self());
+		}).matchEquals(JAssemblyMessages.OperationsMode, t -> {
+			log.debug("Inside McsAssembly diagnosticReceive: operations mode");
+			diagnosticPublisher.tell(new McsDiagnosticPublisher.OperationsState(), self());
+		}).build();
 	}
 
 	/**

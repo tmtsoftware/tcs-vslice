@@ -10,6 +10,7 @@ import scala.runtime.BoxedUnit;
  * for Assembly
  */
 public interface AssemblyStateClient extends Actor {
+
 	/**
 	 * Sets the current Assembly state.
 	 */
@@ -17,7 +18,7 @@ public interface AssemblyStateClient extends Actor {
 
 	default PartialFunction<Object, BoxedUnit> stateReceive() {
 		return ReceiveBuilder.match(AssemblyStateActor.AssemblyState.class, assemblyState -> {
-			System.out.println("Got state: " + assemblyState);
+			System.out.println("Inside AssemblyStateClient stateReceive Got state: " + assemblyState);
 			setCurrentState(assemblyState);
 		}).build();
 	}

@@ -14,7 +14,6 @@ import akka.japi.Creator;
 import akka.japi.pf.ReceiveBuilder;
 import csw.services.loc.LocationService;
 import csw.services.loc.LocationService.Location;
-import csw.util.config.DoubleItem;
 import csw.util.config.StateVariable.CurrentState;
 import javacsw.services.ccs.JHcdController;
 import javacsw.util.config.JPublisherActor;
@@ -22,6 +21,7 @@ import scala.PartialFunction;
 import scala.runtime.BoxedUnit;
 import tmt.tcs.common.AssemblyContext;
 import tmt.tcs.common.BaseDiagnosticPublisher;
+import tmt.tcs.ecs.EcsEventPublisher.EcsStateUpdate;
 
 /**
  * This class provides diagnostic telemetry in the form of two events. It
@@ -92,8 +92,6 @@ public class EcsDiagnosticPublisher extends BaseDiagnosticPublisher {
 		return ReceiveBuilder.match(CurrentState.class, cs -> {
 			if (cs.configKey().equals(EcsConfig.ecsStateCK)) {
 				publishStateUpdate(cs, eventPublisher);
-			} else if (cs.configKey().equals(EcsConfig.ecsStatsCK)) {
-				publishStatsUpdate(cs, eventPublisher);
 			}
 		}).match(Location.class, location -> {
 
@@ -129,18 +127,8 @@ public class EcsDiagnosticPublisher extends BaseDiagnosticPublisher {
 	 */
 	public void publishStateUpdate(CurrentState cs, Optional<ActorRef> eventPublisher) {
 		log.debug("Inside EcsDiagPublisher publish state: " + cs);
-		eventPublisher.ifPresent(actorRef -> actorRef.tell(
-				new EcsStateUpdate(jitem(cs, EcsConfig.az), jitem(cs, EcsConfig.el), jitem(cs, EcsConfig.time)),
-				self()));
-	}
-
-	/**
-	 * This publishes Stats Updates
-	 */
-	public void publishStatsUpdate(CurrentState cs, Optional<ActorRef> eventPublisher) {
-		log.debug("Inside EcsDiagPublisher publish stats");
-		eventPublisher.ifPresent(
-				actorRef -> actorRef.tell(new EcsStatsUpdate(jitem(cs, EcsConfig.az), jitem(cs, EcsConfig.el)), self()));
+		eventPublisher
+				.ifPresent(actorRef -> actorRef.tell(new EcsStateUpdate(jitem(cs, EcsConfig.ecsStateKey)), self()));
 	}
 
 	public static Props props(AssemblyContext assemblyContext, Optional<ActorRef> ecsHcd,
@@ -155,25 +143,4 @@ public class EcsDiagnosticPublisher extends BaseDiagnosticPublisher {
 		});
 	}
 
-	public static class EcsStateUpdate {
-		public final DoubleItem az;
-		public final DoubleItem el;
-		public final DoubleItem time;
-
-		public EcsStateUpdate(DoubleItem az, DoubleItem el, DoubleItem time) {
-			this.az = az;
-			this.el = el;
-			this.time = time;
-		}
-	}
-
-	public static class EcsStatsUpdate {
-		public final DoubleItem x;
-		public final DoubleItem y;
-
-		public EcsStatsUpdate(DoubleItem x, DoubleItem y) {
-			this.x = x;
-			this.y = y;
-		}
-	}
 }

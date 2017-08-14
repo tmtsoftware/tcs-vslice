@@ -14,7 +14,6 @@ import akka.japi.Creator;
 import akka.japi.pf.ReceiveBuilder;
 import csw.services.loc.LocationService;
 import csw.services.loc.LocationService.Location;
-import csw.util.config.DoubleItem;
 import csw.util.config.StateVariable.CurrentState;
 import javacsw.services.ccs.JHcdController;
 import javacsw.util.config.JPublisherActor;
@@ -22,6 +21,7 @@ import scala.PartialFunction;
 import scala.runtime.BoxedUnit;
 import tmt.tcs.common.AssemblyContext;
 import tmt.tcs.common.BaseDiagnosticPublisher;
+import tmt.tcs.m3.M3EventPublisher.M3StateUpdate;
 
 /**
  * This class provides diagnostic telemetry for M3 in the form of two events. It
@@ -63,8 +63,7 @@ public class M3DiagnosticPublisher extends BaseDiagnosticPublisher {
 			if (location instanceof LocationService.ResolvedAkkaLocation) {
 				if (Objects.equals(location.connection().name(), hcdName)) {
 					LocationService.ResolvedAkkaLocation rloc = (LocationService.ResolvedAkkaLocation) location;
-					log.debug(
-							"Inside M3DiagPublisher operationsReceive updated actorRef: " + rloc.getActorRef());
+					log.debug("Inside M3DiagPublisher operationsReceive updated actorRef: " + rloc.getActorRef());
 					Optional<ActorRef> newHcdActorRef = rloc.getActorRef();
 					newHcdActorRef.ifPresent(actorRef -> actorRef.tell(JHcdController.Subscribe, self()));
 					context().become(operationsReceive(hcdName, stateMessageCounter, newHcdActorRef, eventPublisher));
@@ -93,16 +92,13 @@ public class M3DiagnosticPublisher extends BaseDiagnosticPublisher {
 		return ReceiveBuilder.match(CurrentState.class, cs -> {
 			if (cs.configKey().equals(M3Config.m3StateCK)) {
 				publishStateUpdate(cs, eventPublisher);
-			} else if (cs.configKey().equals(M3Config.m3StatsCK)) {
-				publishStatsUpdate(cs, eventPublisher);
 			}
 		}).match(Location.class, location -> {
 
 			if (location instanceof LocationService.ResolvedAkkaLocation) {
 				if (Objects.equals(location.connection().name(), hcdName)) {
 					LocationService.ResolvedAkkaLocation rloc = (LocationService.ResolvedAkkaLocation) location;
-					log.debug(
-							"Inside M3DiagPublisher diagnosticReceive updated actorRef: " + rloc.getActorRef());
+					log.debug("Inside M3DiagPublisher diagnosticReceive updated actorRef: " + rloc.getActorRef());
 					Optional<ActorRef> newHcdActorRef = rloc.getActorRef();
 					newHcdActorRef.ifPresent(actorRef -> actorRef.tell(JHcdController.Subscribe, self()));
 					context().become(diagnosticReceive(hcdName, stateMessageCounter, newHcdActorRef, cancelToken,
@@ -123,7 +119,8 @@ public class M3DiagnosticPublisher extends BaseDiagnosticPublisher {
 							eventPublisher));
 				}
 			}
-		}).matchAny(t -> log.warning("DiagPublisher:diagnosticReceive received an unexpected message: " + t)).build();
+		}).matchAny(t -> log.warning("Inside M3DiagPublisher:diagnosticReceive received an unexpected message: " + t))
+				.build();
 	}
 
 	/**
@@ -131,17 +128,7 @@ public class M3DiagnosticPublisher extends BaseDiagnosticPublisher {
 	 */
 	public void publishStateUpdate(CurrentState cs, Optional<ActorRef> eventPublisher) {
 		log.debug("Inside M3DiagPublisher publish state: " + cs);
-		eventPublisher.ifPresent(actorRef -> actorRef.tell(
-				new M3StateUpdate(jitem(cs, M3Config.rotation), jitem(cs, M3Config.tilt), jitem(cs, M3Config.time)), self()));
-	}
-
-	/**
-	 * This publishes Stats Updates
-	 */
-	public void publishStatsUpdate(CurrentState cs, Optional<ActorRef> eventPublisher) {
-		log.debug("Inside M3DiagPublisher publish stats");
-		eventPublisher.ifPresent(
-				actorRef -> actorRef.tell(new M3StatsUpdate(jitem(cs, M3Config.rotation), jitem(cs, M3Config.tilt)), self()));
+		eventPublisher.ifPresent(actorRef -> actorRef.tell(new M3StateUpdate(jitem(cs, M3Config.m3StateKey)), self()));
 	}
 
 	public static Props props(AssemblyContext assemblyContext, Optional<ActorRef> m3Hcd,
@@ -156,25 +143,4 @@ public class M3DiagnosticPublisher extends BaseDiagnosticPublisher {
 		});
 	}
 
-	public static class M3StateUpdate {
-		public final DoubleItem az;
-		public final DoubleItem el;
-		public final DoubleItem time;
-
-		public M3StateUpdate(DoubleItem az, DoubleItem el, DoubleItem time) {
-			this.az = az;
-			this.el = el;
-			this.time = time;
-		}
-	}
-
-	public static class M3StatsUpdate {
-		public final DoubleItem x;
-		public final DoubleItem y;
-
-		public M3StatsUpdate(DoubleItem x, DoubleItem y) {
-			this.x = x;
-			this.y = y;
-		}
-	}
 }

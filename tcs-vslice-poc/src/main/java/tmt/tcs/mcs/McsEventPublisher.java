@@ -12,12 +12,13 @@ import akka.japi.pf.ReceiveBuilder;
 import csw.services.loc.LocationService;
 import csw.services.loc.LocationService.ResolvedTcpLocation;
 import csw.util.config.ChoiceItem;
-import csw.util.config.Events.SystemEvent;
+import csw.util.config.Events.StatusEvent;
 import javacsw.services.events.IEventService;
 import javacsw.services.events.ITelemetryService;
 import scala.PartialFunction;
 import scala.runtime.BoxedUnit;
 import tmt.tcs.common.AssemblyContext;
+import tmt.tcs.common.AssemblyStateActor.AssemblyState;
 import tmt.tcs.common.BaseEventPublisher;
 
 /**
@@ -37,6 +38,7 @@ public class McsEventPublisher extends BaseEventPublisher {
 		log.debug("Inside McsEventPublisher");
 
 		subscribeToLocationUpdates();
+		context().system().eventStream().subscribe(self(), AssemblyState.class);
 		this.assemblyContext = assemblyContext;
 
 		log.debug("Inside McsEventPublisher Event Service in: " + eventServiceIn);
@@ -50,7 +52,8 @@ public class McsEventPublisher extends BaseEventPublisher {
 	 */
 	public PartialFunction<Object, BoxedUnit> publishingEnabled(Optional<IEventService> eventService,
 			Optional<ITelemetryService> telemetryService) {
-		return ReceiveBuilder.match(McsStateUpdate.class, t -> publishMcsState(eventService, t.state))
+		return ReceiveBuilder.match(McsStateUpdate.class, t -> publishMcsState(telemetryService, t.state))
+				.match(AssemblyState.class, t -> publishAssemblyState(telemetryService, t))
 				.match(LocationService.Location.class,
 						location -> handleLocations(location, eventService, telemetryService))
 				.
@@ -98,13 +101,27 @@ public class McsEventPublisher extends BaseEventPublisher {
 	}
 
 	/**
-	 * This method helps creating System Event object for Event publishing
+	 * This method helps publishing MCS State as State Event using Telementry
+	 * Service
 	 */
-	private void publishMcsState(Optional<IEventService> eventService, ChoiceItem state) {
-		SystemEvent ste = jadd(new SystemEvent(McsConfig.mcsStateEventPrefix), state);
+	private void publishMcsState(Optional<ITelemetryService> telemetryService, ChoiceItem state) {
+		StatusEvent ste = jadd(new StatusEvent(McsConfig.mcsStateEventPrefix), state);
 		log.debug("Inside McsEventPublisher " + McsConfig.mcsStateEventPrefix + ": " + ste);
-		eventService.ifPresent(e -> e.publish(ste).handle((x, ex) -> {
+		telemetryService.ifPresent(e -> e.publish(ste).handle((x, ex) -> {
 			log.error("Inside McsEventPublisher failed to publish mcs state: " + ste, ex);
+			return null;
+		}));
+	}
+
+	/**
+	 * This method helps publishing MCS Assembly State as State Event using
+	 * Telementry Service
+	 */
+	private void publishAssemblyState(Optional<ITelemetryService> telemetryService, AssemblyState ts) {
+		StatusEvent ste = jadd(new StatusEvent(McsConfig.mcsStateEventPrefix), ts.az, ts.el);
+		log.debug("Inside publishAssemblyState publishState: " + McsConfig.mcsStateEventPrefix + ": " + ste);
+		telemetryService.ifPresent(e -> e.publish(ste).handle((x, ex) -> {
+			log.error("Inside publishAssemblyState publishState: failed to publish state: " + ste, ex);
 			return null;
 		}));
 	}

@@ -73,7 +73,7 @@ public class AssemblyStateActor extends AbstractActor {
 	public static final Choice azFaulted = new Choice("error");
 	public static final ChoiceKey azKey = new ChoiceKey("az",
 			Choices.fromChoices(azShutDown, azDrivePowerOn, azDatumed, azFollowing, azPointing, azFaulted));
-	public static final ChoiceItem azDefault = azItem(azDrivePowerOn);
+	public static final ChoiceItem azDefault = azItem(azShutDown);
 
 	public static Choice az(AssemblyState assemblyState) {
 		return jvalue(assemblyState.az);
@@ -98,7 +98,7 @@ public class AssemblyStateActor extends AbstractActor {
 	public static final Choice elFaulted = new Choice("error");
 	public static final ChoiceKey elKey = new ChoiceKey("el",
 			Choices.fromChoices(elShutDown, elDrivePowerOn, elDatumed, elFollowing, azPointing, elFaulted));
-	public static final ChoiceItem elDefault = elItem(elDrivePowerOn);
+	public static final ChoiceItem elDefault = elItem(elShutDown);
 
 	public static Choice el(AssemblyState assemblyState) {
 		return jvalue(assemblyState.el);

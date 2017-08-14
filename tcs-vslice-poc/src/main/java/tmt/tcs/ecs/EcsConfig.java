@@ -4,6 +4,9 @@ import static javacsw.util.config.JConfigDSL.cs;
 import static javacsw.util.config.JItems.jset;
 
 import csw.util.config.BooleanKey;
+import csw.util.config.Choice;
+import csw.util.config.ChoiceKey;
+import csw.util.config.Choices;
 import csw.util.config.Configurations.ConfigKey;
 import csw.util.config.DoubleKey;
 import csw.util.config.IntKey;
@@ -17,7 +20,7 @@ public class EcsConfig {
 	public static final String ecsPrefix = "tcs.ecs";
 	public static final String ecsTpkPrefix = "tcs.str.ecs";
 	public static final String initPrefix = ecsPrefix + ".init";
-	public static final String movePrefix = ecsPrefix + ".move";
+	public static final String followPrefix = ecsPrefix + ".follow";
 	public static final String offsetPrefix = ecsPrefix + ".offset";
 	public static final String ecsStatePrefix = ecsPrefix + ".ecsState";
 	public static final String ecsStatsPrefix = ecsPrefix + ".stats";
@@ -29,7 +32,7 @@ public class EcsConfig {
 
 	public static final ConfigKey dummyCK = new ConfigKey(ecsPrefix);
 	public static final ConfigKey initCK = new ConfigKey(initPrefix);
-	public static final ConfigKey moveCK = new ConfigKey(movePrefix);
+	public static final ConfigKey followCK = new ConfigKey(followPrefix);
 	public static final ConfigKey offsetCK = new ConfigKey(offsetPrefix);
 	public static final ConfigKey ecsStateCK = new ConfigKey(ecsStatePrefix);
 	public static final ConfigKey ecsStatsCK = new ConfigKey(ecsStatsPrefix);
@@ -59,5 +62,16 @@ public class EcsConfig {
 	public static final DoubleKey posTimeKey = new DoubleKey("tcs.ecs.time");
 
 	public static final CurrentState defaultEcsStatsState = cs(ecsStatsCK.prefix(), jset(az, 1.0));
+
+	// Refered by ECS HCD
+	public static final Choice ECS_IDLE = new Choice(EcsState.ECS_IDLE.toString());
+	public static final Choice ECS_MOVING = new Choice(EcsState.ECS_MOVING.toString());
+	public static final Choice ECS_ERROR = new Choice(EcsState.ECS_ERROR.toString());
+	public static final ChoiceKey ecsStateKey = new ChoiceKey("ecsState",
+			Choices.from(ECS_IDLE.toString(), ECS_MOVING.toString(), ECS_ERROR.toString()));
+
+	public enum EcsState {
+		ECS_IDLE, ECS_MOVING, ECS_ERROR,
+	}
 
 }

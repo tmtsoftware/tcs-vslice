@@ -25,14 +25,14 @@ import tmt.tcs.common.BaseDiagnosticPublisher;
  * It operates in the 'OperationsState' or 'DiagnosticState'.
  */
 @SuppressWarnings({ "unused" })
-public class TcsDiagPublisher extends BaseDiagnosticPublisher {
+public class TcsDiagnosticPublisher extends BaseDiagnosticPublisher {
 
 	LoggingAdapter log = Logging.getLogger(getContext().system(), this);
 
 	private final Optional<ActorRef> eventPublisher;
 	private final String actorName;
 
-	private TcsDiagPublisher(AssemblyContext assemblyContext, Optional<ActorRef> referedActor,
+	private TcsDiagnosticPublisher(AssemblyContext assemblyContext, Optional<ActorRef> referedActor,
 			Optional<ActorRef> eventPublisher) {
 
 		log.debug("Inside TcsDiagPublisher");
@@ -141,12 +141,12 @@ public class TcsDiagPublisher extends BaseDiagnosticPublisher {
 
 	public static Props props(AssemblyContext assemblyContext, Optional<ActorRef> referedActor,
 			Optional<ActorRef> eventPublisher) {
-		return Props.create(new Creator<TcsDiagPublisher>() {
+		return Props.create(new Creator<TcsDiagnosticPublisher>() {
 			private static final long serialVersionUID = 1L;
 
 			@Override
-			public TcsDiagPublisher create() throws Exception {
-				return new TcsDiagPublisher(assemblyContext, referedActor, eventPublisher);
+			public TcsDiagnosticPublisher create() throws Exception {
+				return new TcsDiagnosticPublisher(assemblyContext, referedActor, eventPublisher);
 			}
 		});
 	}

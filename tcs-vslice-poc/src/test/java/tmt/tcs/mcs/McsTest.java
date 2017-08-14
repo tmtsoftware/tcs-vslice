@@ -1,6 +1,7 @@
 package tmt.tcs.mcs;
 
 import static javacsw.services.ccs.JCommandStatus.Accepted;
+import static javacsw.services.ccs.JCommandStatus.AllCompleted;
 import static javacsw.services.ccs.JCommandStatus.Incomplete;
 import static javacsw.services.loc.JConnectionType.AkkaType;
 import static javacsw.services.pkg.JComponent.RegisterAndTrackServices;
@@ -139,26 +140,26 @@ public class McsTest extends JavaTestKit {
 	}
 
 	/**
-	 * This test case checks for move command flow from Test Class to Assembly
+	 * This test case checks for follow command flow from Test Class to Assembly
 	 * to HCD
 	 */
 	@Test
 	public void test2() {
-		logger.debug("Inside McsTest test2 Move Command");
+		logger.debug("Inside McsTest test2 Follow Command");
 
 		TestProbe fakeSupervisor = new TestProbe(system);
 		ActorRef mcsAssembly = newMcsAssembly(fakeSupervisor.ref());
 		TestProbe fakeClient = new TestProbe(system);
 
-		SetupConfig moveSc = jadd(new SetupConfig(McsConfig.positionDemandCK.prefix()),
+		SetupConfig followSc = jadd(new SetupConfig(McsConfig.positionDemandCK.prefix()),
 				jset(McsConfig.azDemandKey, azValue), jset(McsConfig.elDemandKey, elValue),
 				jset(McsConfig.timeDemandKey, timeValue));
 
 		fakeSupervisor.expectMsg(Initialized);
 		fakeSupervisor.send(mcsAssembly, Running);
 
-		SetupConfigArg sca = Configurations.createSetupConfigArg("mcsMoveCommand",
-				new SetupConfig(McsConfig.initCK.prefix()), moveSc);
+		SetupConfigArg sca = Configurations.createSetupConfigArg("mcsFollowCommand",
+				new SetupConfig(McsConfig.initCK.prefix()), followSc);
 
 		fakeClient.send(mcsAssembly, new Submit(sca));
 
@@ -169,7 +170,7 @@ public class McsTest extends JavaTestKit {
 		CommandResult completeMsg = fakeClient.expectMsgClass(duration("3 seconds"), CommandResult.class);
 		logger.debug("Inside McsTest test2 Command Result: " + completeMsg.details().status(0));
 
-		assertEquals(completeMsg.overall(), Accepted);
+		assertEquals(completeMsg.overall(), AllCompleted);
 
 	}
 

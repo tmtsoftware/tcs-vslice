@@ -9,6 +9,8 @@ import static tmt.tcs.common.AssemblyStateActor.azDrivePowerOn;
 import static tmt.tcs.common.AssemblyStateActor.azItem;
 import static tmt.tcs.common.AssemblyStateActor.elDrivePowerOn;
 import static tmt.tcs.common.AssemblyStateActor.elItem;
+import static tmt.tcs.mcs.McsConfig.MCS_IDLE;
+import static tmt.tcs.mcs.McsConfig.mcsStateKey;
 
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -50,6 +52,7 @@ public class McsCommandHandler extends BaseCommandHandler {
 	private LoggingAdapter log = Logging.getLogger(getContext().system(), this);
 
 	private final AssemblyContext assemblyContext;
+	@SuppressWarnings("unused")
 	private final Optional<ActorRef> allEventPublisher;
 
 	private final ActorRef mcsStateActor;
@@ -117,39 +120,41 @@ public class McsCommandHandler extends BaseCommandHandler {
 	 * @return
 	 */
 	private PartialFunction<Object, BoxedUnit> initReceive() {
-		return ReceiveBuilder.match(Location.class, this::handleLocations).match(ExecuteOne.class, t -> {
+		return stateReceive()
+				.orElse(ReceiveBuilder.match(Location.class, this::handleLocations).match(ExecuteOne.class, t -> {
 
-			SetupConfig sc = t.sc();
-			Optional<ActorRef> commandOriginator = toJava(t.commandOriginator());
-			ConfigKey configKey = sc.configKey();
+					SetupConfig sc = t.sc();
+					Optional<ActorRef> commandOriginator = toJava(t.commandOriginator());
+					ConfigKey configKey = sc.configKey();
 
-			log.debug("Inside McsCommandHandler initReceive: ExecuteOne: SetupConfig is: " + sc + ": configKey is: "
-					+ configKey);
+					log.debug("Inside McsCommandHandler initReceive: ExecuteOne: SetupConfig is: " + sc
+							+ ": configKey is: " + configKey);
 
-			if (configKey.equals(McsConfig.initCK)) {
-				log.info("Inside McsCommandHandler initReceive: Init not fully implemented -- only sets state ready!");
-				try {
-					ask(mcsStateActor, new AssemblySetState(azItem(azDrivePowerOn), elItem(elDrivePowerOn)), 5000)
-							.toCompletableFuture().get();
-				} catch (Exception e) {
-					log.error(e, "Inside McsCommandHandler Error setting state");
-				}
-				commandOriginator.ifPresent(actorRef -> actorRef.tell(Completed, self()));
+					if (configKey.equals(McsConfig.initCK)) {
+						log.info(
+								"Inside McsCommandHandler initReceive: Init not fully implemented -- only sets state ready!");
+						try {
+							ask(mcsStateActor, new AssemblySetState(azItem(azDrivePowerOn), elItem(elDrivePowerOn)),
+									5000).toCompletableFuture().get();
+						} catch (Exception e) {
+							log.error(e, "Inside McsCommandHandler Error setting state");
+						}
+						commandOriginator.ifPresent(actorRef -> actorRef.tell(Completed, self()));
 
-			} else if (configKey.equals(McsConfig.positionDemandCK)) {
-				log.debug("Inside McsCommandHandler initReceive: ExecuteOne: moveCK Command ");
-				ActorRef moveActorRef = context().actorOf(McsMoveCommand.props(assemblyContext, sc, mcsHcd,
-						currentState(), Optional.of(mcsStateActor), allEventPublisher, eventService.get()));
-				context().become(actorExecutingReceive(moveActorRef, commandOriginator));
-				self().tell(JSequentialExecutor.CommandStart(), self());
-			} else if (configKey.equals(McsConfig.offsetDemandCK)) {
-				log.debug("Inside McsCommandHandler initReceive: ExecuteOne: offsetCK Command ");
-				ActorRef offsetActorRef = context().actorOf(McsOffsetCommand.props(assemblyContext, sc, mcsHcd,
-						currentState(), Optional.of(mcsStateActor)));
-				context().become(actorExecutingReceive(offsetActorRef, commandOriginator));
-				self().tell(JSequentialExecutor.CommandStart(), self());
-			}
-		}).build();
+					} else if (configKey.equals(McsConfig.positionDemandCK)) {
+						log.debug("Inside McsCommandHandler initReceive: ExecuteOne: moveCK Command ");
+						ActorRef moveActorRef = context().actorOf(McsFollowCommand.props(assemblyContext, sc, mcsHcd,
+								currentState(), Optional.of(mcsStateActor)));
+						context().become(actorExecutingReceive(moveActorRef, commandOriginator));
+						self().tell(JSequentialExecutor.CommandStart(), self());
+					} else if (configKey.equals(McsConfig.offsetDemandCK)) {
+						log.debug("Inside McsCommandHandler initReceive: ExecuteOne: offsetCK Command ");
+						ActorRef offsetActorRef = context().actorOf(McsOffsetCommand.props(assemblyContext, sc, mcsHcd,
+								currentState(), Optional.of(mcsStateActor)));
+						context().become(actorExecutingReceive(offsetActorRef, commandOriginator));
+						self().tell(JSequentialExecutor.CommandStart(), self());
+					}
+				}).build());
 	}
 
 	/**
@@ -216,8 +221,7 @@ public class McsCommandHandler extends BaseCommandHandler {
 	public static DemandMatcher posMatcher(double az, double el, double time) {
 		System.out.println("Inside McsCommandHandler posMatcher Move: Starts");
 
-		DemandState ds = jadd(new DemandState(McsConfig.mcsStatePrefix), jset(McsConfig.az, az), jset(McsConfig.el, el),
-				jset(McsConfig.time, time));
+		DemandState ds = jadd(new DemandState(McsConfig.mcsStatePrefix), jset(mcsStateKey, MCS_IDLE));
 
 		System.out.println("Inside McsCommandHandler posMatcher Move: DemandState is: " + ds);
 		return new DemandMatcher(ds, false);

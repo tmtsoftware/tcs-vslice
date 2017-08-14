@@ -11,15 +11,16 @@ import akka.japi.Creator;
 import akka.japi.pf.ReceiveBuilder;
 import csw.services.loc.LocationService;
 import csw.services.loc.LocationService.ResolvedTcpLocation;
-import csw.util.config.DoubleItem;
-import csw.util.config.Events.SystemEvent;
+import csw.util.config.ChoiceItem;
+import csw.util.config.Events.StatusEvent;
 import javacsw.services.events.IEventService;
 import javacsw.services.events.ITelemetryService;
 import scala.PartialFunction;
 import scala.runtime.BoxedUnit;
 import tmt.tcs.common.AssemblyContext;
+import tmt.tcs.common.AssemblyStateActor.AssemblyState;
 import tmt.tcs.common.BaseEventPublisher;
-import tmt.tcs.m3.M3DiagnosticPublisher.M3StateUpdate;
+import tmt.tcs.ecs.EcsEventPublisher.EcsStateUpdate;
 
 /**
  * This is an actor class that provides the publishing interface specific to M3
@@ -38,6 +39,7 @@ public class M3EventPublisher extends BaseEventPublisher {
 		log.debug("Inside M3EventPublisher");
 
 		subscribeToLocationUpdates();
+		context().system().eventStream().subscribe(self(), AssemblyState.class);
 		this.assemblyContext = assemblyContext;
 
 		log.debug("Inside M3EventPublisher Event Service in: " + eventServiceIn);
@@ -51,7 +53,8 @@ public class M3EventPublisher extends BaseEventPublisher {
 	 */
 	public PartialFunction<Object, BoxedUnit> publishingEnabled(Optional<IEventService> eventService,
 			Optional<ITelemetryService> telemetryService) {
-		return ReceiveBuilder.match(M3StateUpdate.class, t -> publishM3State(eventService, t.az, t.el, t.time))
+		return ReceiveBuilder.match(EcsStateUpdate.class, t -> publishM3State(telemetryService, t.state))
+				.match(AssemblyState.class, t -> publishAssemblyState(telemetryService, t))
 				.match(LocationService.Location.class,
 						location -> handleLocations(location, eventService, telemetryService))
 				.
@@ -99,13 +102,27 @@ public class M3EventPublisher extends BaseEventPublisher {
 	}
 
 	/**
-	 * This method helps creating System Event object for Event publishing
+	 * This method helps publishing M3 State as State Event using Telementry
+	 * Service
 	 */
-	private void publishM3State(Optional<IEventService> eventService, DoubleItem az, DoubleItem el, DoubleItem time) {
-		SystemEvent ste = jadd(new SystemEvent(M3Config.m3StateEventPrefix), az, el, time);
-		log.debug("Inside M3EventPublisher " + M3Config.m3StateEventPrefix + ": " + ste);
-		eventService.ifPresent(e -> e.publish(ste).handle((x, ex) -> {
-			log.error("Inside M3EventPublisher failed to publish mcs state: " + ste, ex);
+	private void publishM3State(Optional<ITelemetryService> telemetryService, ChoiceItem state) {
+		StatusEvent ste = jadd(new StatusEvent(M3Config.m3StateEventPrefix), state);
+		log.debug("Inside publishM3State " + M3Config.m3StateEventPrefix + ": " + ste);
+		telemetryService.ifPresent(e -> e.publish(ste).handle((x, ex) -> {
+			log.error("Inside publishM3State failed to publish mcs state: " + ste, ex);
+			return null;
+		}));
+	}
+
+	/**
+	 * This method helps publishing M3 Assembly State as State Event using
+	 * Telementry Service
+	 */
+	private void publishAssemblyState(Optional<ITelemetryService> telemetryService, AssemblyState ts) {
+		StatusEvent ste = jadd(new StatusEvent(M3Config.m3StateEventPrefix), ts.az, ts.el);
+		log.debug("Inside publishAssemblyState publishState: " + M3Config.m3StateEventPrefix + ": " + ste);
+		telemetryService.ifPresent(e -> e.publish(ste).handle((x, ex) -> {
+			log.error("Inside publishAssemblyState publishState: failed to publish state: " + ste, ex);
 			return null;
 		}));
 	}
@@ -122,4 +139,11 @@ public class M3EventPublisher extends BaseEventPublisher {
 		});
 	}
 
+	public static class M3StateUpdate {
+		public final ChoiceItem state;
+
+		public M3StateUpdate(ChoiceItem state) {
+			this.state = state;
+		}
+	}
 }
