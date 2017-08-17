@@ -8,6 +8,7 @@ import csw.util.config.Choice;
 import csw.util.config.ChoiceKey;
 import csw.util.config.Choices;
 import csw.util.config.Configurations.ConfigKey;
+import csw.util.config.DoubleItem;
 import csw.util.config.DoubleKey;
 import csw.util.config.IntKey;
 import csw.util.config.StateVariable.CurrentState;
@@ -29,6 +30,7 @@ public class McsConfig {
 	public static final String positionDemandPrefix = mcsTpkPrefix + ".positiondemands";
 	public static final String offsetDemandPrefix = mcsTpkPrefix + ".offsetdemands";
 	public static final String currentPosPrefix = mcsPrefix + ".currentposition";
+	public static final String engineeringEventPrefix = mcsPrefix + ".engr";
 
 	public static final ConfigKey dummyCK = new ConfigKey(mcsPrefix);
 	public static final ConfigKey initCK = new ConfigKey(initPrefix);
@@ -62,6 +64,14 @@ public class McsConfig {
 	public static final DoubleKey posTimeKey = new DoubleKey("tcs.mcs.time");
 
 	public static final CurrentState defaultMcsStatsState = cs(mcsStatsCK.prefix(), jset(az, 1.0));
+
+	public static DoubleItem az(double azValue) {
+		return jset(azDemandKey, azValue);
+	}
+
+	public static DoubleItem el(double elValue) {
+		return jset(elDemandKey, elValue);
+	}
 
 	// Refered by MCS HCD
 	public static final Choice MCS_IDLE = new Choice(McsState.MCS_IDLE.toString());

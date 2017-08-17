@@ -12,6 +12,7 @@ import akka.japi.pf.ReceiveBuilder;
 import csw.services.loc.LocationService;
 import csw.services.loc.LocationService.ResolvedTcpLocation;
 import csw.util.config.ChoiceItem;
+import csw.util.config.DoubleItem;
 import csw.util.config.Events.StatusEvent;
 import javacsw.services.events.IEventService;
 import javacsw.services.events.ITelemetryService;
@@ -20,7 +21,6 @@ import scala.runtime.BoxedUnit;
 import tmt.tcs.common.AssemblyContext;
 import tmt.tcs.common.AssemblyStateActor.AssemblyState;
 import tmt.tcs.common.BaseEventPublisher;
-import tmt.tcs.ecs.EcsEventPublisher.EcsStateUpdate;
 
 /**
  * This is an actor class that provides the publishing interface specific to M3
@@ -53,8 +53,8 @@ public class M3EventPublisher extends BaseEventPublisher {
 	 */
 	public PartialFunction<Object, BoxedUnit> publishingEnabled(Optional<IEventService> eventService,
 			Optional<ITelemetryService> telemetryService) {
-		return ReceiveBuilder.match(EcsStateUpdate.class, t -> publishM3State(telemetryService, t.state))
-				.match(AssemblyState.class, t -> publishAssemblyState(telemetryService, t))
+		return ReceiveBuilder.match(EngrUpdate.class, t -> publishEngr(telemetryService, t.rotation, t.tilt))
+				.match(M3StateUpdate.class, t -> publishM3State(telemetryService, t.state))
 				.match(LocationService.Location.class,
 						location -> handleLocations(location, eventService, telemetryService))
 				.
@@ -102,6 +102,21 @@ public class M3EventPublisher extends BaseEventPublisher {
 	}
 
 	/**
+	 * This method helps publishing M3 Engr Data as State Event using Telementry
+	 * Service
+	 */
+	private void publishEngr(Optional<ITelemetryService> telemetryService, DoubleItem rotation, DoubleItem tilt) {
+		StatusEvent ste = jadd(new StatusEvent(M3Config.engineeringEventPrefix), rotation, tilt);
+		log.info("Inside M3EventPublisher publishEngr: Status publish of " + M3Config.engineeringEventPrefix + ": "
+				+ ste);
+
+		telemetryService.ifPresent(e -> e.publish(ste).handle((x, ex) -> {
+			log.error("Inside M3EventPublisher publishEngr: Failed to publish engr: " + ste, ex);
+			return null;
+		}));
+	}
+
+	/**
 	 * This method helps publishing M3 State as State Event using Telementry
 	 * Service
 	 */
@@ -109,20 +124,7 @@ public class M3EventPublisher extends BaseEventPublisher {
 		StatusEvent ste = jadd(new StatusEvent(M3Config.m3StateEventPrefix), state);
 		log.debug("Inside publishM3State " + M3Config.m3StateEventPrefix + ": " + ste);
 		telemetryService.ifPresent(e -> e.publish(ste).handle((x, ex) -> {
-			log.error("Inside publishM3State failed to publish mcs state: " + ste, ex);
-			return null;
-		}));
-	}
-
-	/**
-	 * This method helps publishing M3 Assembly State as State Event using
-	 * Telementry Service
-	 */
-	private void publishAssemblyState(Optional<ITelemetryService> telemetryService, AssemblyState ts) {
-		StatusEvent ste = jadd(new StatusEvent(M3Config.m3StateEventPrefix), ts.az, ts.el);
-		log.debug("Inside publishAssemblyState publishState: " + M3Config.m3StateEventPrefix + ": " + ste);
-		telemetryService.ifPresent(e -> e.publish(ste).handle((x, ex) -> {
-			log.error("Inside publishAssemblyState publishState: failed to publish state: " + ste, ex);
+			log.error("Inside publishM3State failed to publish m3 state: " + ste, ex);
 			return null;
 		}));
 	}
@@ -137,6 +139,25 @@ public class M3EventPublisher extends BaseEventPublisher {
 				return new M3EventPublisher(assemblyContext, eventService, telemetryService);
 			}
 		});
+	}
+
+	/**
+	 * Used by actors wishing to cause an engineering event update
+	 */
+	public static class EngrUpdate {
+		public final DoubleItem rotation;
+		public final DoubleItem tilt;
+
+		/**
+		 * 
+		 * @param rotation
+		 * @param tilt
+		 */
+		public EngrUpdate(DoubleItem rotation, DoubleItem tilt) {
+			this.rotation = rotation;
+			this.tilt = tilt;
+		}
+
 	}
 
 	public static class M3StateUpdate {

@@ -105,47 +105,12 @@ public class M3Test extends JavaTestKit {
 	}
 
 	/**
-	 * This test case checks for follow command flow from Test Class to Assembly
-	 * to HCD
-	 */
-	@Test
-	public void test1() {
-		logger.debug("Inside M3Test test1 Follow Command");
-
-		TestProbe fakeSupervisor = new TestProbe(system);
-		ActorRef M3Assembly = newM3Assembly(fakeSupervisor.ref());
-		TestProbe fakeClient = new TestProbe(system);
-
-		SetupConfig followSc = jadd(new SetupConfig(M3Config.positionDemandCK.prefix()),
-				jset(M3Config.rotationDemandKey, rotationValue), jset(M3Config.tiltDemandKey, tiltValue),
-				jset(M3Config.timeDemandKey, timeValue));
-
-		fakeSupervisor.expectMsg(Initialized);
-		fakeSupervisor.send(M3Assembly, Running);
-
-		SetupConfigArg sca = Configurations.createSetupConfigArg("m3FollowCommand",
-				new SetupConfig(M3Config.initCK.prefix()), followSc);
-
-		fakeClient.send(M3Assembly, new Submit(sca));
-
-		CommandResult acceptedMsg = fakeClient.expectMsgClass(duration("3 seconds"), CommandResult.class);
-		assertEquals(acceptedMsg.overall(), Accepted);
-		logger.debug("Inside M3Test test1 Command Accepted Result: " + acceptedMsg);
-
-		CommandResult completeMsg = fakeClient.expectMsgClass(duration("3 seconds"), CommandResult.class);
-		logger.debug("Inside M3Test test1 Command Result: " + completeMsg.details().status(0));
-
-		assertEquals(completeMsg.overall(), AllCompleted);
-
-	}
-
-	/**
 	 * This test case checks for offset command flow from Test Class to Assembly
 	 * to HCD
 	 */
 	@Test
-	public void test2() {
-		logger.debug("Inside M3Test test2 Offset Command");
+	public void test1() {
+		logger.debug("Inside M3Test test1 Offset Command");
 
 		TestProbe fakeSupervisor = new TestProbe(system);
 		ActorRef M3Assembly = newM3Assembly(fakeSupervisor.ref());
@@ -164,12 +129,47 @@ public class M3Test extends JavaTestKit {
 
 		CommandResult acceptedMsg = fakeClient.expectMsgClass(duration("3 seconds"), CommandResult.class);
 		assertEquals(acceptedMsg.overall(), Accepted);
+		logger.debug("Inside M3Test test1 Command Accepted Result: " + acceptedMsg);
+
+		CommandResult completeMsg = fakeClient.expectMsgClass(duration("3 seconds"), CommandResult.class);
+		logger.debug("Inside M3Test test1 Command Result: " + completeMsg.details().status(0));
+
+		assertEquals(completeMsg.overall(), Incomplete);
+
+	}
+
+	/**
+	 * This test case checks for follow command flow from Test Class to Assembly
+	 * to HCD
+	 */
+	@Test
+	public void test2() {
+		logger.debug("Inside M3Test test2 Follow Command");
+
+		TestProbe fakeSupervisor = new TestProbe(system);
+		ActorRef M3Assembly = newM3Assembly(fakeSupervisor.ref());
+		TestProbe fakeClient = new TestProbe(system);
+
+		SetupConfig followSc = jadd(new SetupConfig(M3Config.followCK.prefix()),
+				jset(M3Config.rotationDemandKey, rotationValue), jset(M3Config.tiltDemandKey, tiltValue),
+				jset(M3Config.timeDemandKey, timeValue));
+
+		fakeSupervisor.expectMsg(Initialized);
+		fakeSupervisor.send(M3Assembly, Running);
+
+		SetupConfigArg sca = Configurations.createSetupConfigArg("m3FollowCommand",
+				new SetupConfig(M3Config.initCK.prefix()), followSc);
+
+		fakeClient.send(M3Assembly, new Submit(sca));
+
+		CommandResult acceptedMsg = fakeClient.expectMsgClass(duration("3 seconds"), CommandResult.class);
+		assertEquals(acceptedMsg.overall(), Accepted);
 		logger.debug("Inside M3Test test2 Command Accepted Result: " + acceptedMsg);
 
 		CommandResult completeMsg = fakeClient.expectMsgClass(duration("3 seconds"), CommandResult.class);
 		logger.debug("Inside M3Test test2 Command Result: " + completeMsg.details().status(0));
 
-		assertEquals(completeMsg.overall(), Incomplete);
+		assertEquals(completeMsg.overall(), AllCompleted);
 
 	}
 

@@ -3,11 +3,19 @@ package tmt.tcs.mcs;
 import static akka.pattern.PatternsCS.ask;
 import static javacsw.services.ccs.JCommandStatus.Completed;
 import static javacsw.util.config.JItems.jadd;
+import static javacsw.util.config.JItems.jitem;
 import static javacsw.util.config.JItems.jset;
+import static javacsw.util.config.JItems.jvalue;
 import static scala.compat.java8.OptionConverters.toJava;
+import static tmt.tcs.common.AssemblyStateActor.az;
+import static tmt.tcs.common.AssemblyStateActor.azDatumed;
 import static tmt.tcs.common.AssemblyStateActor.azDrivePowerOn;
+import static tmt.tcs.common.AssemblyStateActor.azFollowing;
 import static tmt.tcs.common.AssemblyStateActor.azItem;
+import static tmt.tcs.common.AssemblyStateActor.el;
+import static tmt.tcs.common.AssemblyStateActor.elDatumed;
 import static tmt.tcs.common.AssemblyStateActor.elDrivePowerOn;
+import static tmt.tcs.common.AssemblyStateActor.elFollowing;
 import static tmt.tcs.common.AssemblyStateActor.elItem;
 import static tmt.tcs.mcs.McsConfig.MCS_IDLE;
 import static tmt.tcs.mcs.McsConfig.mcsStateKey;
@@ -24,14 +32,19 @@ import akka.japi.Creator;
 import akka.japi.pf.ReceiveBuilder;
 import akka.util.Timeout;
 import csw.services.ccs.CommandStatus.CommandStatus;
+import csw.services.ccs.CommandStatus.Error;
+import csw.services.ccs.CommandStatus.NoLongerValid;
 import csw.services.ccs.DemandMatcher;
 import csw.services.ccs.SequentialExecutor.ExecuteOne;
+import csw.services.ccs.Validation.RequiredHCDUnavailableIssue;
+import csw.services.ccs.Validation.WrongInternalStateIssue;
 import csw.services.loc.LocationService.Location;
 import csw.services.loc.LocationService.ResolvedAkkaLocation;
 import csw.services.loc.LocationService.ResolvedTcpLocation;
 import csw.services.loc.LocationService.Unresolved;
 import csw.util.config.Configurations.ConfigKey;
 import csw.util.config.Configurations.SetupConfig;
+import csw.util.config.DoubleItem;
 import csw.util.config.StateVariable.DemandState;
 import javacsw.services.ccs.JSequentialExecutor;
 import javacsw.services.events.IEventService;
@@ -52,14 +65,15 @@ public class McsCommandHandler extends BaseCommandHandler {
 	private LoggingAdapter log = Logging.getLogger(getContext().system(), this);
 
 	private final AssemblyContext assemblyContext;
-	@SuppressWarnings("unused")
 	private final Optional<ActorRef> allEventPublisher;
-
 	private final ActorRef mcsStateActor;
 
 	private final ActorRef badHcdReference;
-
 	private ActorRef mcsHcd;
+
+	private boolean isHcdAvailable() {
+		return !mcsHcd.equals(badHcdReference);
+	}
 
 	private Optional<IEventService> badEventService = Optional.empty();
 	private Optional<IEventService> eventService = badEventService;
@@ -137,24 +151,112 @@ public class McsCommandHandler extends BaseCommandHandler {
 							ask(mcsStateActor, new AssemblySetState(azItem(azDrivePowerOn), elItem(elDrivePowerOn)),
 									5000).toCompletableFuture().get();
 						} catch (Exception e) {
-							log.error(e, "Inside McsCommandHandler Error setting state");
+							log.error(e, "Inside McsCommandHandler initReceive: Error setting state");
 						}
 						commandOriginator.ifPresent(actorRef -> actorRef.tell(Completed, self()));
 
-					} else if (configKey.equals(McsConfig.positionDemandCK)) {
-						log.debug("Inside McsCommandHandler initReceive: ExecuteOne: moveCK Command ");
-						ActorRef moveActorRef = context().actorOf(McsFollowCommand.props(assemblyContext, sc, mcsHcd,
-								currentState(), Optional.of(mcsStateActor)));
-						context().become(actorExecutingReceive(moveActorRef, commandOriginator));
-						self().tell(JSequentialExecutor.CommandStart(), self());
+					} else if (configKey.equals(McsConfig.followCK)) {
+						if (!(az(currentState()).equals(azDatumed) || az(currentState()).equals(azDrivePowerOn))
+								&& !(el(currentState()).equals(elDatumed)
+										|| az(currentState()).equals(elDrivePowerOn))) {
+							String errorMessage = "Mcs Assembly state of " + az(currentState()) + "/"
+									+ el(currentState()) + " does not allow follow";
+							log.debug("Inside McsCommandHandler initReceive: Error Message is: " + errorMessage);
+							sender().tell(new NoLongerValid(new WrongInternalStateIssue(errorMessage)), self());
+						} else {
+							log.debug("Inside McsCommandHandler initReceive: Follow command -- START: " + t);
+
+							DoubleItem azItem = jitem(sc, McsConfig.azDemandKey);
+							DoubleItem elItem = jitem(sc, McsConfig.elDemandKey);
+
+							Double az = jvalue(azItem);
+							Double el = jvalue(elItem);
+
+							log.info("Inside McsCommandHandler initReceive:  az is: " + azItem + ": el is: " + elItem);
+
+							// The event publisher may be passed in
+							Props props = McsFollowCommand.props(assemblyContext, jset(McsConfig.az, az),
+									jset(McsConfig.el, el), Optional.of(mcsHcd), allEventPublisher, eventService.get());
+
+							ActorRef followCommandActor = context().actorOf(props);
+							log.info("Inside McsCommandHandler initReceive: Going to followReceive");
+							context().become(followReceive(followCommandActor));
+
+							try {
+								ask(mcsStateActor, new AssemblySetState(azItem(azFollowing), elItem(elFollowing)), 5000)
+										.toCompletableFuture().get();
+							} catch (Exception e) {
+								log.error(e, "Inside McsCommandHandler initReceive: Error setting state");
+							}
+							commandOriginator.ifPresent(actorRef -> actorRef.tell(Completed, self()));
+
+						}
 					} else if (configKey.equals(McsConfig.offsetDemandCK)) {
-						log.debug("Inside McsCommandHandler initReceive: ExecuteOne: offsetCK Command ");
-						ActorRef offsetActorRef = context().actorOf(McsOffsetCommand.props(assemblyContext, sc, mcsHcd,
-								currentState(), Optional.of(mcsStateActor)));
-						context().become(actorExecutingReceive(offsetActorRef, commandOriginator));
-						self().tell(JSequentialExecutor.CommandStart(), self());
+						if (isHcdAvailable()) {
+							log.debug("Inside McsCommandHandler initReceive: ExecuteOne: offsetCK Command ");
+							ActorRef offsetActorRef = context().actorOf(McsOffsetCommand.props(assemblyContext, sc,
+									mcsHcd, currentState(), Optional.of(mcsStateActor)));
+							context().become(actorExecutingReceive(offsetActorRef, commandOriginator));
+							self().tell(JSequentialExecutor.CommandStart(), self());
+						} else {
+							hcdNotAvailableResponse(commandOriginator);
+						}
 					}
 				}).build());
+	}
+
+	/**
+	 * This responds to Command Originator in case HCD is not available
+	 * 
+	 * @param commandOriginator
+	 */
+	private void hcdNotAvailableResponse(Optional<ActorRef> commandOriginator) {
+		commandOriginator.ifPresent(actorRef -> actorRef.tell(new NoLongerValid(
+				new RequiredHCDUnavailableIssue(assemblyContext.hcdComponentId.toString() + " is not available")),
+				self()));
+	}
+
+	private PartialFunction<Object, BoxedUnit> followReceive(ActorRef followActor) {
+		return stateReceive().orElse(ReceiveBuilder.match(ExecuteOne.class, t -> {
+			SetupConfig sc = t.sc();
+			log.debug("Inside McsCommandHandler followReceive: ExecuteOne: SetupConfig is: " + sc);
+			Optional<ActorRef> commandOriginator = toJava(t.commandOriginator());
+			ConfigKey configKey = sc.configKey();
+			log.debug("Inside McsCommandHandler followReceive: ExecuteOne: configKey is: " + configKey);
+
+			if (configKey.equals(McsConfig.positionDemandCK)) {
+				try {
+					ask(mcsStateActor, new AssemblySetState(azItem(azFollowing), elItem(elFollowing)), 5000)
+							.toCompletableFuture().get();
+				} catch (Exception e) {
+					log.error(e, "Inside McsCommandHandler followReceive: Error setting state");
+				}
+
+				DoubleItem azItem = jitem(sc, McsConfig.azDemandKey);
+				DoubleItem elItem = jitem(sc, McsConfig.elDemandKey);
+				DoubleItem timeItem = jitem(sc, McsConfig.timeDemandKey);
+
+				Double az = jvalue(azItem);
+				Double el = jvalue(elItem);
+				Double time = jvalue(timeItem);
+
+				followActor.tell(new McsFollowActor.SetAzimuth(jset(McsConfig.az, az)), self());
+				Timeout timeout = new Timeout(5, TimeUnit.SECONDS);
+				executeMatch(context(), posMatcher(az, el, time), mcsHcd, commandOriginator, timeout, status -> {
+					if (status == Completed) {
+						try {
+							ask(mcsStateActor, new AssemblySetState(azItem(azFollowing), elItem(elFollowing)), 5000)
+									.toCompletableFuture().get();
+						} catch (Exception e) {
+							log.error(e, "Inside McsCommandHandler followReceive: Error setting state");
+						}
+					} else if (status instanceof Error)
+						log.error("Inside McsCommandHandler followReceive: command failed with message: "
+								+ ((Error) status).message());
+				});
+			}
+		}).matchAny(t -> log.warning("Inside McsCommandHandler followReceive:  received an unknown message: " + t))
+				.build());
 	}
 
 	/**

@@ -12,6 +12,7 @@ import akka.japi.pf.ReceiveBuilder;
 import csw.services.loc.LocationService;
 import csw.services.loc.LocationService.ResolvedTcpLocation;
 import csw.util.config.ChoiceItem;
+import csw.util.config.DoubleItem;
 import csw.util.config.Events.StatusEvent;
 import javacsw.services.events.IEventService;
 import javacsw.services.events.ITelemetryService;
@@ -52,7 +53,8 @@ public class EcsEventPublisher extends BaseEventPublisher {
 	 */
 	public PartialFunction<Object, BoxedUnit> publishingEnabled(Optional<IEventService> eventService,
 			Optional<ITelemetryService> telemetryService) {
-		return ReceiveBuilder.match(EcsStateUpdate.class, t -> publishEcsState(telemetryService, t.state))
+		return ReceiveBuilder.match(EngrUpdate.class, t -> publishEngr(telemetryService, t.az, t.el))
+				.match(EcsStateUpdate.class, t -> publishEcsState(telemetryService, t.state))
 				.match(AssemblyState.class, t -> publishAssemblyState(telemetryService, t))
 				.match(LocationService.Location.class,
 						location -> handleLocations(location, eventService, telemetryService))
@@ -101,14 +103,29 @@ public class EcsEventPublisher extends BaseEventPublisher {
 	}
 
 	/**
+	 * This method helps publishing ECS Engr Data as State Event using
+	 * Telementry Service
+	 */
+	private void publishEngr(Optional<ITelemetryService> telemetryService, DoubleItem az, DoubleItem el) {
+		StatusEvent ste = jadd(new StatusEvent(EcsConfig.engineeringEventPrefix), az, el);
+		log.info("Inside EcsEventPublisher publishEngr: Status publish of " + EcsConfig.engineeringEventPrefix + ": "
+				+ ste);
+
+		telemetryService.ifPresent(e -> e.publish(ste).handle((x, ex) -> {
+			log.error("Inside EcsEventPublisher publishEngr: Failed to publish engr: " + ste, ex);
+			return null;
+		}));
+	}
+
+	/**
 	 * This method helps publishing ECS State as State Event using Telementry
 	 * Service
 	 */
 	private void publishEcsState(Optional<ITelemetryService> telemetryService, ChoiceItem state) {
 		StatusEvent ste = jadd(new StatusEvent(EcsConfig.ecsStateEventPrefix), state);
-		log.debug("Inside publishEcsState " + EcsConfig.ecsStateEventPrefix + ": " + ste);
+		log.debug("Inside EcsEventPublisher publishEcsState " + EcsConfig.ecsStateEventPrefix + ": " + ste);
 		telemetryService.ifPresent(e -> e.publish(ste).handle((x, ex) -> {
-			log.error("Inside publishEcsState failed to publish mcs state: " + ste, ex);
+			log.error("Inside EcsEventPublisher ublishEcsState failed to publish ecs state: " + ste, ex);
 			return null;
 		}));
 	}
@@ -136,6 +153,25 @@ public class EcsEventPublisher extends BaseEventPublisher {
 				return new EcsEventPublisher(assemblyContext, eventService, telemetryService);
 			}
 		});
+	}
+
+	/**
+	 * Used by actors wishing to cause an engineering event update
+	 */
+	public static class EngrUpdate {
+		public final DoubleItem az;
+		public final DoubleItem el;
+
+		/**
+		 * 
+		 * @param az
+		 * @param el
+		 */
+		public EngrUpdate(DoubleItem az, DoubleItem el) {
+			this.az = az;
+			this.el = el;
+		}
+
 	}
 
 	public static class EcsStateUpdate {

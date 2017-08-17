@@ -69,7 +69,6 @@ public class McsOffsetCommand extends BaseCommand {
 		receive(processCommand(sc, mcsHcd, mcsStartState));
 	}
 
-	@Override
 	public PartialFunction<Object, BoxedUnit> processCommand(SetupConfig sc, ActorRef mcsHcd,
 			AssemblyState mcsStartState) {
 

@@ -3,11 +3,19 @@ package tmt.tcs.m3;
 import static akka.pattern.PatternsCS.ask;
 import static javacsw.services.ccs.JCommandStatus.Completed;
 import static javacsw.util.config.JItems.jadd;
+import static javacsw.util.config.JItems.jitem;
 import static javacsw.util.config.JItems.jset;
+import static javacsw.util.config.JItems.jvalue;
 import static scala.compat.java8.OptionConverters.toJava;
+import static tmt.tcs.common.AssemblyStateActor.az;
+import static tmt.tcs.common.AssemblyStateActor.azDatumed;
 import static tmt.tcs.common.AssemblyStateActor.azDrivePowerOn;
+import static tmt.tcs.common.AssemblyStateActor.azFollowing;
 import static tmt.tcs.common.AssemblyStateActor.azItem;
+import static tmt.tcs.common.AssemblyStateActor.el;
+import static tmt.tcs.common.AssemblyStateActor.elDatumed;
 import static tmt.tcs.common.AssemblyStateActor.elDrivePowerOn;
+import static tmt.tcs.common.AssemblyStateActor.elFollowing;
 import static tmt.tcs.common.AssemblyStateActor.elItem;
 import static tmt.tcs.m3.M3Config.M3_IDLE;
 import static tmt.tcs.m3.M3Config.m3StateKey;
@@ -24,14 +32,19 @@ import akka.japi.Creator;
 import akka.japi.pf.ReceiveBuilder;
 import akka.util.Timeout;
 import csw.services.ccs.CommandStatus.CommandStatus;
+import csw.services.ccs.CommandStatus.Error;
+import csw.services.ccs.CommandStatus.NoLongerValid;
 import csw.services.ccs.DemandMatcher;
 import csw.services.ccs.SequentialExecutor.ExecuteOne;
+import csw.services.ccs.Validation.RequiredHCDUnavailableIssue;
+import csw.services.ccs.Validation.WrongInternalStateIssue;
 import csw.services.loc.LocationService.Location;
 import csw.services.loc.LocationService.ResolvedAkkaLocation;
 import csw.services.loc.LocationService.ResolvedTcpLocation;
 import csw.services.loc.LocationService.Unresolved;
 import csw.util.config.Configurations.ConfigKey;
 import csw.util.config.Configurations.SetupConfig;
+import csw.util.config.DoubleItem;
 import csw.util.config.StateVariable.DemandState;
 import javacsw.services.ccs.JSequentialExecutor;
 import javacsw.services.events.IEventService;
@@ -141,20 +154,107 @@ public class M3CommandHandler extends BaseCommandHandler {
 						}
 						commandOriginator.ifPresent(actorRef -> actorRef.tell(Completed, self()));
 
-					} else if (configKey.equals(M3Config.positionDemandCK)) {
-						log.debug("Inside M3CommandHandler initReceive: ExecuteOne: moveCK Command ");
-						ActorRef moveActorRef = context().actorOf(M3FollowCommand.props(assemblyContext, sc, m3Hcd,
-								currentState(), Optional.of(m3StateActor)));
-						context().become(actorExecutingReceive(moveActorRef, commandOriginator));
+					} else if (configKey.equals(M3Config.followCK)) {
+						if (!(az(currentState()).equals(azDatumed) || az(currentState()).equals(azDrivePowerOn))
+								&& !(el(currentState()).equals(elDatumed)
+										|| az(currentState()).equals(elDrivePowerOn))) {
+							String errorMessage = "M3 Assembly state of " + az(currentState()) + "/"
+									+ el(currentState()) + " does not allow follow";
+							log.debug("Inside M3CommandHandler initReceive: Error Message is: " + errorMessage);
+							sender().tell(new NoLongerValid(new WrongInternalStateIssue(errorMessage)), self());
+						} else {
+							log.debug("Inside M3CommandHandler initReceive: Follow command -- START: " + t);
+
+							DoubleItem rotationItem = jitem(sc, M3Config.rotationDemandKey);
+							DoubleItem tiltItem = jitem(sc, M3Config.tiltDemandKey);
+
+							Double rotation = jvalue(rotationItem);
+							Double tilt = jvalue(tiltItem);
+
+							log.info("Inside M3CommandHandler initReceive:  rotation is: " + rotationItem
+									+ ": tilt is: " + tiltItem);
+
+							// The event publisher may be passed in
+							Props props = M3FollowCommand.props(assemblyContext, jset(M3Config.rotation, rotation),
+									jset(M3Config.tilt, tilt), Optional.of(m3Hcd), allEventPublisher,
+									eventService.get());
+
+							ActorRef followCommandActor = context().actorOf(props);
+							log.info("Inside M3CommandHandler initReceive: Going to followReceive");
+							context().become(followReceive(followCommandActor));
+
+							try {
+								ask(m3StateActor, new AssemblySetState(azItem(azFollowing), elItem(elFollowing)), 5000)
+										.toCompletableFuture().get();
+							} catch (Exception e) {
+								log.error(e, "Inside M3CommandHandler initReceive: Error setting state");
+							}
+							commandOriginator.ifPresent(actorRef -> actorRef.tell(Completed, self()));
+
+						}
 					} else if (configKey.equals(M3Config.offsetDemandCK)) {
 						log.debug("Inside M3CommandHandler initReceive: ExecuteOne: offsetCK Command ");
 						ActorRef offsetActorRef = context().actorOf(M3OffsetCommand.props(assemblyContext, sc, m3Hcd,
 								currentState(), Optional.of(m3StateActor)));
 						context().become(actorExecutingReceive(offsetActorRef, commandOriginator));
+						self().tell(JSequentialExecutor.CommandStart(), self());
 					}
 
-					self().tell(JSequentialExecutor.CommandStart(), self());
 				}).build());
+	}
+
+	/**
+	 * This responds to Command Originator in case HCD is not available
+	 * 
+	 * @param commandOriginator
+	 */
+	private void hcdNotAvailableResponse(Optional<ActorRef> commandOriginator) {
+		commandOriginator.ifPresent(actorRef -> actorRef.tell(new NoLongerValid(
+				new RequiredHCDUnavailableIssue(assemblyContext.hcdComponentId.toString() + " is not available")),
+				self()));
+	}
+
+	private PartialFunction<Object, BoxedUnit> followReceive(ActorRef followActor) {
+		return stateReceive().orElse(ReceiveBuilder.match(ExecuteOne.class, t -> {
+			SetupConfig sc = t.sc();
+			log.debug("Inside M3CommandHandler followReceive: ExecuteOne: SetupConfig is: " + sc);
+			Optional<ActorRef> commandOriginator = toJava(t.commandOriginator());
+			ConfigKey configKey = sc.configKey();
+			log.debug("Inside M3CommandHandler followReceive: ExecuteOne: configKey is: " + configKey);
+
+			if (configKey.equals(M3Config.positionDemandCK)) {
+				try {
+					ask(m3StateActor, new AssemblySetState(azItem(azFollowing), elItem(elFollowing)), 5000)
+							.toCompletableFuture().get();
+				} catch (Exception e) {
+					log.error(e, "Inside M3CommandHandler followReceive: Error setting state");
+				}
+
+				DoubleItem rotationItem = jitem(sc, M3Config.rotationDemandKey);
+				DoubleItem tiltItem = jitem(sc, M3Config.tiltDemandKey);
+				DoubleItem timeItem = jitem(sc, M3Config.timeDemandKey);
+
+				Double rotation = jvalue(rotationItem);
+				Double tilt = jvalue(tiltItem);
+				Double time = jvalue(timeItem);
+
+				followActor.tell(new M3FollowActor.SetRotation(jset(M3Config.rotation, rotation)), self());
+				Timeout timeout = new Timeout(5, TimeUnit.SECONDS);
+				executeMatch(context(), posMatcher(rotation, tilt, time), m3Hcd, commandOriginator, timeout, status -> {
+					if (status == Completed) {
+						try {
+							ask(m3StateActor, new AssemblySetState(azItem(azFollowing), elItem(elFollowing)), 5000)
+									.toCompletableFuture().get();
+						} catch (Exception e) {
+							log.error(e, "Inside M3CommandHandler followReceive: Error setting state");
+						}
+					} else if (status instanceof Error)
+						log.error("Inside M3CommandHandler followReceive: command failed with message: "
+								+ ((Error) status).message());
+				});
+			}
+		}).matchAny(t -> log.warning("Inside M3CommandHandler followReceive:  received an unknown message: " + t))
+				.build());
 	}
 
 	/**

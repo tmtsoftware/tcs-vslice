@@ -1,10 +1,13 @@
 package tmt.tcs.m3;
 
+import static javacsw.util.config.JItems.jset;
+
 import csw.util.config.BooleanKey;
 import csw.util.config.Choice;
 import csw.util.config.ChoiceKey;
 import csw.util.config.Choices;
 import csw.util.config.Configurations.ConfigKey;
+import csw.util.config.DoubleItem;
 import csw.util.config.DoubleKey;
 import csw.util.config.IntKey;
 
@@ -24,6 +27,7 @@ public class M3Config {
 	public static final String positionDemandPrefix = m3TpkPrefix + ".positiondemands";
 	public static final String offsetDemandPrefix = m3TpkPrefix + ".offsetdemands";
 	public static final String currentPosPrefix = m3Prefix + ".currentposition";
+	public static final String engineeringEventPrefix = m3Prefix + ".engr";
 
 	public static final ConfigKey dummyCK = new ConfigKey(m3Prefix);
 	public static final ConfigKey initCK = new ConfigKey(initPrefix);
@@ -55,6 +59,14 @@ public class M3Config {
 	public static final IntKey rotationPosDmdErrcnt = new IntKey("tcs.m3.rotation_pos_dmd_errcnt");
 	public static final IntKey tiltPosDmdErrcnt = new IntKey("tcs.m3.tilt_pos_dmd_errcnt");
 	public static final DoubleKey posTimeKey = new DoubleKey("tcs.m3.time");
+
+	public static DoubleItem rotation(double rotationValue) {
+		return jset(rotationDemandKey, rotationValue);
+	}
+
+	public static DoubleItem tilt(double tiltValue) {
+		return jset(tiltDemandKey, tiltValue);
+	}
 
 	// Refered by M3 HCD
 	public static final Choice M3_IDLE = new Choice(M3State.M3_IDLE.toString());

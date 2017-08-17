@@ -3,11 +3,19 @@ package tmt.tcs.ecs;
 import static akka.pattern.PatternsCS.ask;
 import static javacsw.services.ccs.JCommandStatus.Completed;
 import static javacsw.util.config.JItems.jadd;
+import static javacsw.util.config.JItems.jitem;
 import static javacsw.util.config.JItems.jset;
+import static javacsw.util.config.JItems.jvalue;
 import static scala.compat.java8.OptionConverters.toJava;
+import static tmt.tcs.common.AssemblyStateActor.az;
+import static tmt.tcs.common.AssemblyStateActor.azDatumed;
 import static tmt.tcs.common.AssemblyStateActor.azDrivePowerOn;
+import static tmt.tcs.common.AssemblyStateActor.azFollowing;
 import static tmt.tcs.common.AssemblyStateActor.azItem;
+import static tmt.tcs.common.AssemblyStateActor.el;
+import static tmt.tcs.common.AssemblyStateActor.elDatumed;
 import static tmt.tcs.common.AssemblyStateActor.elDrivePowerOn;
+import static tmt.tcs.common.AssemblyStateActor.elFollowing;
 import static tmt.tcs.common.AssemblyStateActor.elItem;
 import static tmt.tcs.ecs.EcsConfig.ECS_IDLE;
 import static tmt.tcs.ecs.EcsConfig.ecsStateKey;
@@ -24,14 +32,19 @@ import akka.japi.Creator;
 import akka.japi.pf.ReceiveBuilder;
 import akka.util.Timeout;
 import csw.services.ccs.CommandStatus.CommandStatus;
+import csw.services.ccs.CommandStatus.Error;
+import csw.services.ccs.CommandStatus.NoLongerValid;
 import csw.services.ccs.DemandMatcher;
 import csw.services.ccs.SequentialExecutor.ExecuteOne;
+import csw.services.ccs.Validation.RequiredHCDUnavailableIssue;
+import csw.services.ccs.Validation.WrongInternalStateIssue;
 import csw.services.loc.LocationService.Location;
 import csw.services.loc.LocationService.ResolvedAkkaLocation;
 import csw.services.loc.LocationService.ResolvedTcpLocation;
 import csw.services.loc.LocationService.Unresolved;
 import csw.util.config.Configurations.ConfigKey;
 import csw.util.config.Configurations.SetupConfig;
+import csw.util.config.DoubleItem;
 import csw.util.config.StateVariable.DemandState;
 import javacsw.services.ccs.JSequentialExecutor;
 import javacsw.services.events.IEventService;
@@ -141,12 +154,42 @@ public class EcsCommandHandler extends BaseCommandHandler {
 						}
 						commandOriginator.ifPresent(actorRef -> actorRef.tell(Completed, self()));
 
-					} else if (configKey.equals(EcsConfig.positionDemandCK)) {
-						log.debug("Inside EcsCommandHandler initReceive: ExecuteOne: moveCK Command ");
-						ActorRef moveActorRef = context().actorOf(EcsFollowCommand.props(assemblyContext, sc, ecsHcd,
-								currentState(), Optional.of(ecsStateActor)));
-						context().become(actorExecutingReceive(moveActorRef, commandOriginator));
-						self().tell(JSequentialExecutor.CommandStart(), self());
+					} else if (configKey.equals(EcsConfig.followCK)) {
+						if (!(az(currentState()).equals(azDatumed) || az(currentState()).equals(azDrivePowerOn))
+								&& !(el(currentState()).equals(elDatumed)
+										|| az(currentState()).equals(elDrivePowerOn))) {
+							String errorMessage = "Ecs Assembly state of " + az(currentState()) + "/"
+									+ el(currentState()) + " does not allow follow";
+							log.debug("Inside EcsCommandHandler initReceive: Error Message is: " + errorMessage);
+							sender().tell(new NoLongerValid(new WrongInternalStateIssue(errorMessage)), self());
+						} else {
+							log.debug("Inside EcsCommandHandler initReceive: Follow command -- START: " + t);
+
+							DoubleItem azItem = jitem(sc, EcsConfig.azDemandKey);
+							DoubleItem elItem = jitem(sc, EcsConfig.elDemandKey);
+
+							Double az = jvalue(azItem);
+							Double el = jvalue(elItem);
+
+							log.info("Inside EcsCommandHandler initReceive:  az is: " + azItem + ": el is: " + elItem);
+
+							// The event publisher may be passed in
+							Props props = EcsFollowCommand.props(assemblyContext, jset(EcsConfig.az, az),
+									jset(EcsConfig.el, el), Optional.of(ecsHcd), allEventPublisher, eventService.get());
+
+							ActorRef followCommandActor = context().actorOf(props);
+							log.info("Inside EcsCommandHandler initReceive: Going to followReceive");
+							context().become(followReceive(followCommandActor));
+
+							try {
+								ask(ecsStateActor, new AssemblySetState(azItem(azFollowing), elItem(elFollowing)), 5000)
+										.toCompletableFuture().get();
+							} catch (Exception e) {
+								log.error(e, "Inside EcsCommandHandler initReceive: Error setting state");
+							}
+							commandOriginator.ifPresent(actorRef -> actorRef.tell(Completed, self()));
+
+						}
 					} else if (configKey.equals(EcsConfig.offsetDemandCK)) {
 						log.debug("Inside EcsCommandHandler initReceive: ExecuteOne: offsetCK Command ");
 						ActorRef offsetActorRef = context().actorOf(EcsOffsetCommand.props(assemblyContext, sc, ecsHcd,
@@ -155,6 +198,60 @@ public class EcsCommandHandler extends BaseCommandHandler {
 						self().tell(JSequentialExecutor.CommandStart(), self());
 					}
 				}).build());
+	}
+
+	/**
+	 * This responds to Command Originator in case HCD is not available
+	 * 
+	 * @param commandOriginator
+	 */
+	private void hcdNotAvailableResponse(Optional<ActorRef> commandOriginator) {
+		commandOriginator.ifPresent(actorRef -> actorRef.tell(new NoLongerValid(
+				new RequiredHCDUnavailableIssue(assemblyContext.hcdComponentId.toString() + " is not available")),
+				self()));
+	}
+
+	private PartialFunction<Object, BoxedUnit> followReceive(ActorRef followActor) {
+		return stateReceive().orElse(ReceiveBuilder.match(ExecuteOne.class, t -> {
+			SetupConfig sc = t.sc();
+			log.debug("Inside EcsCommandHandler followReceive: ExecuteOne: SetupConfig is: " + sc);
+			Optional<ActorRef> commandOriginator = toJava(t.commandOriginator());
+			ConfigKey configKey = sc.configKey();
+			log.debug("Inside EcsCommandHandler followReceive: ExecuteOne: configKey is: " + configKey);
+
+			if (configKey.equals(EcsConfig.positionDemandCK)) {
+				try {
+					ask(ecsStateActor, new AssemblySetState(azItem(azFollowing), elItem(elFollowing)), 5000)
+							.toCompletableFuture().get();
+				} catch (Exception e) {
+					log.error(e, "Inside EcsCommandHandler followReceive: Error setting state");
+				}
+
+				DoubleItem azItem = jitem(sc, EcsConfig.azDemandKey);
+				DoubleItem elItem = jitem(sc, EcsConfig.elDemandKey);
+				DoubleItem timeItem = jitem(sc, EcsConfig.timeDemandKey);
+
+				Double az = jvalue(azItem);
+				Double el = jvalue(elItem);
+				Double time = jvalue(timeItem);
+
+				followActor.tell(new EcsFollowActor.SetAzimuth(jset(EcsConfig.az, az)), self());
+				Timeout timeout = new Timeout(5, TimeUnit.SECONDS);
+				executeMatch(context(), posMatcher(az, el, time), ecsHcd, commandOriginator, timeout, status -> {
+					if (status == Completed) {
+						try {
+							ask(ecsStateActor, new AssemblySetState(azItem(azFollowing), elItem(elFollowing)), 5000)
+									.toCompletableFuture().get();
+						} catch (Exception e) {
+							log.error(e, "Inside EcsCommandHandler followReceive: Error setting state");
+						}
+					} else if (status instanceof Error)
+						log.error("Inside EcsCommandHandler followReceive: command failed with message: "
+								+ ((Error) status).message());
+				});
+			}
+		}).matchAny(t -> log.warning("Inside EcsCommandHandler followReceive:  received an unknown message: " + t))
+				.build());
 	}
 
 	/**

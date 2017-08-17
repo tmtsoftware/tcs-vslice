@@ -116,9 +116,8 @@ public class EcsTest extends JavaTestKit {
 		ActorRef EcsAssembly = newEcsAssembly(fakeSupervisor.ref());
 		TestProbe fakeClient = new TestProbe(system);
 
-		SetupConfig followSc = jadd(new SetupConfig(EcsConfig.positionDemandCK.prefix()),
-				jset(EcsConfig.azDemandKey, azValue), jset(EcsConfig.elDemandKey, elValue),
-				jset(EcsConfig.timeDemandKey, timeValue));
+		SetupConfig followSc = jadd(new SetupConfig(EcsConfig.followCK.prefix()), jset(EcsConfig.azDemandKey, azValue),
+				jset(EcsConfig.elDemandKey, elValue), jset(EcsConfig.timeDemandKey, timeValue));
 
 		fakeSupervisor.expectMsg(Initialized);
 		fakeSupervisor.send(EcsAssembly, Running);

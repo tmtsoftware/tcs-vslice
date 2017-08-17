@@ -1,5 +1,7 @@
 package tmt.tcs.ecs;
 
+import static javacsw.util.config.JItems.jitem;
+
 import java.util.Optional;
 
 import akka.actor.ActorRef;
@@ -10,6 +12,8 @@ import akka.japi.Creator;
 import akka.japi.pf.ReceiveBuilder;
 import csw.services.events.EventService;
 import csw.services.events.EventService.EventMonitor;
+import csw.util.config.DoubleItem;
+import csw.util.config.Events.EventTime;
 import csw.util.config.Events.SystemEvent;
 import javacsw.services.events.IEventService;
 import scala.PartialFunction;
@@ -25,47 +29,83 @@ import tmt.tcs.common.BaseEventSubscriber;
 public class EcsEventSubscriber extends BaseEventSubscriber {
 
 	private LoggingAdapter log = Logging.getLogger(getContext().system(), this);
-	
+
 	private final AssemblyContext assemblyContext;
 	private final Optional<ActorRef> refActor;
 	private final EventService.EventMonitor subscribeMonitor;
 
+	private DoubleItem az;
+	private DoubleItem el;
+
 	private EcsEventSubscriber(AssemblyContext assemblyContext, Optional<ActorRef> refActor,
 			IEventService eventService) {
 
-		log.debug("Inside EcsEventPublisher");
+		log.debug("Inside EcsEventSubscriber");
 
 		subscribeToLocationUpdates();
 		this.assemblyContext = assemblyContext;
 		this.refActor = refActor;
+		this.az = EcsConfig.az(0.0);
+		this.el = EcsConfig.el(0.0);
 		subscribeMonitor = startupSubscriptions(eventService);
 
-		receive(subscribeReceive());
+		receive(subscribeReceive(az, el));
 	}
 
 	/**
 	 * This method handles events being received by Event Subscriber Based upon
 	 * type of events operations can be decided
+	 * 
+	 * @param az
+	 * @param el
+	 * @return
 	 */
-	public PartialFunction<Object, BoxedUnit> subscribeReceive() {
+	public PartialFunction<Object, BoxedUnit> subscribeReceive(DoubleItem az, DoubleItem el) {
 		return ReceiveBuilder.
 
 				match(SystemEvent.class, event -> {
-					log.debug("Inside EcsEventPublisher subscribeReceive received an unknown SystemEvent: "
+					log.debug("Inside EcsEventSubscriber subscribeReceive received SystemEvent: Config Key is: "
 							+ event.info().source());
-					updateRefActor();
+
+					DoubleItem azItem;
+					DoubleItem elItem;
+
+					if (event.info().source().equals(EcsConfig.positionDemandCK)) {
+						azItem = jitem(event, EcsConfig.azDemandKey);
+						elItem = jitem(event, EcsConfig.elDemandKey);
+						log.debug("Inside EcsEventSubscriber subscribeReceive received positionDemandCK: azItem is: "
+								+ azItem + ": eItem is: " + elItem);
+						updateRefActor(azItem, elItem, event.info().eventTime());
+
+						context().become(subscribeReceive(azItem, elItem));
+					} else if (event.info().source().equals(EcsConfig.offsetDemandCK)) {
+						azItem = jitem(event, EcsConfig.azDemandKey);
+						elItem = jitem(event, EcsConfig.elDemandKey);
+						log.debug("Inside EcsEventSubscriber subscribeReceive received offsetDemandCK: azItem is: "
+								+ azItem + ": eItem is: " + elItem);
+						updateRefActor(azItem, elItem, event.info().eventTime());
+
+						context().become(subscribeReceive(azItem, elItem));
+					}
+				}).
+
+				match(EcsFollowActor.StopFollowing.class, t -> {
+					subscribeMonitor.stop();
+					// Kill this subscriber
+					context().stop(self());
 				}).
 
 				matchAny(t -> System.out
-						.println("Inside EcsEventPublisher Unexpected message received:subscribeReceive: " + t))
+						.println("Inside EcsEventSubscriber Unexpected message received:subscribeReceive: " + t))
 				.build();
 	}
 
 	/**
 	 * This message propagates event to Referenced Actor
 	 */
-	private void updateRefActor() {
-		refActor.ifPresent(actoRef -> actoRef.tell(new String("Test"), self()));
+	private void updateRefActor(DoubleItem az, DoubleItem el, EventTime eventTime) {
+		log.debug("Inside EcsEventSubscriber updateRefActor: Sending Message to Follow Actor");
+		refActor.ifPresent(actoRef -> actoRef.tell(new EcsFollowActor.UpdatedEventData(az, el, eventTime), self()));
 	}
 
 	/**
@@ -76,13 +116,23 @@ public class EcsEventSubscriber extends BaseEventSubscriber {
 	 */
 	private EventMonitor startupSubscriptions(IEventService eventService) {
 
-		EventMonitor subscribeMonitor = subscribeKeys(eventService, EcsConfig.ecsStateCK);
+		EventMonitor subscribeMonitor = subscribeKeys(eventService, EcsConfig.positionDemandCK);
 
-		log.debug("Inside EcsEventPublisher actor: " + subscribeMonitor.actorRef());
+		log.debug("Inside EcsEventSubscriber actor: " + subscribeMonitor.actorRef());
+
+		subscribeKeys(subscribeMonitor, EcsConfig.offsetDemandCK);
 
 		return subscribeMonitor;
 	}
 
+	/**
+	 * Props for EcsEventSubscriber
+	 * 
+	 * @param ac
+	 * @param refActor
+	 * @param eventService
+	 * @return
+	 */
 	public static Props props(AssemblyContext ac, Optional<ActorRef> refActor, IEventService eventService) {
 		return Props.create(new Creator<EcsEventSubscriber>() {
 			private static final long serialVersionUID = 1L;

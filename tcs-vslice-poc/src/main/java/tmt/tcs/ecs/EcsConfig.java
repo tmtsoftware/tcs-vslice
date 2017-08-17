@@ -7,6 +7,7 @@ import csw.util.config.BooleanKey;
 import csw.util.config.Choice;
 import csw.util.config.ChoiceKey;
 import csw.util.config.Choices;
+import csw.util.config.DoubleItem;
 import csw.util.config.Configurations.ConfigKey;
 import csw.util.config.DoubleKey;
 import csw.util.config.IntKey;
@@ -29,6 +30,7 @@ public class EcsConfig {
 	public static final String positionDemandPrefix = ecsTpkPrefix + ".positiondemands";
 	public static final String offsetDemandPrefix = ecsTpkPrefix + ".offsetdemands";
 	public static final String currentPosPrefix = ecsPrefix + ".currentposition";
+	public static final String engineeringEventPrefix = ecsPrefix + ".engr";
 
 	public static final ConfigKey dummyCK = new ConfigKey(ecsPrefix);
 	public static final ConfigKey initCK = new ConfigKey(initPrefix);
@@ -62,6 +64,14 @@ public class EcsConfig {
 	public static final DoubleKey posTimeKey = new DoubleKey("tcs.ecs.time");
 
 	public static final CurrentState defaultEcsStatsState = cs(ecsStatsCK.prefix(), jset(az, 1.0));
+
+	public static DoubleItem az(double azValue) {
+		return jset(azDemandKey, azValue);
+	}
+
+	public static DoubleItem el(double elValue) {
+		return jset(elDemandKey, elValue);
+	}
 
 	// Refered by ECS HCD
 	public static final Choice ECS_IDLE = new Choice(EcsState.ECS_IDLE.toString());

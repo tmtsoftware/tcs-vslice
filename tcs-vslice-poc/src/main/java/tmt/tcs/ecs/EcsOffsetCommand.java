@@ -69,7 +69,6 @@ public class EcsOffsetCommand extends BaseCommand {
 		receive(processCommand(sc, ecsHcd, ecsStartState));
 	}
 
-	@Override
 	public PartialFunction<Object, BoxedUnit> processCommand(SetupConfig sc, ActorRef ecsHcd,
 			AssemblyState ecsStartState) {
 

@@ -9,8 +9,6 @@ import csw.services.events.EventService.EventMonitor;
 import csw.util.config.Configurations.ConfigKey;
 import javacsw.services.events.IEventService;
 import javacsw.services.pkg.ILocationSubscriberClient;
-import scala.PartialFunction;
-import scala.runtime.BoxedUnit;
 
 /**
  * This is the base Event Subscriber class being extended by all Event
@@ -19,8 +17,6 @@ import scala.runtime.BoxedUnit;
 public abstract class BaseEventSubscriber extends AbstractActor implements ILocationSubscriberClient {
 
 	private LoggingAdapter log = Logging.getLogger(getContext().system(), this);
-
-	public abstract PartialFunction<Object, BoxedUnit> subscribeReceive();
 
 	/**
 	 * This helps unsubscribe Event Monitor from specific Config Key

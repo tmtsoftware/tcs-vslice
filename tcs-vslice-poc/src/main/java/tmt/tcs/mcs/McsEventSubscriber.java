@@ -1,5 +1,7 @@
 package tmt.tcs.mcs;
 
+import static javacsw.util.config.JItems.jitem;
+
 import java.util.Optional;
 
 import akka.actor.ActorRef;
@@ -10,6 +12,8 @@ import akka.japi.Creator;
 import akka.japi.pf.ReceiveBuilder;
 import csw.services.events.EventService;
 import csw.services.events.EventService.EventMonitor;
+import csw.util.config.DoubleItem;
+import csw.util.config.Events.EventTime;
 import csw.util.config.Events.SystemEvent;
 import javacsw.services.events.IEventService;
 import scala.PartialFunction;
@@ -18,7 +22,7 @@ import tmt.tcs.common.AssemblyContext;
 import tmt.tcs.common.BaseEventSubscriber;
 
 /**
- * This Class provides Event Subcription functionality for MCS It extends
+ * This Class provides Event Subscription functionality for MCS It extends
  * BaseEventSubscriber
  */
 @SuppressWarnings("unused")
@@ -30,6 +34,9 @@ public class McsEventSubscriber extends BaseEventSubscriber {
 	private final Optional<ActorRef> refActor;
 	private final EventService.EventMonitor subscribeMonitor;
 
+	private DoubleItem az;
+	private DoubleItem el;
+
 	private McsEventSubscriber(AssemblyContext assemblyContext, Optional<ActorRef> refActor,
 			IEventService eventService) {
 
@@ -38,22 +45,54 @@ public class McsEventSubscriber extends BaseEventSubscriber {
 		subscribeToLocationUpdates();
 		this.assemblyContext = assemblyContext;
 		this.refActor = refActor;
+		this.az = McsConfig.az(0.0);
+		this.el = McsConfig.el(0.0);
 		subscribeMonitor = startupSubscriptions(eventService);
 
-		receive(subscribeReceive());
+		receive(subscribeReceive(az, el));
 	}
 
 	/**
 	 * This method handles events being received by Event Subscriber Based upon
 	 * type of events operations can be decided
+	 * 
+	 * @param az
+	 * @param el
+	 * @return
 	 */
-	public PartialFunction<Object, BoxedUnit> subscribeReceive() {
+	public PartialFunction<Object, BoxedUnit> subscribeReceive(DoubleItem az, DoubleItem el) {
 		return ReceiveBuilder.
 
 				match(SystemEvent.class, event -> {
-					log.debug("Inside McsEventSubscriber subscribeReceive received an unknown SystemEvent: "
+					log.debug("Inside McsEventSubscriber subscribeReceive received SystemEvent: Config Key is: "
 							+ event.info().source());
-					updateRefActor();
+
+					DoubleItem azItem;
+					DoubleItem elItem;
+
+					if (event.info().source().equals(McsConfig.positionDemandCK)) {
+						azItem = jitem(event, McsConfig.azDemandKey);
+						elItem = jitem(event, McsConfig.elDemandKey);
+						log.debug("Inside McsEventSubscriber subscribeReceive received positionDemandCK: azItem is: "
+								+ azItem + ": eItem is: " + elItem);
+						updateRefActor(azItem, elItem, event.info().eventTime());
+
+						context().become(subscribeReceive(azItem, elItem));
+					} else if (event.info().source().equals(McsConfig.offsetDemandCK)) {
+						azItem = jitem(event, McsConfig.azDemandKey);
+						elItem = jitem(event, McsConfig.elDemandKey);
+						log.debug("Inside McsEventSubscriber subscribeReceive received offsetDemandCK: azItem is: "
+								+ azItem + ": eItem is: " + elItem);
+						updateRefActor(azItem, elItem, event.info().eventTime());
+
+						context().become(subscribeReceive(azItem, elItem));
+					}
+				}).
+
+				match(McsFollowActor.StopFollowing.class, t -> {
+					subscribeMonitor.stop();
+					// Kill this subscriber
+					context().stop(self());
 				}).
 
 				matchAny(t -> System.out
@@ -64,8 +103,9 @@ public class McsEventSubscriber extends BaseEventSubscriber {
 	/**
 	 * This message propagates event to Referenced Actor
 	 */
-	private void updateRefActor() {
-		refActor.ifPresent(actoRef -> actoRef.tell(new String("Test"), self()));
+	private void updateRefActor(DoubleItem az, DoubleItem el, EventTime eventTime) {
+		log.debug("Inside McsEventSubscriber updateRefActor: Sending Message to Follow Actor");
+		refActor.ifPresent(actoRef -> actoRef.tell(new McsFollowActor.UpdatedEventData(az, el, eventTime), self()));
 	}
 
 	/**
@@ -76,13 +116,23 @@ public class McsEventSubscriber extends BaseEventSubscriber {
 	 */
 	private EventMonitor startupSubscriptions(IEventService eventService) {
 
-		EventMonitor subscribeMonitor = subscribeKeys(eventService, McsConfig.mcsStateCK);
+		EventMonitor subscribeMonitor = subscribeKeys(eventService, McsConfig.positionDemandCK);
 
 		log.debug("Inside McsEventSubscriber actor: " + subscribeMonitor.actorRef());
+
+		subscribeKeys(subscribeMonitor, McsConfig.offsetDemandCK);
 
 		return subscribeMonitor;
 	}
 
+	/**
+	 * Props for McsEventSubscriber
+	 * 
+	 * @param ac
+	 * @param refActor
+	 * @param eventService
+	 * @return
+	 */
 	public static Props props(AssemblyContext ac, Optional<ActorRef> refActor, IEventService eventService) {
 		return Props.create(new Creator<McsEventSubscriber>() {
 			private static final long serialVersionUID = 1L;
