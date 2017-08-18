@@ -16,6 +16,7 @@ import static tmt.tcs.mcs.McsConfig.McsState.MCS_IDLE;
 
 import java.io.File;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 import akka.actor.ActorRef;
 import akka.actor.Props;
@@ -23,12 +24,15 @@ import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import akka.japi.Creator;
 import akka.japi.pf.ReceiveBuilder;
+import akka.util.Timeout;
 import csw.services.pkg.Component;
 import csw.services.pkg.Supervisor;
 import csw.util.config.Configurations.ConfigKey;
 import csw.util.config.Configurations.SetupConfig;
 import csw.util.config.StateVariable.CurrentState;
+import javacsw.services.cs.akka.JConfigServiceClient;
 import scala.PartialFunction;
+import scala.concurrent.duration.Duration;
 import scala.runtime.BoxedUnit;
 import tmt.tcs.common.BaseHcd;
 import tmt.tcs.mcs.McsConfig;
@@ -47,13 +51,19 @@ public class McsHcd extends BaseHcd {
 
 	ActorRef mcsSimulator;
 
+	// McsHWConfig mcsHWConfig;
+
 	public static File mcsConfigFile = new File("mcs/hcd/mcsHcd.conf");
 	public static File resource = new File("mcsHcd.conf");
+
+	private final Timeout timeout = new Timeout(Duration.create(2, "seconds"));
 
 	private McsHcd(final Component.HcdInfo info, ActorRef supervisor) throws Exception {
 		log.debug("Inside McsHcd");
 
 		this.supervisor = supervisor;
+		// TODO: Giving Ask timeout exception, to be fixed
+		// this.mcsHWConfig = getMcsHWConfig().get();
 		this.mcsSimulator = getSimulator();
 
 		try {
@@ -122,6 +132,14 @@ public class McsHcd extends BaseHcd {
 
 	private ActorRef getSimulator() {
 		return context().actorOf(McsSimulator.props(Optional.of(self())), "McsSimulator");
+	}
+
+	@SuppressWarnings("unused")
+	private CompletableFuture<McsHWConfig> getMcsHWConfig() {
+		log.debug("Inside McsHcd getMcsHWConfig");
+
+		return JConfigServiceClient.getConfigFromConfigService(mcsConfigFile, Optional.empty(), Optional.of(resource),
+				context().system(), timeout).thenApply(config -> new McsHWConfig(config.get()));
 	}
 
 	public static Props props(final Component.HcdInfo info, ActorRef supervisor) {

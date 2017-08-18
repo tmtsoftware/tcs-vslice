@@ -165,19 +165,13 @@ public class M3CommandHandler extends BaseCommandHandler {
 						} else {
 							log.debug("Inside M3CommandHandler initReceive: Follow command -- START: " + t);
 
-							DoubleItem rotationItem = jitem(sc, M3Config.rotationDemandKey);
-							DoubleItem tiltItem = jitem(sc, M3Config.tiltDemandKey);
-
-							Double rotation = jvalue(rotationItem);
-							Double tilt = jvalue(tiltItem);
-
-							log.info("Inside M3CommandHandler initReceive:  rotation is: " + rotationItem
-									+ ": tilt is: " + tiltItem);
+							Double initialRotation = 0.0;
+							Double initialTilt = 0.0;
 
 							// The event publisher may be passed in
-							Props props = M3FollowCommand.props(assemblyContext, jset(M3Config.rotation, rotation),
-									jset(M3Config.tilt, tilt), Optional.of(m3Hcd), allEventPublisher,
-									eventService.get());
+							Props props = M3FollowCommand.props(assemblyContext,
+									jset(M3Config.rotation, initialRotation), jset(M3Config.tilt, initialTilt),
+									Optional.of(m3Hcd), allEventPublisher, eventService.get());
 
 							ActorRef followCommandActor = context().actorOf(props);
 							log.info("Inside M3CommandHandler initReceive: Going to followReceive");

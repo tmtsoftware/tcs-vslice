@@ -1,7 +1,7 @@
 package tmt.tcs;
 
 import static akka.pattern.PatternsCS.ask;
-import static javacsw.util.config.JItems.jadd;
+import static javacsw.services.ccs.JCommandStatus.Completed;
 import static scala.compat.java8.OptionConverters.toJava;
 
 import java.util.Optional;
@@ -16,7 +16,6 @@ import akka.japi.Creator;
 import akka.japi.pf.ReceiveBuilder;
 import akka.util.Timeout;
 import csw.services.ccs.CommandStatus.CommandStatus;
-import csw.services.ccs.DemandMatcher;
 import csw.services.ccs.SequentialExecutor.ExecuteOne;
 import csw.services.loc.LocationService.Location;
 import csw.services.loc.LocationService.ResolvedAkkaLocation;
@@ -24,7 +23,6 @@ import csw.services.loc.LocationService.ResolvedTcpLocation;
 import csw.services.loc.LocationService.Unresolved;
 import csw.util.config.Configurations.ConfigKey;
 import csw.util.config.Configurations.SetupConfig;
-import csw.util.config.StateVariable.DemandState;
 import javacsw.services.ccs.JSequentialExecutor;
 import javacsw.services.events.IEventService;
 import scala.PartialFunction;
@@ -49,18 +47,23 @@ public class TcsCommandHandler extends BaseCommandHandler {
 
 	private final ActorRef badActorReference;
 
-	private ActorRef refActor;
+	private ActorRef mcsRefActor;
+	private ActorRef ecsRefActor;
+	private ActorRef m3RefActor;
 
 	private Optional<IEventService> badEventService = Optional.empty();
 	private Optional<IEventService> eventService = badEventService;
 
-	public TcsCommandHandler(AssemblyContext ac, Optional<ActorRef> refActor, Optional<ActorRef> allEventPublisher) {
+	public TcsCommandHandler(AssemblyContext ac, Optional<ActorRef> mcsRefActor, Optional<ActorRef> ecsRefActor,
+			Optional<ActorRef> m3RefActor, Optional<ActorRef> allEventPublisher) {
 
 		log.debug("Inside TcsCommandHandler");
 
 		this.assemblyContext = ac;
 		badActorReference = context().system().deadLetters();
-		this.refActor = refActor.orElse(badActorReference);
+		this.mcsRefActor = mcsRefActor.orElse(badActorReference);
+		this.ecsRefActor = ecsRefActor.orElse(badActorReference);
+		this.m3RefActor = m3RefActor.orElse(badActorReference);
 		this.allEventPublisher = allEventPublisher;
 		tcsStateActor = context().actorOf(AssemblyStateActor.props());
 
@@ -77,8 +80,21 @@ public class TcsCommandHandler extends BaseCommandHandler {
 	private void handleLocations(Location location) {
 		if (location instanceof ResolvedAkkaLocation) {
 			ResolvedAkkaLocation l = (ResolvedAkkaLocation) location;
-			log.debug("Inside TcsCommandHandler: CommandHandler receive an actorRef: " + l.getActorRef());
-			refActor = l.getActorRef().orElse(badActorReference);
+			log.debug("Inside TcsCommandHandler handleLocations: actorRef: " + l.getActorRef() + ": prefix is: "
+					+ l.prefix());
+
+			if (TcsConfig.mcsPrefix.equals(l.prefix())) {
+				log.debug("Inside TcsCommandHandler handleLocations: actorRef for McsAssembly ");
+				mcsRefActor = l.getActorRef().orElse(badActorReference);
+			} else if (TcsConfig.ecsPrefix.equals(l.prefix())) {
+				log.debug("Inside TcsCommandHandler handleLocations: actorRef for EcsAssembly ");
+				ecsRefActor = l.getActorRef().orElse(badActorReference);
+			} else if (TcsConfig.m3Prefix.equals(l.prefix())) {
+				log.debug("Inside TcsCommandHandler handleLocations: actorRef for M3Assembly ");
+				m3RefActor = l.getActorRef().orElse(badActorReference);
+			} else {
+				log.debug("Inside TcsCommandHandler handleLocations: actorRef for Unknown Actor ");
+			}
 		} else if (location instanceof ResolvedTcpLocation) {
 			ResolvedTcpLocation t = (ResolvedTcpLocation) location;
 			log.debug("Inside TcsCommandHandler: Received TCP Location: " + t.connection());
@@ -114,19 +130,26 @@ public class TcsCommandHandler extends BaseCommandHandler {
 			log.debug("Inside TcsCommandHandler initReceive: ExecuteOne: SetupConfig is: " + sc + ": configKey is: "
 					+ configKey);
 
-			if (configKey.equals(TcsConfig.positionDemandCK)) {
+			if (configKey.equals(TcsConfig.positionCK)) {
 				log.debug("Inside TcsCommandHandler initReceive: ExecuteOne: moveCK Command ");
-				ActorRef moveActorRef = context().actorOf(TcsMoveCommand.props(assemblyContext, sc, refActor,
-						currentState(), Optional.of(tcsStateActor)));
+				ActorRef moveActorRef = context().actorOf(TcsFollowCommand.props(assemblyContext, sc, mcsRefActor,
+						ecsRefActor, m3RefActor, currentState(), Optional.of(tcsStateActor)));
 				context().become(actorExecutingReceive(moveActorRef, commandOriginator));
-			} else if (configKey.equals(TcsConfig.offsetDemandCK)) {
+
+				self().tell(JSequentialExecutor.CommandStart(), self());
+
+				commandOriginator.ifPresent(actorRef -> actorRef.tell(Completed, self()));
+			} else if (configKey.equals(TcsConfig.offsetCK)) {
 				log.debug("Inside TcsCommandHandler initReceive: ExecuteOne: offsetCK Command ");
-				ActorRef offsetActorRef = context().actorOf(TcsOffsetCommand.props(assemblyContext, sc, refActor,
-						currentState(), Optional.of(tcsStateActor)));
+				ActorRef offsetActorRef = context().actorOf(TcsOffsetCommand.props(assemblyContext, sc, mcsRefActor,
+						ecsRefActor, m3RefActor, currentState(), Optional.of(tcsStateActor)));
 				context().become(actorExecutingReceive(offsetActorRef, commandOriginator));
+
+				self().tell(JSequentialExecutor.CommandStart(), self());
+
+				commandOriginator.ifPresent(actorRef -> actorRef.tell(Completed, self()));
 			}
 
-			self().tell(JSequentialExecutor.CommandStart(), self());
 		}).build();
 	}
 
@@ -170,29 +193,16 @@ public class TcsCommandHandler extends BaseCommandHandler {
 				.build();
 	}
 
-	public static Props props(AssemblyContext ac, Optional<ActorRef> refActor, Optional<ActorRef> allEventPublisher) {
+	public static Props props(AssemblyContext ac, Optional<ActorRef> mcsRefActor, Optional<ActorRef> ecsRefActor,
+			Optional<ActorRef> m3RefActor, Optional<ActorRef> allEventPublisher) {
 		return Props.create(new Creator<TcsCommandHandler>() {
 			private static final long serialVersionUID = 1L;
 
 			@Override
 			public TcsCommandHandler create() throws Exception {
-				return new TcsCommandHandler(ac, refActor, allEventPublisher);
+				return new TcsCommandHandler(ac, mcsRefActor, ecsRefActor, m3RefActor, allEventPublisher);
 			}
 		});
-	}
-
-	/**
-	 * Based upon command parameters being passed to move command this helps in
-	 * generating DemandMatcher which can be used to track for command
-	 * completion status
-	 * 
-	 * @return
-	 */
-	public static DemandMatcher posMatcher() {
-		System.out.println("Inside TcsCommandHandler posMatcher : Starts");
-
-		DemandState ds = jadd(new DemandState(TcsConfig.tcsStateCK.prefix()));
-		return new DemandMatcher(ds, false);
 	}
 
 }

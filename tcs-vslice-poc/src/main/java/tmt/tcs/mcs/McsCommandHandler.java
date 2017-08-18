@@ -166,17 +166,13 @@ public class McsCommandHandler extends BaseCommandHandler {
 						} else {
 							log.debug("Inside McsCommandHandler initReceive: Follow command -- START: " + t);
 
-							DoubleItem azItem = jitem(sc, McsConfig.azDemandKey);
-							DoubleItem elItem = jitem(sc, McsConfig.elDemandKey);
-
-							Double az = jvalue(azItem);
-							Double el = jvalue(elItem);
-
-							log.info("Inside McsCommandHandler initReceive:  az is: " + azItem + ": el is: " + elItem);
+							Double initialAz = 0.0;
+							Double initialEl = 0.0;
 
 							// The event publisher may be passed in
-							Props props = McsFollowCommand.props(assemblyContext, jset(McsConfig.az, az),
-									jset(McsConfig.el, el), Optional.of(mcsHcd), allEventPublisher, eventService.get());
+							Props props = McsFollowCommand.props(assemblyContext, jset(McsConfig.az, initialAz),
+									jset(McsConfig.el, initialEl), Optional.of(mcsHcd), allEventPublisher,
+									eventService.get());
 
 							ActorRef followCommandActor = context().actorOf(props);
 							log.info("Inside McsCommandHandler initReceive: Going to followReceive");

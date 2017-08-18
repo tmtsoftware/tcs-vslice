@@ -56,7 +56,10 @@ public class TcsAssembly extends BaseAssembly {
 	private ActorRef commandHandler;
 
 	private Optional<ActorRef> badActorReference = Optional.empty();
-	private Optional<ActorRef> referedActor = badActorReference;
+
+	private Optional<ActorRef> mcsRefActor = badActorReference;
+	private Optional<ActorRef> ecsRefActor = badActorReference;
+	private Optional<ActorRef> m3RefActor = badActorReference;
 
 	private final Optional<IEventService> badEventService = Optional.empty();
 	private Optional<IEventService> eventService = badEventService;
@@ -100,11 +103,11 @@ public class TcsAssembly extends BaseAssembly {
 			ActorRef eventPublisher = context()
 					.actorOf(TcsEventPublisher.props(assemblyContext, Optional.empty(), Optional.empty()));
 
-			commandHandler = context()
-					.actorOf(TcsCommandHandler.props(assemblyContext, referedActor, Optional.of(eventPublisher)));
+			commandHandler = context().actorOf(TcsCommandHandler.props(assemblyContext, mcsRefActor, ecsRefActor,
+					m3RefActor, Optional.of(eventPublisher)));
 
 			diagnosticPublisher = context()
-					.actorOf(TcsDiagnosticPublisher.props(assemblyContext, referedActor, Optional.of(eventPublisher)));
+					.actorOf(TcsDiagnosticPublisher.props(assemblyContext, mcsRefActor, Optional.of(eventPublisher)));
 
 			LocationSubscriberActor.trackConnections(info.connections(), trackerSubscriber);
 			LocationSubscriberActor.trackConnection(IEventService.eventServiceConnection(), trackerSubscriber);
@@ -141,8 +144,20 @@ public class TcsAssembly extends BaseAssembly {
 		return ReceiveBuilder.match(Location.class, location -> {
 			if (location instanceof ResolvedAkkaLocation) {
 				ResolvedAkkaLocation l = (ResolvedAkkaLocation) location;
-				log.debug("Inside TcsAssembly locationReceive: actorRef: " + l.getActorRef());
-				referedActor = l.getActorRef();
+				log.debug("Inside TcsAssembly locationReceive: actorRef: " + l.getActorRef() + ": prefix is: "
+						+ l.prefix());
+				if (TcsConfig.mcsPrefix.equals(l.prefix())) {
+					log.debug("Inside TcsAssembly locationReceive: actorRef for McsAssembly ");
+					mcsRefActor = l.getActorRef();
+				} else if (TcsConfig.ecsPrefix.equals(l.prefix())) {
+					log.debug("Inside TcsAssembly locationReceive: actorRef for EcsAssembly ");
+					ecsRefActor = l.getActorRef();
+				} else if (TcsConfig.m3Prefix.equals(l.prefix())) {
+					log.debug("Inside TcsAssembly locationReceive: actorRef for M3Assembly ");
+					m3RefActor = l.getActorRef();
+				} else {
+					log.debug("Inside TcsAssembly locationReceive: actorRef for Unknown Actor ");
+				}
 				supervisor.tell(Initialized, self());
 
 			} else if (location instanceof ResolvedHttpLocation) {
@@ -171,8 +186,6 @@ public class TcsAssembly extends BaseAssembly {
 
 			} else if (location instanceof Unresolved) {
 				log.debug("Inside TcsAssembly locationReceive: Unresolved location: " + location.connection());
-				if (location.connection().componentId().equals(assemblyContext.hcdComponentId))
-					referedActor = badActorReference;
 
 			} else if (location instanceof UnTrackedLocation) {
 				log.debug("Inside TcsAssembly locationReceive: UnTracked location: " + location.connection());
@@ -192,7 +205,7 @@ public class TcsAssembly extends BaseAssembly {
 		return locationReceive().orElse(diagnosticReceive()).orElse(controllerReceive())
 				.orElse(lifecycleReceivePF(supervisor)).orElse(unhandledPF());
 	}
-	
+
 	/**
 	 * This is used for handling the diagnostic commands
 	 *

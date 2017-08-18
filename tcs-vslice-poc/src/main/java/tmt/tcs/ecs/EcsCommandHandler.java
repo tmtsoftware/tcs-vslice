@@ -165,17 +165,13 @@ public class EcsCommandHandler extends BaseCommandHandler {
 						} else {
 							log.debug("Inside EcsCommandHandler initReceive: Follow command -- START: " + t);
 
-							DoubleItem azItem = jitem(sc, EcsConfig.azDemandKey);
-							DoubleItem elItem = jitem(sc, EcsConfig.elDemandKey);
-
-							Double az = jvalue(azItem);
-							Double el = jvalue(elItem);
-
-							log.info("Inside EcsCommandHandler initReceive:  az is: " + azItem + ": el is: " + elItem);
+							Double initialAz = 0.0;
+							Double initialEl = 0.0;
 
 							// The event publisher may be passed in
-							Props props = EcsFollowCommand.props(assemblyContext, jset(EcsConfig.az, az),
-									jset(EcsConfig.el, el), Optional.of(ecsHcd), allEventPublisher, eventService.get());
+							Props props = EcsFollowCommand.props(assemblyContext, jset(EcsConfig.az, initialAz),
+									jset(EcsConfig.el, initialEl), Optional.of(ecsHcd), allEventPublisher,
+									eventService.get());
 
 							ActorRef followCommandActor = context().actorOf(props);
 							log.info("Inside EcsCommandHandler initReceive: Going to followReceive");
