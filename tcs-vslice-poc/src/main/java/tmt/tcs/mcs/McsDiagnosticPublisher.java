@@ -127,9 +127,8 @@ public class McsDiagnosticPublisher extends BaseDiagnosticPublisher {
 	 */
 	public void publishStateUpdate(CurrentState cs, Optional<ActorRef> eventPublisher) {
 		log.debug("Inside McsDiagPublisher publish state: " + cs);
-		eventPublisher.ifPresent(actorRef -> actorRef.tell(
-				new McsStateUpdate(jitem(cs, McsConfig.mcsStateKey)),
-				self()));
+		eventPublisher
+				.ifPresent(actorRef -> actorRef.tell(new McsStateUpdate(jitem(cs, McsConfig.mcsStateKey)), self()));
 	}
 
 	public static Props props(AssemblyContext assemblyContext, Optional<ActorRef> mcsHcd,
