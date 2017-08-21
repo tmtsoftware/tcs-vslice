@@ -1,6 +1,8 @@
 package tmt.tcs.mcs;
 
 import static javacsw.util.config.JItems.jitem;
+import static javacsw.util.config.JItems.jset;
+import static javacsw.util.config.JItems.jvalue;
 
 import java.util.Optional;
 
@@ -34,8 +36,8 @@ public class McsEventSubscriber extends BaseEventSubscriber {
 	private final Optional<ActorRef> refActor;
 	private final EventService.EventMonitor subscribeMonitor;
 
-	private DoubleItem az;
-	private DoubleItem el;
+	private DoubleItem initialAz;
+	private DoubleItem initialEl;
 
 	private McsEventSubscriber(AssemblyContext assemblyContext, Optional<ActorRef> refActor,
 			IEventService eventService) {
@@ -45,22 +47,22 @@ public class McsEventSubscriber extends BaseEventSubscriber {
 		subscribeToLocationUpdates();
 		this.assemblyContext = assemblyContext;
 		this.refActor = refActor;
-		this.az = McsConfig.az(0.0);
-		this.el = McsConfig.el(0.0);
+		this.initialAz = McsConfig.az(0.0);
+		this.initialEl = McsConfig.el(0.0);
 		subscribeMonitor = startupSubscriptions(eventService);
 
-		receive(subscribeReceive(az, el));
+		receive(subscribeReceive(initialAz, initialEl));
 	}
 
 	/**
 	 * This method handles events being received by Event Subscriber Based upon
 	 * type of events operations can be decided
 	 * 
-	 * @param az
-	 * @param el
+	 * @param initialAz
+	 * @param initialEl
 	 * @return
 	 */
-	public PartialFunction<Object, BoxedUnit> subscribeReceive(DoubleItem az, DoubleItem el) {
+	public PartialFunction<Object, BoxedUnit> subscribeReceive(DoubleItem initialAz, DoubleItem initialEl) {
 		return ReceiveBuilder.
 
 				match(SystemEvent.class, event -> {
@@ -69,18 +71,24 @@ public class McsEventSubscriber extends BaseEventSubscriber {
 
 					DoubleItem azItem;
 					DoubleItem elItem;
+					Double azValue;
+					Double elValue;
 
 					if (event.info().source().equals(McsConfig.positionDemandCK)) {
-						azItem = jitem(event, McsConfig.azDemandKey);
-						elItem = jitem(event, McsConfig.elDemandKey);
+						azValue = jvalue(jitem(event, McsConfig.azDemandKey));
+						elValue = jvalue(jitem(event, McsConfig.elDemandKey));
+						azItem = jset(McsConfig.az, azValue);
+						elItem = jset(McsConfig.el, elValue);
 						log.debug("Inside McsEventSubscriber subscribeReceive received positionDemandCK: azItem is: "
 								+ azItem + ": eItem is: " + elItem);
 						updateRefActor(azItem, elItem, event.info().eventTime());
 
 						context().become(subscribeReceive(azItem, elItem));
 					} else if (event.info().source().equals(McsConfig.offsetDemandCK)) {
-						azItem = jitem(event, McsConfig.azDemandKey);
-						elItem = jitem(event, McsConfig.elDemandKey);
+						azValue = jvalue(jitem(event, McsConfig.azDemandKey));
+						elValue = jvalue(jitem(event, McsConfig.elDemandKey));
+						azItem = jset(McsConfig.az, azValue);
+						elItem = jset(McsConfig.el, elValue);
 						log.debug("Inside McsEventSubscriber subscribeReceive received offsetDemandCK: azItem is: "
 								+ azItem + ": eItem is: " + elItem);
 						updateRefActor(azItem, elItem, event.info().eventTime());

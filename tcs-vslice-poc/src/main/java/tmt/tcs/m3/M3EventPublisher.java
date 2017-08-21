@@ -14,6 +14,7 @@ import csw.services.loc.LocationService.ResolvedTcpLocation;
 import csw.util.config.ChoiceItem;
 import csw.util.config.DoubleItem;
 import csw.util.config.Events.StatusEvent;
+import csw.util.config.Events.SystemEvent;
 import javacsw.services.events.IEventService;
 import javacsw.services.events.ITelemetryService;
 import scala.PartialFunction;
@@ -53,7 +54,8 @@ public class M3EventPublisher extends BaseEventPublisher {
 	 */
 	public PartialFunction<Object, BoxedUnit> publishingEnabled(Optional<IEventService> eventService,
 			Optional<ITelemetryService> telemetryService) {
-		return ReceiveBuilder.match(EngrUpdate.class, t -> publishEngr(telemetryService, t.rotation, t.tilt))
+		return ReceiveBuilder.match(SystemUpdate.class, t -> publishSystemEvent(eventService, t.rotation, t.tilt))
+				.match(EngrUpdate.class, t -> publishEngr(telemetryService, t.rotation, t.tilt))
 				.match(M3StateUpdate.class, t -> publishM3State(telemetryService, t.state))
 				.match(LocationService.Location.class,
 						location -> handleLocations(location, eventService, telemetryService))
@@ -99,6 +101,16 @@ public class M3EventPublisher extends BaseEventPublisher {
 		} else {
 			log.debug("Inside M3EventPublisher received some other location: " + location);
 		}
+	}
+
+	private void publishSystemEvent(Optional<IEventService> eventService, DoubleItem rotation, DoubleItem tilt) {
+		SystemEvent se = jadd(new SystemEvent(M3Config.systemEventPrefix), rotation, tilt);
+		log.info("Inside M3EventPublisher publishSystemEvent: Status publish of " + M3Config.systemEventPrefix + ": "
+				+ se);
+		eventService.ifPresent(e -> e.publish(se).handle((x, ex) -> {
+			log.error("Inside M3EventPublisher publishSystemEvent: Failed to publish System event: " + se, ex);
+			return null;
+		}));
 	}
 
 	/**
@@ -154,6 +166,25 @@ public class M3EventPublisher extends BaseEventPublisher {
 		 * @param tilt
 		 */
 		public EngrUpdate(DoubleItem rotation, DoubleItem tilt) {
+			this.rotation = rotation;
+			this.tilt = tilt;
+		}
+
+	}
+
+	/**
+	 * Used by actors wishing to cause an system event update
+	 */
+	public static class SystemUpdate {
+		public final DoubleItem rotation;
+		public final DoubleItem tilt;
+
+		/**
+		 * 
+		 * @param rotation
+		 * @param tilt
+		 */
+		public SystemUpdate(DoubleItem rotation, DoubleItem tilt) {
 			this.rotation = rotation;
 			this.tilt = tilt;
 		}

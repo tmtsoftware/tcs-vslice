@@ -31,6 +31,7 @@ public class McsConfig {
 	public static final String offsetDemandPrefix = mcsTpkPrefix + ".offsetdemands";
 	public static final String currentPosPrefix = mcsPrefix + ".currentposition";
 	public static final String engineeringEventPrefix = mcsPrefix + ".engr";
+	public static final String systemEventPrefix = mcsPrefix + ".system";
 
 	public static final ConfigKey dummyCK = new ConfigKey(mcsPrefix);
 	public static final ConfigKey initCK = new ConfigKey(initPrefix);
@@ -66,11 +67,11 @@ public class McsConfig {
 	public static final CurrentState defaultMcsStatsState = cs(mcsStatsCK.prefix(), jset(az, 1.0));
 
 	public static DoubleItem az(double azValue) {
-		return jset(azDemandKey, azValue);
+		return jset(az, azValue);
 	}
 
 	public static DoubleItem el(double elValue) {
-		return jset(elDemandKey, elValue);
+		return jset(el, elValue);
 	}
 
 	// Refered by MCS HCD

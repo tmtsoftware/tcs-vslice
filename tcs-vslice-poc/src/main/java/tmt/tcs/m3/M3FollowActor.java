@@ -16,6 +16,7 @@ import scala.PartialFunction;
 import scala.runtime.BoxedUnit;
 import tmt.tcs.common.AssemblyContext;
 import tmt.tcs.m3.M3EventPublisher.EngrUpdate;
+import tmt.tcs.m3.M3EventPublisher.SystemUpdate;
 
 public class M3FollowActor extends AbstractActor {
 
@@ -24,21 +25,18 @@ public class M3FollowActor extends AbstractActor {
 	@SuppressWarnings("unused")
 	private final AssemblyContext assemblyContext;
 	private final Optional<ActorRef> m3Control;
-	@SuppressWarnings("unused")
-	private final Optional<ActorRef> aoPublisher;
-	private final Optional<ActorRef> engPublisher;
+	private final Optional<ActorRef> eventPublisher;
 
 	public final DoubleItem initialRotation;
 	public final DoubleItem initialTilt;
 
 	private M3FollowActor(AssemblyContext assemblyContext, DoubleItem initialRotation, DoubleItem initialTilt,
-			Optional<ActorRef> m3Control, Optional<ActorRef> aoPublisher, Optional<ActorRef> engPublisher) {
+			Optional<ActorRef> m3Control, Optional<ActorRef> eventPublisher) {
 		this.assemblyContext = assemblyContext;
 		this.initialRotation = initialTilt;
 		this.initialTilt = initialRotation;
 		this.m3Control = m3Control;
-		this.aoPublisher = aoPublisher;
-		this.engPublisher = engPublisher;
+		this.eventPublisher = eventPublisher;
 
 		// Initial receive - start with initial values
 		receive(followingReceive(initialRotation, initialTilt));
@@ -54,6 +52,9 @@ public class M3FollowActor extends AbstractActor {
 
 			// Post a StatusEvent for telemetry updates
 			sendEngrUpdate(t.rotation, t.tilt);
+
+			// Post a SystemEvent for System updates
+			sendSystemUpdate(t.rotation, t.tilt);
 
 			context().become(followingReceive(t.rotation, t.tilt));
 		}).match(SetRotation.class, t -> {
@@ -75,8 +76,13 @@ public class M3FollowActor extends AbstractActor {
 	}
 
 	private void sendEngrUpdate(DoubleItem rotation, DoubleItem tilt) {
-		log.debug("Inside M3FollowActor sendEngrUpdate publish engUpdate: " + engPublisher);
-		engPublisher.ifPresent(actorRef -> actorRef.tell(new EngrUpdate(rotation, tilt), self()));
+		log.debug("Inside M3FollowActor sendEngrUpdate publish engUpdate: " + eventPublisher);
+		eventPublisher.ifPresent(actorRef -> actorRef.tell(new EngrUpdate(rotation, tilt), self()));
+	}
+
+	private void sendSystemUpdate(DoubleItem rotation, DoubleItem tilt) {
+		log.debug("Inside M3FollowActor sendSystemUpdate publish systemUpdate: " + eventPublisher);
+		eventPublisher.ifPresent(actorRef -> actorRef.tell(new SystemUpdate(rotation, tilt), self()));
 	}
 
 	/**
@@ -86,19 +92,17 @@ public class M3FollowActor extends AbstractActor {
 	 * @param initialRotation
 	 * @param initialTilt
 	 * @param m3Control
-	 * @param aoPublisher
-	 * @param engPublisher
+	 * @param eventPublisher
 	 * @return
 	 */
 	public static Props props(AssemblyContext assemblyContext, DoubleItem initialRotation, DoubleItem initialTilt,
-			Optional<ActorRef> m3Control, Optional<ActorRef> aoPublisher, Optional<ActorRef> engPublisher) {
+			Optional<ActorRef> m3Control, Optional<ActorRef> eventPublisher) {
 		return Props.create(new Creator<M3FollowActor>() {
 			private static final long serialVersionUID = 1L;
 
 			@Override
 			public M3FollowActor create() throws Exception {
-				return new M3FollowActor(assemblyContext, initialRotation, initialTilt, m3Control, aoPublisher,
-						engPublisher);
+				return new M3FollowActor(assemblyContext, initialRotation, initialTilt, m3Control, eventPublisher);
 			}
 		});
 	}

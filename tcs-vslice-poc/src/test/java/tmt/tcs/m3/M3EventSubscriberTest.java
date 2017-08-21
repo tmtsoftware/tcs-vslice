@@ -29,9 +29,9 @@ import javacsw.services.events.IEventService;
 import tmt.tcs.common.AssemblyContext;
 import tmt.tcs.m3.M3FollowActor.StopFollowing;
 import tmt.tcs.m3.M3FollowActor.UpdatedEventData;
-import tmt.tcs.test.data.M3TestData;
+import tmt.tcs.test.common.M3TestData;
 
-public class M3EventSubscriberTests extends JavaTestKit {
+public class M3EventSubscriberTest extends JavaTestKit {
 
 	private static ActorSystem system;
 	private static LoggingAdapter logger;
@@ -48,7 +48,7 @@ public class M3EventSubscriberTests extends JavaTestKit {
 		return getTestActor();
 	}
 
-	public M3EventSubscriberTests() {
+	public M3EventSubscriberTest() {
 		super(system);
 	}
 

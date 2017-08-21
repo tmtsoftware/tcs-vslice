@@ -105,8 +105,8 @@ public class McsEventPublisher extends BaseEventPublisher {
 	}
 
 	private void publishSystemEvent(Optional<IEventService> eventService, DoubleItem az, DoubleItem el) {
-		SystemEvent se = jadd(new SystemEvent(McsConfig.engineeringEventPrefix), az, el);
-		log.info("Inside McsEventPublisher publishSystemEvent: Status publish of " + McsConfig.engineeringEventPrefix
+		SystemEvent se = jadd(new SystemEvent(McsConfig.systemEventPrefix), az, el);
+		log.info("Inside McsEventPublisher publishSystemEvent: Status publish of " + McsConfig.systemEventPrefix
 				+ ": " + se);
 		eventService.ifPresent(e -> e.publish(se).handle((x, ex) -> {
 			log.error("Inside McsEventPublisher publishSystemEvent: Failed to publish System event: " + se, ex);

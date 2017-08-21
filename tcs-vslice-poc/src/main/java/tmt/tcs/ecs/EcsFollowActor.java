@@ -16,6 +16,7 @@ import scala.PartialFunction;
 import scala.runtime.BoxedUnit;
 import tmt.tcs.common.AssemblyContext;
 import tmt.tcs.ecs.EcsEventPublisher.EngrUpdate;
+import tmt.tcs.ecs.EcsEventPublisher.SystemUpdate;
 
 public class EcsFollowActor extends AbstractActor {
 
@@ -24,21 +25,18 @@ public class EcsFollowActor extends AbstractActor {
 	@SuppressWarnings("unused")
 	private final AssemblyContext assemblyContext;
 	private final Optional<ActorRef> ecsControl;
-	@SuppressWarnings("unused")
-	private final Optional<ActorRef> aoPublisher;
-	private final Optional<ActorRef> engPublisher;
+	private final Optional<ActorRef> eventPublisher;
 
 	public final DoubleItem initialAzimuth;
 	public final DoubleItem initialElevation;
 
 	private EcsFollowActor(AssemblyContext assemblyContext, DoubleItem initialElevation, DoubleItem initialAzimuth,
-			Optional<ActorRef> ecsControl, Optional<ActorRef> aoPublisher, Optional<ActorRef> engPublisher) {
+			Optional<ActorRef> ecsControl, Optional<ActorRef> eventPublisher) {
 		this.assemblyContext = assemblyContext;
 		this.initialAzimuth = initialAzimuth;
 		this.initialElevation = initialElevation;
 		this.ecsControl = ecsControl;
-		this.aoPublisher = aoPublisher;
-		this.engPublisher = engPublisher;
+		this.eventPublisher = eventPublisher;
 
 		// Initial receive - start with initial values
 		receive(followingReceive(initialElevation, initialAzimuth));
@@ -54,6 +52,9 @@ public class EcsFollowActor extends AbstractActor {
 
 			// Post a StatusEvent for telemetry updates
 			sendEngrUpdate(t.azimuth, t.elevation);
+
+			// Post a SystemEvent for System updates
+			sendSystemUpdate(t.azimuth, t.elevation);
 
 			context().become(followingReceive(t.azimuth, t.elevation));
 		}).match(SetElevation.class, t -> {
@@ -75,8 +76,13 @@ public class EcsFollowActor extends AbstractActor {
 	}
 
 	private void sendEngrUpdate(DoubleItem az, DoubleItem el) {
-		log.debug("Inside EcsFollowActor sendEngrUpdate publish engUpdate: " + engPublisher);
-		engPublisher.ifPresent(actorRef -> actorRef.tell(new EngrUpdate(az, el), self()));
+		log.debug("Inside EcsFollowActor sendEngrUpdate publish engUpdate: " + eventPublisher);
+		eventPublisher.ifPresent(actorRef -> actorRef.tell(new EngrUpdate(az, el), self()));
+	}
+
+	private void sendSystemUpdate(DoubleItem az, DoubleItem el) {
+		log.debug("Inside McsFollowActor sendSystemUpdate publish systemUpdate: " + eventPublisher);
+		eventPublisher.ifPresent(actorRef -> actorRef.tell(new SystemUpdate(az, el), self()));
 	}
 
 	/**
@@ -86,19 +92,18 @@ public class EcsFollowActor extends AbstractActor {
 	 * @param initialAzimuth
 	 * @param initialElivation
 	 * @param ecsControl
-	 * @param aoPublisher
-	 * @param engPublisher
+	 * @param eventPublisher
 	 * @return
 	 */
 	public static Props props(AssemblyContext assemblyContext, DoubleItem initialAzimuth, DoubleItem initialElivation,
-			Optional<ActorRef> ecsControl, Optional<ActorRef> aoPublisher, Optional<ActorRef> engPublisher) {
+			Optional<ActorRef> ecsControl, Optional<ActorRef> eventPublisher) {
 		return Props.create(new Creator<EcsFollowActor>() {
 			private static final long serialVersionUID = 1L;
 
 			@Override
 			public EcsFollowActor create() throws Exception {
-				return new EcsFollowActor(assemblyContext, initialAzimuth, initialElivation, ecsControl, aoPublisher,
-						engPublisher);
+				return new EcsFollowActor(assemblyContext, initialAzimuth, initialElivation, ecsControl, 
+						eventPublisher);
 			}
 		});
 	}

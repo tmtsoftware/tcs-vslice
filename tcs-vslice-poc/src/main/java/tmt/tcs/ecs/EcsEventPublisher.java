@@ -14,6 +14,7 @@ import csw.services.loc.LocationService.ResolvedTcpLocation;
 import csw.util.config.ChoiceItem;
 import csw.util.config.DoubleItem;
 import csw.util.config.Events.StatusEvent;
+import csw.util.config.Events.SystemEvent;
 import javacsw.services.events.IEventService;
 import javacsw.services.events.ITelemetryService;
 import scala.PartialFunction;
@@ -53,7 +54,8 @@ public class EcsEventPublisher extends BaseEventPublisher {
 	 */
 	public PartialFunction<Object, BoxedUnit> publishingEnabled(Optional<IEventService> eventService,
 			Optional<ITelemetryService> telemetryService) {
-		return ReceiveBuilder.match(EngrUpdate.class, t -> publishEngr(telemetryService, t.az, t.el))
+		return ReceiveBuilder.match(SystemUpdate.class, t -> publishSystemEvent(eventService, t.az, t.el))
+				.match(EngrUpdate.class, t -> publishEngr(telemetryService, t.az, t.el))
 				.match(EcsStateUpdate.class, t -> publishEcsState(telemetryService, t.state))
 				.match(AssemblyState.class, t -> publishAssemblyState(telemetryService, t))
 				.match(LocationService.Location.class,
@@ -100,6 +102,16 @@ public class EcsEventPublisher extends BaseEventPublisher {
 		} else {
 			log.debug("Inside EcsEventPublisher received some other location: " + location);
 		}
+	}
+
+	private void publishSystemEvent(Optional<IEventService> eventService, DoubleItem az, DoubleItem el) {
+		SystemEvent se = jadd(new SystemEvent(EcsConfig.systemEventPrefix), az, el);
+		log.info("Inside EcsEventPublisher publishSystemEvent: Status publish of " + EcsConfig.systemEventPrefix + ": "
+				+ se);
+		eventService.ifPresent(e -> e.publish(se).handle((x, ex) -> {
+			log.error("Inside EcsEventPublisher publishSystemEvent: Failed to publish System event: " + se, ex);
+			return null;
+		}));
 	}
 
 	/**
@@ -168,6 +180,25 @@ public class EcsEventPublisher extends BaseEventPublisher {
 		 * @param el
 		 */
 		public EngrUpdate(DoubleItem az, DoubleItem el) {
+			this.az = az;
+			this.el = el;
+		}
+
+	}
+
+	/**
+	 * Used by actors wishing to cause an system event update
+	 */
+	public static class SystemUpdate {
+		public final DoubleItem az;
+		public final DoubleItem el;
+
+		/**
+		 * 
+		 * @param az
+		 * @param el
+		 */
+		public SystemUpdate(DoubleItem az, DoubleItem el) {
 			this.az = az;
 			this.el = el;
 		}

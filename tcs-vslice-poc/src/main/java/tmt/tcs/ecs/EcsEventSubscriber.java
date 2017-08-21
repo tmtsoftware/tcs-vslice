@@ -1,6 +1,8 @@
 package tmt.tcs.ecs;
 
 import static javacsw.util.config.JItems.jitem;
+import static javacsw.util.config.JItems.jset;
+import static javacsw.util.config.JItems.jvalue;
 
 import java.util.Optional;
 
@@ -34,8 +36,8 @@ public class EcsEventSubscriber extends BaseEventSubscriber {
 	private final Optional<ActorRef> refActor;
 	private final EventService.EventMonitor subscribeMonitor;
 
-	private DoubleItem az;
-	private DoubleItem el;
+	private DoubleItem initialAz;
+	private DoubleItem initialEl;
 
 	private EcsEventSubscriber(AssemblyContext assemblyContext, Optional<ActorRef> refActor,
 			IEventService eventService) {
@@ -45,22 +47,22 @@ public class EcsEventSubscriber extends BaseEventSubscriber {
 		subscribeToLocationUpdates();
 		this.assemblyContext = assemblyContext;
 		this.refActor = refActor;
-		this.az = EcsConfig.az(0.0);
-		this.el = EcsConfig.el(0.0);
+		this.initialAz = EcsConfig.az(0.0);
+		this.initialEl = EcsConfig.el(0.0);
 		subscribeMonitor = startupSubscriptions(eventService);
 
-		receive(subscribeReceive(az, el));
+		receive(subscribeReceive(initialAz, initialEl));
 	}
 
 	/**
 	 * This method handles events being received by Event Subscriber Based upon
 	 * type of events operations can be decided
 	 * 
-	 * @param az
-	 * @param el
+	 * @param initialAz
+	 * @param initialEl
 	 * @return
 	 */
-	public PartialFunction<Object, BoxedUnit> subscribeReceive(DoubleItem az, DoubleItem el) {
+	public PartialFunction<Object, BoxedUnit> subscribeReceive(DoubleItem initialAz, DoubleItem initialEl) {
 		return ReceiveBuilder.
 
 				match(SystemEvent.class, event -> {
@@ -69,18 +71,24 @@ public class EcsEventSubscriber extends BaseEventSubscriber {
 
 					DoubleItem azItem;
 					DoubleItem elItem;
+					Double azValue;
+					Double elValue;
 
 					if (event.info().source().equals(EcsConfig.positionDemandCK)) {
-						azItem = jitem(event, EcsConfig.azDemandKey);
-						elItem = jitem(event, EcsConfig.elDemandKey);
+						azValue = jvalue(jitem(event, EcsConfig.azDemandKey));
+						elValue = jvalue(jitem(event, EcsConfig.elDemandKey));
+						azItem = jset(EcsConfig.az, azValue);
+						elItem = jset(EcsConfig.el, elValue);
 						log.debug("Inside EcsEventSubscriber subscribeReceive received positionDemandCK: azItem is: "
 								+ azItem + ": eItem is: " + elItem);
 						updateRefActor(azItem, elItem, event.info().eventTime());
 
 						context().become(subscribeReceive(azItem, elItem));
 					} else if (event.info().source().equals(EcsConfig.offsetDemandCK)) {
-						azItem = jitem(event, EcsConfig.azDemandKey);
-						elItem = jitem(event, EcsConfig.elDemandKey);
+						azValue = jvalue(jitem(event, EcsConfig.azDemandKey));
+						elValue = jvalue(jitem(event, EcsConfig.elDemandKey));
+						azItem = jset(EcsConfig.az, azValue);
+						elItem = jset(EcsConfig.el, elValue);
 						log.debug("Inside EcsEventSubscriber subscribeReceive received offsetDemandCK: azItem is: "
 								+ azItem + ": eItem is: " + elItem);
 						updateRefActor(azItem, elItem, event.info().eventTime());

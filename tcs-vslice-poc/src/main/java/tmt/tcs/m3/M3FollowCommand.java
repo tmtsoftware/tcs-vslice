@@ -99,7 +99,7 @@ public class M3FollowCommand extends BaseCommand {
 			Optional<ActorRef> eventPublisher, Optional<ActorRef> telemetryPublisher) {
 		log.debug("Inside M3FollowCommand createFollower: Creating Follower ");
 		return context().actorOf(M3FollowActor.props(assemblyContext, initialRotation, initialTilt,
-				Optional.of(m3Control), eventPublisher, eventPublisher), "follower");
+				Optional.of(m3Control), eventPublisher), "follower");
 	}
 
 	private ActorRef createEventSubscriber(ActorRef followActor, IEventService eventService) {

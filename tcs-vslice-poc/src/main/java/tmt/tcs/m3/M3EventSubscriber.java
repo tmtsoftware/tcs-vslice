@@ -1,6 +1,8 @@
 package tmt.tcs.m3;
 
 import static javacsw.util.config.JItems.jitem;
+import static javacsw.util.config.JItems.jset;
+import static javacsw.util.config.JItems.jvalue;
 
 import java.util.Optional;
 
@@ -34,8 +36,8 @@ public class M3EventSubscriber extends BaseEventSubscriber {
 	private final Optional<ActorRef> refActor;
 	private final EventService.EventMonitor subscribeMonitor;
 
-	private DoubleItem rotation;
-	private DoubleItem tilt;
+	private DoubleItem initialRotation;
+	private DoubleItem initialTilt;
 
 	private M3EventSubscriber(AssemblyContext assemblyContext, Optional<ActorRef> refActor,
 			IEventService eventService) {
@@ -45,22 +47,22 @@ public class M3EventSubscriber extends BaseEventSubscriber {
 		subscribeToLocationUpdates();
 		this.assemblyContext = assemblyContext;
 		this.refActor = refActor;
-		this.rotation = M3Config.rotation(0.0);
-		this.tilt = M3Config.tilt(0.0);
+		this.initialRotation = M3Config.rotation(0.0);
+		this.initialTilt = M3Config.tilt(0.0);
 		subscribeMonitor = startupSubscriptions(eventService);
 
-		receive(subscribeReceive(rotation, tilt));
+		receive(subscribeReceive(initialRotation, initialTilt));
 	}
 
 	/**
 	 * This method handles events being received by Event Subscriber Based upon
 	 * type of events operations can be decided
 	 * 
-	 * @param rotation
-	 * @param tilt
+	 * @param initialRotation
+	 * @param initialTilt
 	 * @return
 	 */
-	public PartialFunction<Object, BoxedUnit> subscribeReceive(DoubleItem rotation, DoubleItem tilt) {
+	public PartialFunction<Object, BoxedUnit> subscribeReceive(DoubleItem initialRotation, DoubleItem initialTilt) {
 		return ReceiveBuilder.
 
 				match(SystemEvent.class, event -> {
@@ -69,10 +71,14 @@ public class M3EventSubscriber extends BaseEventSubscriber {
 
 					DoubleItem rotationItem;
 					DoubleItem tiltItem;
+					Double rotationValue;
+					Double tiltValue;
 
 					if (event.info().source().equals(M3Config.positionDemandCK)) {
-						rotationItem = jitem(event, M3Config.rotationDemandKey);
-						tiltItem = jitem(event, M3Config.tiltDemandKey);
+						rotationValue = jvalue(jitem(event, M3Config.rotationDemandKey));
+						tiltValue = jvalue(jitem(event, M3Config.tiltDemandKey));
+						rotationItem = jset(M3Config.rotation, rotationValue);
+						tiltItem = jset(M3Config.tilt, tiltValue);
 						log.debug(
 								"Inside M3EventSubscriber subscribeReceive received positionDemandCK: rotationItem is: "
 										+ rotationItem + ": tiltItem is: " + tiltItem);
@@ -80,8 +86,10 @@ public class M3EventSubscriber extends BaseEventSubscriber {
 
 						context().become(subscribeReceive(rotationItem, tiltItem));
 					} else if (event.info().source().equals(M3Config.offsetDemandCK)) {
-						rotationItem = jitem(event, M3Config.rotationDemandKey);
-						tiltItem = jitem(event, M3Config.tiltDemandKey);
+						rotationValue = jvalue(jitem(event, M3Config.rotationDemandKey));
+						tiltValue = jvalue(jitem(event, M3Config.tiltDemandKey));
+						rotationItem = jset(M3Config.rotation, rotationValue);
+						tiltItem = jset(M3Config.tilt, tiltValue);
 						log.debug("Inside M3EventSubscriber subscribeReceive received offsetDemandCK: rotationItem is: "
 								+ rotationItem + ": tiltItem is: " + tiltItem);
 						updateRefActor(rotationItem, tiltItem, event.info().eventTime());

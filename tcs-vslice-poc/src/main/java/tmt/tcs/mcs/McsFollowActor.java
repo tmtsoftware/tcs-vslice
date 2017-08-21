@@ -52,7 +52,7 @@ public class McsFollowActor extends AbstractActor {
 
 			// Post a StatusEvent for telemetry updates
 			sendEngrUpdate(t.azimuth, t.elevation);
-			
+
 			// Post a SystemEvent for System updates
 			sendSystemUpdate(t.azimuth, t.elevation);
 
@@ -71,12 +71,14 @@ public class McsFollowActor extends AbstractActor {
 	}
 
 	private void sendMcsPosition(DoubleItem az, DoubleItem el) {
-		log.debug("Inside McsFollowActor sendMcsPosition: az is: " + az + ": el is: " + el);
+		log.debug(
+				"Inside McsFollowActor sendMcsPosition: to Actor: " + mcsControl + ": az is: " + az + ": el is: " + el);
 		mcsControl.ifPresent(actorRef -> actorRef.tell(new McsControl.GoToPosition(az, el), self()));
 	}
 
 	private void sendEngrUpdate(DoubleItem az, DoubleItem el) {
-		log.debug("Inside McsFollowActor sendEngrUpdate publish engUpdate: " + eventPublisher);
+		log.debug("Inside McsFollowActor sendEngrUpdate publish engUpdate: " + eventPublisher + ": az is: " + az
+				+ ": el is: " + el);
 		eventPublisher.ifPresent(actorRef -> actorRef.tell(new EngrUpdate(az, el), self()));
 	}
 
@@ -125,6 +127,49 @@ public class McsFollowActor extends AbstractActor {
 			this.elevation = elevation;
 			this.time = time;
 		}
+
+		@Override
+		public String toString() {
+			return "UpdatedEventData [azimuth=" + azimuth + ", elevation=" + elevation + ", time=" + time + "]";
+		}
+
+		@Override
+		public int hashCode() {
+			final int prime = 31;
+			int result = 1;
+			result = prime * result + ((azimuth == null) ? 0 : azimuth.hashCode());
+			result = prime * result + ((elevation == null) ? 0 : elevation.hashCode());
+			result = prime * result + ((time == null) ? 0 : time.hashCode());
+			return result;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj)
+				return true;
+			if (obj == null)
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			UpdatedEventData other = (UpdatedEventData) obj;
+			if (azimuth == null) {
+				if (other.azimuth != null)
+					return false;
+			} else if (!azimuth.equals(other.azimuth))
+				return false;
+			if (elevation == null) {
+				if (other.elevation != null)
+					return false;
+			} else if (!elevation.equals(other.elevation))
+				return false;
+			if (time == null) {
+				if (other.time != null)
+					return false;
+			} else if (!time.equals(other.time))
+				return false;
+			return true;
+		}
+
 	}
 
 	// Messages to Follow Actor

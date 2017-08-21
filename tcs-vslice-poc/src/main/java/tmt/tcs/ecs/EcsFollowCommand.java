@@ -99,7 +99,7 @@ public class EcsFollowCommand extends BaseCommand {
 			Optional<ActorRef> eventPublisher, Optional<ActorRef> telemetryPublisher) {
 		log.debug("Inside EcsFollowCommand createFollower: Creating Follower ");
 		return context().actorOf(EcsFollowActor.props(assemblyContext, initialAzimuth, initialElevation,
-				Optional.of(ecsControl), eventPublisher, eventPublisher), "follower");
+				Optional.of(ecsControl), eventPublisher), "follower");
 	}
 
 	private ActorRef createEventSubscriber(ActorRef followActor, IEventService eventService) {

@@ -28,6 +28,7 @@ public class M3Config {
 	public static final String offsetDemandPrefix = m3TpkPrefix + ".offsetdemands";
 	public static final String currentPosPrefix = m3Prefix + ".currentposition";
 	public static final String engineeringEventPrefix = m3Prefix + ".engr";
+	public static final String systemEventPrefix = m3Prefix + ".system";
 
 	public static final ConfigKey dummyCK = new ConfigKey(m3Prefix);
 	public static final ConfigKey initCK = new ConfigKey(initPrefix);
@@ -61,11 +62,11 @@ public class M3Config {
 	public static final DoubleKey posTimeKey = new DoubleKey("tcs.m3.time");
 
 	public static DoubleItem rotation(double rotationValue) {
-		return jset(rotationDemandKey, rotationValue);
+		return jset(rotation, rotationValue);
 	}
 
 	public static DoubleItem tilt(double tiltValue) {
-		return jset(tiltDemandKey, tiltValue);
+		return jset(tilt, tiltValue);
 	}
 
 	// Refered by M3 HCD

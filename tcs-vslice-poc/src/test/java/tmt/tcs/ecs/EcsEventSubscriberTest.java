@@ -1,4 +1,4 @@
-package tmt.tcs.mcs;
+package tmt.tcs.ecs;
 
 import static javacsw.util.config.JItems.jadd;
 import static javacsw.util.config.JItems.jset;
@@ -27,18 +27,18 @@ import csw.util.config.DoubleItem;
 import csw.util.config.Events.SystemEvent;
 import javacsw.services.events.IEventService;
 import tmt.tcs.common.AssemblyContext;
-import tmt.tcs.mcs.McsFollowActor.StopFollowing;
-import tmt.tcs.mcs.McsFollowActor.UpdatedEventData;
-import tmt.tcs.test.data.McsTestData;
+import tmt.tcs.ecs.EcsFollowActor.StopFollowing;
+import tmt.tcs.ecs.EcsFollowActor.UpdatedEventData;
+import tmt.tcs.test.common.EcsTestData;
 
-public class McsEventSubscriberTests extends JavaTestKit {
+public class EcsEventSubscriberTest extends JavaTestKit {
 
 	private static ActorSystem system;
 	private static LoggingAdapter logger;
 
 	private static Timeout timeout = new Timeout(20, TimeUnit.SECONDS);
 
-	private static AssemblyContext assemblyContext = McsTestData.mcsTestAssemblyContext;
+	private static AssemblyContext assemblyContext = EcsTestData.ecsTestAssemblyContext;
 
 	private static IEventService eventService;
 
@@ -48,14 +48,14 @@ public class McsEventSubscriberTests extends JavaTestKit {
 		return getTestActor();
 	}
 
-	public McsEventSubscriberTests() {
+	public EcsEventSubscriberTest() {
 		super(system);
 	}
 
 	@BeforeClass
 	public static void setup() throws Exception {
 		LocationService.initInterface();
-		system = ActorSystem.create("McsEventSubscriberTests");
+		system = ActorSystem.create("EcsEventSubscriberTests");
 		logger = Logging.getLogger(system, system);
 
 		eventService = IEventService.getEventService(IEventService.defaultName, system, timeout).get(5,
@@ -69,10 +69,10 @@ public class McsEventSubscriberTests extends JavaTestKit {
 		system = null;
 	}
 
-	TestActorRef<McsEventSubscriber> newTestEventSubscriber(Optional<ActorRef> followActor,
+	TestActorRef<EcsEventSubscriber> newTestEventSubscriber(Optional<ActorRef> followActor,
 			IEventService eventService) {
-		Props props = McsEventSubscriber.props(assemblyContext, followActor, eventService);
-		TestActorRef<McsEventSubscriber> a = TestActorRef.create(system, props);
+		Props props = EcsEventSubscriber.props(assemblyContext, followActor, eventService);
+		TestActorRef<EcsEventSubscriber> a = TestActorRef.create(system, props);
 		expectNoMsg(duration("200 milli")); // give the new actor time to
 											// subscribe before any test
 											// publishing...
@@ -80,7 +80,7 @@ public class McsEventSubscriberTests extends JavaTestKit {
 	}
 
 	ActorRef newEventSubscriber(Optional<ActorRef> followActor, IEventService eventService) {
-		Props props = McsEventSubscriber.props(assemblyContext, followActor, eventService);
+		Props props = EcsEventSubscriber.props(assemblyContext, followActor, eventService);
 		ActorRef a = system.actorOf(props);
 		expectNoMsg(duration("200 milli")); // give the new actor time to
 											// subscribe before any test
@@ -103,7 +103,7 @@ public class McsEventSubscriberTests extends JavaTestKit {
 		// should be created with no issues
 		TestProbe fakeFollowActor = new TestProbe(system);
 
-		TestActorRef<McsEventSubscriber> es = newTestEventSubscriber(Optional.of(fakeFollowActor.ref()), eventService);
+		TestActorRef<EcsEventSubscriber> es = newTestEventSubscriber(Optional.of(fakeFollowActor.ref()), eventService);
 
 		es.tell(new StopFollowing(), self());
 		fakeFollowActor.expectNoMsg(duration("500 milli"));
@@ -114,14 +114,14 @@ public class McsEventSubscriberTests extends JavaTestKit {
 	public void test2() throws InterruptedException, ExecutionException, TimeoutException {
 		TestProbe fakeFollowActor = new TestProbe(system);
 
-		DoubleItem azimuth = jset(McsConfig.azDemandKey, 2.0);
-		DoubleItem elevation = jset(McsConfig.elDemandKey, 2.0);
+		DoubleItem azimuth = jset(EcsConfig.azDemandKey, 2.0);
+		DoubleItem elevation = jset(EcsConfig.elDemandKey, 2.0);
 
 		ActorRef es = newEventSubscriber(Optional.of(fakeFollowActor.ref()), eventService);
 
 		IEventService tcsRtc = eventService;
 
-		tcsRtc.publish(jadd(new SystemEvent(McsConfig.positionDemandPrefix), azimuth, elevation));
+		tcsRtc.publish(jadd(new SystemEvent(EcsConfig.positionDemandPrefix), azimuth, elevation));
 
 		UpdatedEventData msg = fakeFollowActor.expectMsgClass(duration("10 seconds"), UpdatedEventData.class);
 
@@ -138,14 +138,14 @@ public class McsEventSubscriberTests extends JavaTestKit {
 	public void test3() throws InterruptedException, ExecutionException, TimeoutException {
 		TestProbe fakeFollowActor = new TestProbe(system);
 
-		DoubleItem azimuth = jset(McsConfig.azDemandKey, 2.0);
-		DoubleItem elevation = jset(McsConfig.elDemandKey, 2.0);
+		DoubleItem azimuth = jset(EcsConfig.azDemandKey, 2.0);
+		DoubleItem elevation = jset(EcsConfig.elDemandKey, 2.0);
 
 		ActorRef es = newEventSubscriber(Optional.of(fakeFollowActor.ref()), eventService);
 
 		IEventService tcsRtc = eventService;
 
-		tcsRtc.publish(jadd(new SystemEvent(McsConfig.offsetDemandPrefix), azimuth, elevation));
+		tcsRtc.publish(jadd(new SystemEvent(EcsConfig.offsetDemandPrefix), azimuth, elevation));
 
 		UpdatedEventData msg = fakeFollowActor.expectMsgClass(duration("10 seconds"), UpdatedEventData.class);
 
