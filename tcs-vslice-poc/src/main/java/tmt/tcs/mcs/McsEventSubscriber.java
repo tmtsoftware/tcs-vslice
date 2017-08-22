@@ -33,20 +33,20 @@ public class McsEventSubscriber extends BaseEventSubscriber {
 	private LoggingAdapter log = Logging.getLogger(getContext().system(), this);
 
 	private final AssemblyContext assemblyContext;
-	private final Optional<ActorRef> refActor;
+	private final Optional<ActorRef> followActor;
 	private final EventService.EventMonitor subscribeMonitor;
 
 	private DoubleItem initialAz;
 	private DoubleItem initialEl;
 
-	private McsEventSubscriber(AssemblyContext assemblyContext, Optional<ActorRef> refActor,
+	private McsEventSubscriber(AssemblyContext assemblyContext, Optional<ActorRef> followActor,
 			IEventService eventService) {
 
 		log.debug("Inside McsEventSubscriber");
 
 		subscribeToLocationUpdates();
 		this.assemblyContext = assemblyContext;
-		this.refActor = refActor;
+		this.followActor = followActor;
 		this.initialAz = McsConfig.az(0.0);
 		this.initialEl = McsConfig.el(0.0);
 		subscribeMonitor = startupSubscriptions(eventService);
@@ -69,28 +69,14 @@ public class McsEventSubscriber extends BaseEventSubscriber {
 					log.debug("Inside McsEventSubscriber subscribeReceive received SystemEvent: Config Key is: "
 							+ event.info().source());
 
-					DoubleItem azItem;
-					DoubleItem elItem;
-					Double azValue;
-					Double elValue;
-
-					if (event.info().source().equals(McsConfig.positionDemandCK)) {
-						azValue = jvalue(jitem(event, McsConfig.azDemandKey));
-						elValue = jvalue(jitem(event, McsConfig.elDemandKey));
-						azItem = jset(McsConfig.az, azValue);
-						elItem = jset(McsConfig.el, elValue);
-						log.debug("Inside McsEventSubscriber subscribeReceive received positionDemandCK: azItem is: "
-								+ azItem + ": eItem is: " + elItem);
-						updateRefActor(azItem, elItem, event.info().eventTime());
-
-						context().become(subscribeReceive(azItem, elItem));
-					} else if (event.info().source().equals(McsConfig.offsetDemandCK)) {
-						azValue = jvalue(jitem(event, McsConfig.azDemandKey));
-						elValue = jvalue(jitem(event, McsConfig.elDemandKey));
-						azItem = jset(McsConfig.az, azValue);
-						elItem = jset(McsConfig.el, elValue);
-						log.debug("Inside McsEventSubscriber subscribeReceive received offsetDemandCK: azItem is: "
-								+ azItem + ": eItem is: " + elItem);
+					if (event.info().source().equals(McsConfig.positionDemandCK)
+							|| event.info().source().equals(McsConfig.offsetDemandCK)) {
+						Double azValue = jvalue(jitem(event, McsConfig.azDemandKey));
+						Double elValue = jvalue(jitem(event, McsConfig.elDemandKey));
+						DoubleItem azItem = jset(McsConfig.az, azValue);
+						DoubleItem elItem = jset(McsConfig.el, elValue);
+						log.debug("Inside McsEventSubscriber subscribeReceive received : " + event.info().source()
+								+ ": azItem is: " + azItem + ": eItem is: " + elItem);
 						updateRefActor(azItem, elItem, event.info().eventTime());
 
 						context().become(subscribeReceive(azItem, elItem));
@@ -113,7 +99,8 @@ public class McsEventSubscriber extends BaseEventSubscriber {
 	 */
 	private void updateRefActor(DoubleItem az, DoubleItem el, EventTime eventTime) {
 		log.debug("Inside McsEventSubscriber updateRefActor: Sending Message to Follow Actor");
-		refActor.ifPresent(actoRef -> actoRef.tell(new McsFollowActor.UpdatedEventData(az, el, eventTime), self()));
+		followActor
+				.ifPresent(actorRef -> actorRef.tell(new McsFollowActor.UpdatedEventData(az, el, eventTime), self()));
 	}
 
 	/**

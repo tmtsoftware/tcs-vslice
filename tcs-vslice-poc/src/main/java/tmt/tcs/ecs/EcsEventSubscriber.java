@@ -33,20 +33,20 @@ public class EcsEventSubscriber extends BaseEventSubscriber {
 	private LoggingAdapter log = Logging.getLogger(getContext().system(), this);
 
 	private final AssemblyContext assemblyContext;
-	private final Optional<ActorRef> refActor;
+	private final Optional<ActorRef> followActor;
 	private final EventService.EventMonitor subscribeMonitor;
 
 	private DoubleItem initialAz;
 	private DoubleItem initialEl;
 
-	private EcsEventSubscriber(AssemblyContext assemblyContext, Optional<ActorRef> refActor,
+	private EcsEventSubscriber(AssemblyContext assemblyContext, Optional<ActorRef> followActor,
 			IEventService eventService) {
 
 		log.debug("Inside EcsEventSubscriber");
 
 		subscribeToLocationUpdates();
 		this.assemblyContext = assemblyContext;
-		this.refActor = refActor;
+		this.followActor = followActor;
 		this.initialAz = EcsConfig.az(0.0);
 		this.initialEl = EcsConfig.el(0.0);
 		subscribeMonitor = startupSubscriptions(eventService);
@@ -69,28 +69,14 @@ public class EcsEventSubscriber extends BaseEventSubscriber {
 					log.debug("Inside EcsEventSubscriber subscribeReceive received SystemEvent: Config Key is: "
 							+ event.info().source());
 
-					DoubleItem azItem;
-					DoubleItem elItem;
-					Double azValue;
-					Double elValue;
-
-					if (event.info().source().equals(EcsConfig.positionDemandCK)) {
-						azValue = jvalue(jitem(event, EcsConfig.azDemandKey));
-						elValue = jvalue(jitem(event, EcsConfig.elDemandKey));
-						azItem = jset(EcsConfig.az, azValue);
-						elItem = jset(EcsConfig.el, elValue);
-						log.debug("Inside EcsEventSubscriber subscribeReceive received positionDemandCK: azItem is: "
-								+ azItem + ": eItem is: " + elItem);
-						updateRefActor(azItem, elItem, event.info().eventTime());
-
-						context().become(subscribeReceive(azItem, elItem));
-					} else if (event.info().source().equals(EcsConfig.offsetDemandCK)) {
-						azValue = jvalue(jitem(event, EcsConfig.azDemandKey));
-						elValue = jvalue(jitem(event, EcsConfig.elDemandKey));
-						azItem = jset(EcsConfig.az, azValue);
-						elItem = jset(EcsConfig.el, elValue);
-						log.debug("Inside EcsEventSubscriber subscribeReceive received offsetDemandCK: azItem is: "
-								+ azItem + ": eItem is: " + elItem);
+					if (event.info().source().equals(EcsConfig.positionDemandCK)
+							|| event.info().source().equals(EcsConfig.offsetDemandCK)) {
+						Double azValue = jvalue(jitem(event, EcsConfig.azDemandKey));
+						Double elValue = jvalue(jitem(event, EcsConfig.elDemandKey));
+						DoubleItem azItem = jset(EcsConfig.az, azValue);
+						DoubleItem elItem = jset(EcsConfig.el, elValue);
+						log.debug("Inside EcsEventSubscriber subscribeReceive received: " + event.info().source()
+								+ ": azItem is: " + azItem + ": eItem is: " + elItem);
 						updateRefActor(azItem, elItem, event.info().eventTime());
 
 						context().become(subscribeReceive(azItem, elItem));
@@ -113,7 +99,8 @@ public class EcsEventSubscriber extends BaseEventSubscriber {
 	 */
 	private void updateRefActor(DoubleItem az, DoubleItem el, EventTime eventTime) {
 		log.debug("Inside EcsEventSubscriber updateRefActor: Sending Message to Follow Actor");
-		refActor.ifPresent(actoRef -> actoRef.tell(new EcsFollowActor.UpdatedEventData(az, el, eventTime), self()));
+		followActor
+				.ifPresent(actorRef -> actorRef.tell(new EcsFollowActor.UpdatedEventData(az, el, eventTime), self()));
 	}
 
 	/**
