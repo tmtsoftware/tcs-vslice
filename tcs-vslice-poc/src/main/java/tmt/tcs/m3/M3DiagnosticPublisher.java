@@ -56,7 +56,7 @@ public class M3DiagnosticPublisher extends BaseDiagnosticPublisher {
 			Optional<ActorRef> hcd, Optional<ActorRef> eventPublisher) {
 		return ReceiveBuilder.match(CurrentState.class, cs -> {
 			if (cs.configKey().equals(M3Config.m3StateCK)) {
-				publishStateUpdate(cs, eventPublisher);
+				publishM3PosUpdate(cs, eventPublisher);
 			}
 		}).match(Location.class, location -> {
 
@@ -91,7 +91,7 @@ public class M3DiagnosticPublisher extends BaseDiagnosticPublisher {
 			Optional<ActorRef> hcd, Cancellable cancelToken, Optional<ActorRef> eventPublisher) {
 		return ReceiveBuilder.match(CurrentState.class, cs -> {
 			if (cs.configKey().equals(M3Config.m3StateCK)) {
-				publishStateUpdate(cs, eventPublisher);
+				publishM3PosUpdate(cs, eventPublisher);
 			}
 		}).match(Location.class, location -> {
 
@@ -126,7 +126,7 @@ public class M3DiagnosticPublisher extends BaseDiagnosticPublisher {
 	/**
 	 * This publishes State Updates
 	 */
-	public void publishStateUpdate(CurrentState cs, Optional<ActorRef> eventPublisher) {
+	public void publishM3PosUpdate(CurrentState cs, Optional<ActorRef> eventPublisher) {
 		log.debug("Inside M3DiagPublisher publish state: " + cs);
 		eventPublisher.ifPresent(actorRef -> actorRef.tell(new M3StateUpdate(jitem(cs, M3Config.m3StateKey)), self()));
 	}

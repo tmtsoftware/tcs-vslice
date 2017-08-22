@@ -56,7 +56,7 @@ public class EcsDiagnosticPublisher extends BaseDiagnosticPublisher {
 			Optional<ActorRef> hcd, Optional<ActorRef> eventPublisher) {
 		return ReceiveBuilder.match(CurrentState.class, cs -> {
 			if (cs.configKey().equals(EcsConfig.ecsStateCK)) {
-				publishStateUpdate(cs, eventPublisher);
+				publishEcsPosUpdate(cs, eventPublisher);
 			}
 		}).match(Location.class, location -> {
 
@@ -91,7 +91,7 @@ public class EcsDiagnosticPublisher extends BaseDiagnosticPublisher {
 			Optional<ActorRef> hcd, Cancellable cancelToken, Optional<ActorRef> eventPublisher) {
 		return ReceiveBuilder.match(CurrentState.class, cs -> {
 			if (cs.configKey().equals(EcsConfig.ecsStateCK)) {
-				publishStateUpdate(cs, eventPublisher);
+				publishEcsPosUpdate(cs, eventPublisher);
 			}
 		}).match(Location.class, location -> {
 
@@ -119,13 +119,13 @@ public class EcsDiagnosticPublisher extends BaseDiagnosticPublisher {
 							eventPublisher));
 				}
 			}
-		}).matchAny(t -> log.warning("DiagPublisher:diagnosticReceive received an unexpected message: " + t)).build();
+		}).matchAny(t -> log.warning("Inside EcsDiagPublisher:diagnosticReceive received an unexpected message: " + t)).build();
 	}
 
 	/**
 	 * This publishes State Updates
 	 */
-	public void publishStateUpdate(CurrentState cs, Optional<ActorRef> eventPublisher) {
+	public void publishEcsPosUpdate(CurrentState cs, Optional<ActorRef> eventPublisher) {
 		log.debug("Inside EcsDiagPublisher publish state: " + cs);
 		eventPublisher
 				.ifPresent(actorRef -> actorRef.tell(new EcsStateUpdate(jitem(cs, EcsConfig.ecsStateKey)), self()));

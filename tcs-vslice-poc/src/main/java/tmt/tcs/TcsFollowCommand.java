@@ -5,7 +5,6 @@ import static javacsw.util.config.JItems.jvalue;
 
 import java.util.Optional;
 
-import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
 import akka.actor.Props;
 import akka.event.Logging;
@@ -17,8 +16,11 @@ import csw.util.config.Configurations;
 import csw.util.config.Configurations.SetupConfig;
 import csw.util.config.Configurations.SetupConfigArg;
 import javacsw.services.ccs.JSequentialExecutor;
+import scala.PartialFunction;
+import scala.runtime.BoxedUnit;
 import tmt.tcs.common.AssemblyContext;
 import tmt.tcs.common.AssemblyStateActor.AssemblyState;
+import tmt.tcs.common.BaseCommand;
 import tmt.tcs.ecs.EcsConfig;
 import tmt.tcs.m3.M3Config;
 import tmt.tcs.mcs.McsConfig;
@@ -28,7 +30,7 @@ import tmt.tcs.mcs.McsConfig;
  * And after any modifications if required, redirect the same to TPK
  * This also issue follow command to MCS, ECS and M3 Assemblies
  */
-public class TcsFollowCommand extends AbstractActor {
+public class TcsFollowCommand extends BaseCommand {
 
 	private LoggingAdapter log = Logging.getLogger(getContext().system(), this);
 
@@ -52,7 +54,12 @@ public class TcsFollowCommand extends AbstractActor {
 			ActorRef m3RefActor, AssemblyState tcsStartState, Optional<ActorRef> stateActor) {
 		this.tcsStateActor = stateActor;
 
-		receive(ReceiveBuilder.matchEquals(JSequentialExecutor.CommandStart(), t -> {
+		receive(followReceive(sc, mcsRefActor, ecsRefActor, m3RefActor));
+	}
+
+	public PartialFunction<Object, BoxedUnit> followReceive(SetupConfig sc, ActorRef mcsRefActor, ActorRef ecsRefActor,
+			ActorRef m3RefActor) {
+		return ReceiveBuilder.matchEquals(JSequentialExecutor.CommandStart(), t -> {
 			log.debug("Inside TcsFollowCommand: Follow command -- START: " + t + ": Config Key is: " + sc.configKey());
 
 			SetupConfigArg mcsSetupConfigArg = Configurations.createSetupConfigArg("mcsFollowCommand",
@@ -84,7 +91,7 @@ public class TcsFollowCommand extends AbstractActor {
 
 		}).matchEquals(JSequentialExecutor.StopCurrentCommand(), t -> {
 			log.debug("Inside TcsFollowCommand: Follow command -- STOP: " + t);
-		}).matchAny(t -> log.warning("Inside TcsFollowCommand: Unknown message received: " + t)).build());
+		}).matchAny(t -> log.warning("Inside TcsFollowCommand: Unknown message received: " + t)).build();
 	}
 
 	public static Props props(AssemblyContext ac, SetupConfig sc, ActorRef mcsRefActor, ActorRef ecsRefActor,

@@ -18,23 +18,40 @@ public class McsSimulator extends AbstractActor {
 	LoggingAdapter log = Logging.getLogger(getContext().system(), this);
 
 	private final Optional<ActorRef> replyTo;
+	private McsState currentState = McsState.MCS_IDLE;
+	private Double currentAz;
+	private Double currentEl;
 
 	private McsSimulator(Optional<ActorRef> replyTo) {
 		this.replyTo = replyTo;
+		this.currentAz = 0.0;
+		this.currentEl = 0.0;
 
 		receive(idleReceive());
 	}
 
 	PartialFunction<Object, BoxedUnit> idleReceive() {
 		return ReceiveBuilder.match(Move.class, e -> {
+			// Setting cuurentState to Moving while performing move operation
+			currentState = McsState.MCS_MOVING;
 			log.debug("Inside McsSimulator idleReceive Move received: az is: " + e.az + ": el is: " + e.el);
-			update(replyTo, new McsUpdate(McsState.MCS_IDLE));
+
+			// TODO:: Move Operation to be performed here
+
+			currentAz = e.az;
+			currentEl = e.el;
+
+			update(replyTo, getState());
 		}).matchAny(x -> log.warning("Inside McsSimulator Unexpected message in idleReceive: " + x)).build();
 	}
 
 	void update(Optional<ActorRef> replyTo, Object msg) {
 		log.debug("Inside McsSimulator update: msg is: " + msg);
 		replyTo.ifPresent(actorRef -> actorRef.tell(msg, self()));
+	}
+
+	McsPosUpdate getState() {
+		return new McsPosUpdate(currentState, currentAz, currentEl);
 	}
 
 	public static Props props(final Optional<ActorRef> replyTo) {
@@ -48,11 +65,15 @@ public class McsSimulator extends AbstractActor {
 		});
 	}
 
-	public static class McsUpdate {
+	public static class McsPosUpdate {
 		public final McsState state;
+		public final Double azPosition;
+		public final Double elPosition;
 
-		public McsUpdate(McsState state) {
+		public McsPosUpdate(McsState state, Double azPosition, Double elPosition) {
 			this.state = state;
+			this.azPosition = azPosition;
+			this.elPosition = elPosition;
 		}
 	}
 

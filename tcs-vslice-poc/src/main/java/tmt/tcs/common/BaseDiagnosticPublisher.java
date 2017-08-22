@@ -5,7 +5,6 @@ import java.util.Optional;
 import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
 import akka.actor.Cancellable;
-import csw.util.config.StateVariable.CurrentState;
 import javacsw.services.pkg.ILocationSubscriberClient;
 import scala.PartialFunction;
 import scala.runtime.BoxedUnit;
@@ -21,8 +20,6 @@ public abstract class BaseDiagnosticPublisher extends AbstractActor implements I
 
 	public abstract PartialFunction<Object, BoxedUnit> diagnosticReceive(String hcdName, int stateMessageCounter,
 			Optional<ActorRef> hcd, Cancellable cancelToken, Optional<ActorRef> eventPublisher);
-
-	public abstract void publishStateUpdate(CurrentState cs, Optional<ActorRef> eventPublisher);
 
 	/**
 	 * Internal messages used by diag publisher

@@ -55,8 +55,8 @@ public class McsDiagnosticPublisher extends BaseDiagnosticPublisher {
 	public PartialFunction<Object, BoxedUnit> operationsReceive(String hcdName, int stateMessageCounter,
 			Optional<ActorRef> hcd, Optional<ActorRef> eventPublisher) {
 		return ReceiveBuilder.match(CurrentState.class, cs -> {
-			if (cs.configKey().equals(McsConfig.mcsStateCK)) {
-				publishStateUpdate(cs, eventPublisher);
+			if (cs.configKey().equals(McsConfig.currentPosCK)) {
+				publishMcsPosUpdate(cs, eventPublisher);
 			}
 		}).match(Location.class, location -> {
 
@@ -91,7 +91,7 @@ public class McsDiagnosticPublisher extends BaseDiagnosticPublisher {
 			Optional<ActorRef> hcd, Cancellable cancelToken, Optional<ActorRef> eventPublisher) {
 		return ReceiveBuilder.match(CurrentState.class, cs -> {
 			if (cs.configKey().equals(McsConfig.mcsStateCK)) {
-				publishStateUpdate(cs, eventPublisher);
+				publishMcsPosUpdate(cs, eventPublisher);
 			}
 		}).match(Location.class, location -> {
 
@@ -125,10 +125,10 @@ public class McsDiagnosticPublisher extends BaseDiagnosticPublisher {
 	/**
 	 * This publishes State Updates
 	 */
-	public void publishStateUpdate(CurrentState cs, Optional<ActorRef> eventPublisher) {
+	public void publishMcsPosUpdate(CurrentState cs, Optional<ActorRef> eventPublisher) {
 		log.debug("Inside McsDiagPublisher publish state: " + cs);
-		eventPublisher
-				.ifPresent(actorRef -> actorRef.tell(new McsStateUpdate(jitem(cs, McsConfig.mcsStateKey)), self()));
+		eventPublisher.ifPresent(actorRef -> actorRef.tell(new McsStateUpdate(jitem(cs, McsConfig.mcsStateKey),
+				jitem(cs, McsConfig.azPosKey), jitem(cs, McsConfig.elPosKey)), self()));
 	}
 
 	public static Props props(AssemblyContext assemblyContext, Optional<ActorRef> mcsHcd,

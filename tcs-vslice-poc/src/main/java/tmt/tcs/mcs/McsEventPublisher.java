@@ -56,7 +56,7 @@ public class McsEventPublisher extends BaseEventPublisher {
 			Optional<ITelemetryService> telemetryService) {
 		return ReceiveBuilder.match(SystemUpdate.class, t -> publishSystemEvent(eventService, t.az, t.el))
 				.match(EngrUpdate.class, t -> publishEngr(telemetryService, t.az, t.el))
-				.match(McsStateUpdate.class, t -> publishMcsState(telemetryService, t.state))
+				.match(McsStateUpdate.class, t -> publishMcsPositionUpdate(eventService, t.state, t.azItem, t.elItem))
 				.match(AssemblyState.class, t -> publishAssemblyState(telemetryService, t))
 				.match(LocationService.Location.class,
 						location -> handleLocations(location, eventService, telemetryService))
@@ -106,8 +106,8 @@ public class McsEventPublisher extends BaseEventPublisher {
 
 	private void publishSystemEvent(Optional<IEventService> eventService, DoubleItem az, DoubleItem el) {
 		SystemEvent se = jadd(new SystemEvent(McsConfig.systemEventPrefix), az, el);
-		log.info("Inside McsEventPublisher publishSystemEvent: Status publish of " + McsConfig.systemEventPrefix
-				+ ": " + se);
+		log.info("Inside McsEventPublisher publishSystemEvent: Status publish of " + McsConfig.systemEventPrefix + ": "
+				+ se);
 		eventService.ifPresent(e -> e.publish(se).handle((x, ex) -> {
 			log.error("Inside McsEventPublisher publishSystemEvent: Failed to publish System event: " + se, ex);
 			return null;
@@ -133,10 +133,11 @@ public class McsEventPublisher extends BaseEventPublisher {
 	 * This method helps publishing MCS State as State Event using Telementry
 	 * Service
 	 */
-	private void publishMcsState(Optional<ITelemetryService> telemetryService, ChoiceItem state) {
-		StatusEvent ste = jadd(new StatusEvent(McsConfig.mcsStateEventPrefix), state);
-		log.debug("Inside McsEventPublisher " + McsConfig.mcsStateEventPrefix + ": " + ste);
-		telemetryService.ifPresent(e -> e.publish(ste).handle((x, ex) -> {
+	private void publishMcsPositionUpdate(Optional<IEventService> eventService, ChoiceItem state, DoubleItem az,
+			DoubleItem el) {
+		StatusEvent ste = jadd(new StatusEvent(McsConfig.currentPosPrefix), state, az, el);
+		log.debug("Inside McsEventPublisher " + McsConfig.currentPosPrefix + ": " + ste);
+		eventService.ifPresent(e -> e.publish(ste).handle((x, ex) -> {
 			log.error("Inside McsEventPublisher failed to publish mcs state: " + ste, ex);
 			return null;
 		}));
@@ -207,9 +208,13 @@ public class McsEventPublisher extends BaseEventPublisher {
 
 	public static class McsStateUpdate {
 		public final ChoiceItem state;
+		public final DoubleItem azItem;
+		public final DoubleItem elItem;
 
-		public McsStateUpdate(ChoiceItem state) {
+		public McsStateUpdate(ChoiceItem state, DoubleItem azItem, DoubleItem elItem) {
 			this.state = state;
+			this.azItem = azItem;
+			this.elItem = elItem;
 		}
 	}
 

@@ -151,18 +151,19 @@ public class McsTest extends JavaTestKit {
 		ActorRef mcsAssembly = newMcsAssembly(fakeSupervisor.ref());
 		TestProbe fakeClient = new TestProbe(system);
 
-		SetupConfig followSc = jadd(new SetupConfig(McsConfig.followCK.prefix()), jset(McsConfig.azDemandKey, azValue),
-				jset(McsConfig.elDemandKey, elValue), jset(McsConfig.timeDemandKey, timeValue));
+		SetupConfig followSc = jadd(new SetupConfig(McsConfig.followCK.prefix()));
 
-		SetupConfig followSc2 = jadd(new SetupConfig(McsConfig.positionDemandCK.prefix()),
-				jset(McsConfig.azDemandKey, 4.0), jset(McsConfig.elDemandKey, 5.0),
-				jset(McsConfig.timeDemandKey, 6.0));
+		SetupConfig setAzimuthSc = jadd(new SetupConfig(McsConfig.setAzimuthCK.prefix()),
+				jset(McsConfig.azDemandKey, 4.0));
+
+		SetupConfig setElevationSc = jadd(new SetupConfig(McsConfig.setElevationCK.prefix()),
+				jset(McsConfig.elDemandKey, 5.0));
 
 		fakeSupervisor.expectMsg(Initialized);
 		fakeSupervisor.send(mcsAssembly, Running);
 
 		SetupConfigArg sca = Configurations.createSetupConfigArg("mcsFollowCommand",
-				new SetupConfig(McsConfig.initCK.prefix()), followSc, followSc2);
+				new SetupConfig(McsConfig.initCK.prefix()), followSc, setAzimuthSc, setElevationSc);
 
 		fakeClient.send(mcsAssembly, new Submit(sca));
 

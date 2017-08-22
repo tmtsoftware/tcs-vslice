@@ -36,7 +36,7 @@ import scala.concurrent.duration.Duration;
 import scala.runtime.BoxedUnit;
 import tmt.tcs.common.BaseHcd;
 import tmt.tcs.mcs.McsConfig;
-import tmt.tcs.mcs.hcd.McsSimulator.McsUpdate;
+import tmt.tcs.mcs.hcd.McsSimulator.McsPosUpdate;
 
 /**
  * This is the Top Level Actor for the Mcs HCD It supports below operations-
@@ -50,6 +50,7 @@ public class McsHcd extends BaseHcd {
 	private final ActorRef supervisor;
 
 	ActorRef mcsSimulator;
+	McsPosUpdate current;
 
 	// McsHWConfig mcsHWConfig;
 
@@ -106,9 +107,11 @@ public class McsHcd extends BaseHcd {
 			supervisor.tell(ShutdownComplete, self());
 		}).match(Supervisor.LifecycleFailureInfo.class, e -> {
 			log.error("Inside McsHcd Received failed state: " + e.state() + " for reason: " + e.reason());
-		}).match(McsUpdate.class, e -> {
+		}).match(McsPosUpdate.class, e -> {
 			log.debug("Inside McsHcd Received McsUpdate");
-			CurrentState mcsState = cs(McsConfig.mcsStatePrefix, jset(mcsStateKey, Choice(MCS_IDLE.toString())));
+			current = e;
+			CurrentState mcsState = cs(McsConfig.currentPosPrefix, jset(mcsStateKey, Choice(MCS_IDLE.toString())),
+					jset(McsConfig.azPosKey, e.azPosition), jset(McsConfig.elPosKey, e.elPosition));
 			notifySubscribers(mcsState);
 		}).matchAny(x -> log.warning("Inside McsHcd Unexpected message :unhandledPF: " + x)).build());
 	}

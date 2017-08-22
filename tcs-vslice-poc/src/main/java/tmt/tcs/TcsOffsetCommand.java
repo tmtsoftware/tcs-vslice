@@ -5,7 +5,6 @@ import static javacsw.util.config.JItems.jvalue;
 
 import java.util.Optional;
 
-import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
 import akka.actor.Props;
 import akka.event.Logging;
@@ -14,14 +13,17 @@ import akka.japi.Creator;
 import akka.japi.pf.ReceiveBuilder;
 import csw.util.config.Configurations.SetupConfig;
 import javacsw.services.ccs.JSequentialExecutor;
+import scala.PartialFunction;
+import scala.runtime.BoxedUnit;
 import tmt.tcs.common.AssemblyContext;
 import tmt.tcs.common.AssemblyStateActor.AssemblyState;
+import tmt.tcs.common.BaseCommand;
 
 /*
  * This is an actor class which receives command specific to Offset Operation
  * And after any modifications if required, redirect the same to TPK
  */
-public class TcsOffsetCommand extends AbstractActor {
+public class TcsOffsetCommand extends BaseCommand {
 
 	private LoggingAdapter log = Logging.getLogger(getContext().system(), this);
 
@@ -45,7 +47,13 @@ public class TcsOffsetCommand extends AbstractActor {
 			ActorRef m3RefActor, AssemblyState tcsStartState, Optional<ActorRef> stateActor) {
 		this.tcsStateActor = stateActor;
 
-		receive(ReceiveBuilder.matchEquals(JSequentialExecutor.CommandStart(), t -> {
+		receive(followReceive(sc, mcsRefActor, ecsRefActor, m3RefActor));
+	}
+
+	public PartialFunction<Object, BoxedUnit> followReceive(SetupConfig sc, ActorRef mcsRefActor, ActorRef ecsRefActor,
+			ActorRef m3RefActor) {
+
+		return ReceiveBuilder.matchEquals(JSequentialExecutor.CommandStart(), t -> {
 			log.debug("Inside TcsOffsetCommand: Offset command -- START: " + t + ": Config Key is: " + sc.configKey());
 
 			// TODO:: Code for calling TPK to be done here
@@ -57,7 +65,7 @@ public class TcsOffsetCommand extends AbstractActor {
 
 		}).matchEquals(JSequentialExecutor.StopCurrentCommand(), t -> {
 			log.debug("Inside TcsOffsetCommand: Offset command -- STOP: " + t);
-		}).matchAny(t -> log.warning("Inside TcsOffsetCommand: Unknown message received: " + t)).build());
+		}).matchAny(t -> log.warning("Inside TcsOffsetCommand: Unknown message received: " + t)).build();
 	}
 
 	public static Props props(AssemblyContext ac, SetupConfig sc, ActorRef mcsRefActor, ActorRef ecsRefActor,

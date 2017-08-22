@@ -220,7 +220,8 @@ public class McsCommandHandler extends BaseCommandHandler {
 			ConfigKey configKey = sc.configKey();
 			log.debug("Inside McsCommandHandler followReceive: ExecuteOne: configKey is: " + configKey);
 
-			if (configKey.equals(McsConfig.positionDemandCK)) {
+			if (configKey.equals(McsConfig.setAzimuthCK)) {
+				log.debug("Inside McsCommandHandler followReceive: Started for: " + configKey);
 				try {
 					ask(mcsStateActor, new AssemblySetState(azItem(azFollowing), elItem(elFollowing)), 5000)
 							.toCompletableFuture().get();
@@ -229,18 +230,43 @@ public class McsCommandHandler extends BaseCommandHandler {
 				}
 
 				DoubleItem azItem = jitem(sc, McsConfig.azDemandKey);
-				DoubleItem elItem = jitem(sc, McsConfig.elDemandKey);
-				DoubleItem timeItem = jitem(sc, McsConfig.timeDemandKey);
 
 				Double az = jvalue(azItem);
-				Double el = jvalue(elItem);
-				Double time = jvalue(timeItem);
 
 				followActor.tell(new McsFollowActor.SetAzimuth(jset(McsConfig.az, az)), self());
 				Timeout timeout = new Timeout(5, TimeUnit.SECONDS);
-				executeMatch(context(), posMatcher(az, el, time), mcsHcd, commandOriginator, timeout, status -> {
+				executeMatch(context(), azPosMatcher(az), mcsHcd, commandOriginator, timeout, status -> {
 					if (status == Completed) {
 						try {
+							log.debug("Inside McsCommandHandler followReceive: Command Completed for: " + configKey);
+							ask(mcsStateActor, new AssemblySetState(azItem(azFollowing), elItem(elFollowing)), 5000)
+									.toCompletableFuture().get();
+						} catch (Exception e) {
+							log.error(e, "Inside McsCommandHandler followReceive: Error setting state");
+						}
+					} else if (status instanceof Error)
+						log.error("Inside McsCommandHandler followReceive: command failed with message: "
+								+ ((Error) status).message());
+				});
+			} else if (configKey.equals(McsConfig.setElevationCK)) {
+				log.debug("Inside McsCommandHandler followReceive: Started for: " + configKey);
+				try {
+					ask(mcsStateActor, new AssemblySetState(azItem(azFollowing), elItem(elFollowing)), 5000)
+							.toCompletableFuture().get();
+				} catch (Exception e) {
+					log.error(e, "Inside McsCommandHandler followReceive: Error setting state");
+				}
+
+				DoubleItem elItem = jitem(sc, McsConfig.elDemandKey);
+
+				Double el = jvalue(elItem);
+
+				followActor.tell(new McsFollowActor.SetElevation(jset(McsConfig.el, el)), self());
+				Timeout timeout = new Timeout(5, TimeUnit.SECONDS);
+				executeMatch(context(), elPosMatcher(el), mcsHcd, commandOriginator, timeout, status -> {
+					if (status == Completed) {
+						try {
+							log.debug("Inside McsCommandHandler followReceive: Command Completed for: " + configKey);
 							ask(mcsStateActor, new AssemblySetState(azItem(azFollowing), elItem(elFollowing)), 5000)
 									.toCompletableFuture().get();
 						} catch (Exception e) {
@@ -307,25 +333,6 @@ public class McsCommandHandler extends BaseCommandHandler {
 	}
 
 	/**
-	 * Based upon command parameters being passed to move command this helps in
-	 * generating DemandMatcher which can be used to track for command
-	 * completion status
-	 * 
-	 * @param az
-	 * @param el
-	 * @param time
-	 * @return DemandMatcher
-	 */
-	public static DemandMatcher posMatcher(double az, double el, double time) {
-		System.out.println("Inside McsCommandHandler posMatcher Move: Starts");
-
-		DemandState ds = jadd(new DemandState(McsConfig.mcsStatePrefix), jset(mcsStateKey, MCS_IDLE));
-
-		System.out.println("Inside McsCommandHandler posMatcher Move: DemandState is: " + ds);
-		return new DemandMatcher(ds, false);
-	}
-
-	/**
 	 * Based upon command parameters being passed to offset command this helps
 	 * in generating DemandMatcher which can be used to track for command
 	 * completion status
@@ -337,8 +344,40 @@ public class McsCommandHandler extends BaseCommandHandler {
 	public static DemandMatcher posMatcher(double az, double el) {
 		System.out.println("Inside McsCommandHandler posMatcher Offset: Starts");
 
-		DemandState ds = jadd(new DemandState(McsConfig.mcsStatsPrefix), jset(McsConfig.az, az),
-				jset(McsConfig.el, el));
+		DemandState ds = jadd(new DemandState(McsConfig.currentPosPrefix), jset(mcsStateKey, MCS_IDLE),
+				jset(McsConfig.azPosKey, az), jset(McsConfig.elPosKey, el));
+		return new DemandMatcher(ds, false);
+	}
+
+	/**
+	 * Based upon command parameters being passed to Set Azimuth command this
+	 * helps in generating DemandMatcher which can be used to track for command
+	 * completion status
+	 * 
+	 * @param x
+	 * @return DemandMatcher
+	 */
+	public static DemandMatcher azPosMatcher(double az) {
+		System.out.println("Inside McsCommandHandler azPosMatcher : Starts");
+
+		DemandState ds = jadd(new DemandState(McsConfig.currentPosPrefix), jset(mcsStateKey, MCS_IDLE),
+				jset(McsConfig.azPosKey, az));
+		return new DemandMatcher(ds, false);
+	}
+
+	/**
+	 * Based upon command parameters being passed to Set Elevation command this
+	 * helps in generating DemandMatcher which can be used to track for command
+	 * completion status
+	 * 
+	 * @param x
+	 * @return DemandMatcher
+	 */
+	public static DemandMatcher elPosMatcher(double el) {
+		System.out.println("Inside McsCommandHandler elPosMatcher : Starts");
+
+		DemandState ds = jadd(new DemandState(McsConfig.currentPosPrefix), jset(mcsStateKey, MCS_IDLE),
+				jset(McsConfig.elPosKey, el));
 		return new DemandMatcher(ds, false);
 	}
 

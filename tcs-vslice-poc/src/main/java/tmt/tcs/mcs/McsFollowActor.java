@@ -30,7 +30,7 @@ public class McsFollowActor extends AbstractActor {
 	public final DoubleItem initialAzimuth;
 	public final DoubleItem initialElevation;
 
-	private McsFollowActor(AssemblyContext assemblyContext, DoubleItem initialElevation, DoubleItem initialAzimuth,
+	private McsFollowActor(AssemblyContext assemblyContext, DoubleItem initialAzimuth, DoubleItem initialElevation,
 			Optional<ActorRef> mcsControl, Optional<ActorRef> eventPublisher) {
 		this.assemblyContext = assemblyContext;
 		this.initialAzimuth = initialAzimuth;
@@ -39,10 +39,10 @@ public class McsFollowActor extends AbstractActor {
 		this.eventPublisher = eventPublisher;
 
 		// Initial receive - start with initial values
-		receive(followingReceive(initialElevation, initialAzimuth));
+		receive(followingReceive(initialAzimuth, initialElevation));
 	}
 
-	private PartialFunction<Object, BoxedUnit> followingReceive(DoubleItem azimuth, DoubleItem elevation) {
+	private PartialFunction<Object, BoxedUnit> followingReceive(DoubleItem initialAzimuth, DoubleItem initialElevation) {
 		return ReceiveBuilder.match(StopFollowing.class, t -> {
 			// do nothing
 		}).match(UpdatedEventData.class, t -> {
@@ -62,11 +62,13 @@ public class McsFollowActor extends AbstractActor {
 			// No need to call followReceive again since we are using the
 			// UpdateEventData message
 			self().tell(new UpdatedEventData(initialAzimuth, t.elevation, new EventTime(Instant.now())), self());
+			context().become(followingReceive(initialAzimuth, t.elevation));
 		}).match(SetAzimuth.class, t -> {
 			log.info("Inside McsFollowActor followingReceive: Got azimuth: " + t.azimuth);
 			// No need to call followReceive again since we are using the
 			// UpdateEventData message
 			self().tell(new UpdatedEventData(t.azimuth, initialElevation, new EventTime(Instant.now())), self());
+			context().become(followingReceive(t.azimuth, initialElevation));
 		}).matchAny(t -> log.warning("Inside McsFollowActor followingReceive: Unexpected message is: " + t)).build();
 	}
 

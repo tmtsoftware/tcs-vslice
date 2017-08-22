@@ -53,7 +53,7 @@ public class TcsDiagnosticPublisher extends BaseDiagnosticPublisher {
 			Optional<ActorRef> hcd, Optional<ActorRef> eventPublisher) {
 		return ReceiveBuilder.match(CurrentState.class, cs -> {
 			if (cs.configKey().equals(TcsConfig.tcsStateCK)) {
-				publishStateUpdate(cs, eventPublisher);
+				publishTcsPosUpdate(cs, eventPublisher);
 			}
 		}).match(Location.class, location -> {
 
@@ -89,7 +89,7 @@ public class TcsDiagnosticPublisher extends BaseDiagnosticPublisher {
 			Optional<ActorRef> hcd, Cancellable cancelToken, Optional<ActorRef> eventPublisher) {
 		return ReceiveBuilder.match(CurrentState.class, cs -> {
 			if (cs.configKey().equals(TcsConfig.tcsStateCK)) {
-				publishStateUpdate(cs, eventPublisher);
+				publishTcsPosUpdate(cs, eventPublisher);
 			} else if (cs.configKey().equals(TcsConfig.tcsStatsCK)) {
 				publishStatsUpdate(cs, eventPublisher);
 			}
@@ -120,13 +120,13 @@ public class TcsDiagnosticPublisher extends BaseDiagnosticPublisher {
 							eventPublisher));
 				}
 			}
-		}).matchAny(t -> log.warning("DiagPublisher:diagnosticReceive received an unexpected message: " + t)).build();
+		}).matchAny(t -> log.warning("Inside TcsDiagPublisher:diagnosticReceive received an unexpected message: " + t)).build();
 	}
 
 	/**
 	 * This publishes State Updates
 	 */
-	public void publishStateUpdate(CurrentState cs, Optional<ActorRef> eventPublisher) {
+	public void publishTcsPosUpdate(CurrentState cs, Optional<ActorRef> eventPublisher) {
 		log.debug("Inside TcsDiagPublisher publish state: " + cs);
 		eventPublisher.ifPresent(actorRef -> actorRef.tell(new String("TcsTest"), self()));
 	}

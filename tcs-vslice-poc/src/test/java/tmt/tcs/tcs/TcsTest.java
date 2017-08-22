@@ -164,7 +164,41 @@ public class TcsTest extends JavaTestKit {
 	 */
 	@Test
 	public void test1() {
-		logger.debug("Inside TcsTest test1 Position Command");
+		logger.debug("Inside TcsTest test1 Offset Command");
+
+		TestProbe fakeSupervisor = new TestProbe(system);
+		ActorRef tcsAssembly = newTcsAssembly(fakeSupervisor.ref());
+		TestProbe fakeClient = new TestProbe(system);
+
+		SetupConfig offsetSc = jadd(new SetupConfig(TcsConfig.offsetCK.prefix()), jset(TcsConfig.ra, raOffsetValue),
+				jset(TcsConfig.dec, decOffsetValue));
+
+		fakeSupervisor.expectMsg(Initialized);
+		fakeSupervisor.send(tcsAssembly, Running);
+
+		SetupConfigArg sca = Configurations.createSetupConfigArg("tcsOffsetCommand", offsetSc);
+
+		fakeClient.send(tcsAssembly, new Submit(sca));
+
+		CommandResult acceptedMsg = fakeClient.expectMsgClass(duration("3 seconds"), CommandResult.class);
+		assertEquals(acceptedMsg.overall(), Accepted);
+		logger.debug("Inside TcsTest test1 Command Accepted Result: " + acceptedMsg);
+
+		CommandResult completeMsg = fakeClient.expectMsgClass(duration("3 seconds"), CommandResult.class);
+		logger.debug("Inside TcsTest test1 Command Result: " + completeMsg.details().status(0));
+
+		assertEquals(completeMsg.overall(), AllCompleted);
+
+	}
+	
+
+	/**
+	 * This test case checks for follow command flow from Test Class to TCS
+	 * Assembly to MCS Assembly
+	 */
+	@Test
+	public void test2() {
+		logger.debug("Inside TcsTest test2 Position Command");
 
 		TestProbe fakeSupervisor = new TestProbe(system);
 		ActorRef tcsAssembly = newTcsAssembly(fakeSupervisor.ref());
@@ -183,44 +217,11 @@ public class TcsTest extends JavaTestKit {
 
 		CommandResult acceptedMsg = fakeClient.expectMsgClass(duration("3 seconds"), CommandResult.class);
 		assertEquals(acceptedMsg.overall(), Accepted);
-		logger.debug("Inside TcsTest test1 Command Accepted Result: " + acceptedMsg);
-
-		CommandResult completeMsg = fakeClient.expectMsgClass(duration("3 seconds"), CommandResult.class);
-		logger.debug("Inside TcsTest test1 Command Result: " + completeMsg + ": completeMsg.overall(): "
-				+ completeMsg.overall());
-
-		assertEquals(completeMsg.overall(), AllCompleted);
-
-	}
-
-	/**
-	 * This test case checks for follow command flow from Test Class to TCS
-	 * Assembly to MCS Assembly
-	 */
-	@Test
-	public void test2() {
-		logger.debug("Inside TcsTest test2 Offset Command");
-
-		TestProbe fakeSupervisor = new TestProbe(system);
-		ActorRef tcsAssembly = newTcsAssembly(fakeSupervisor.ref());
-		TestProbe fakeClient = new TestProbe(system);
-
-		SetupConfig offsetSc = jadd(new SetupConfig(TcsConfig.offsetCK.prefix()), jset(TcsConfig.ra, raOffsetValue),
-				jset(TcsConfig.dec, decOffsetValue));
-
-		fakeSupervisor.expectMsg(Initialized);
-		fakeSupervisor.send(tcsAssembly, Running);
-
-		SetupConfigArg sca = Configurations.createSetupConfigArg("tcsOffsetCommand", offsetSc);
-
-		fakeClient.send(tcsAssembly, new Submit(sca));
-
-		CommandResult acceptedMsg = fakeClient.expectMsgClass(duration("3 seconds"), CommandResult.class);
-		assertEquals(acceptedMsg.overall(), Accepted);
 		logger.debug("Inside TcsTest test2 Command Accepted Result: " + acceptedMsg);
 
 		CommandResult completeMsg = fakeClient.expectMsgClass(duration("3 seconds"), CommandResult.class);
-		logger.debug("Inside TcsTest test2 Command Result: " + completeMsg.details().status(0));
+		logger.debug("Inside TcsTest test2 Command Result: " + completeMsg + ": completeMsg.overall(): "
+				+ completeMsg.overall());
 
 		assertEquals(completeMsg.overall(), AllCompleted);
 

@@ -63,7 +63,7 @@ public class McsFollowCommand extends BaseCommand {
 		this.eventService = eventService;
 
 		mcsControl = context().actorOf(McsControl.props(assemblyContext, mcsHcd), "mcscontrol");
-		ActorRef initialFollowActor = createFollower(initialElevation, initialElevation, mcsControl, eventPublisher,
+		ActorRef initialFollowActor = createFollower(initialAzimuth, initialElevation, mcsControl, eventPublisher,
 				eventPublisher);
 		ActorRef initialEventSubscriber = createEventSubscriber(initialFollowActor, eventService);
 

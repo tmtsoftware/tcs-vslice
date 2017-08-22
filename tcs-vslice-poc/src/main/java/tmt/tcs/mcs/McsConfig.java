@@ -23,6 +23,8 @@ public class McsConfig {
 	public static final String initPrefix = mcsPrefix + ".init";
 	public static final String followPrefix = mcsPrefix + ".follow";
 	public static final String offsetPrefix = mcsPrefix + ".offset";
+	public static final String setAzimuthPrefix = mcsPrefix + ".azimuth";
+	public static final String setElevationPrefix = mcsPrefix + ".elevation";
 	public static final String mcsStatePrefix = mcsPrefix + ".mcsState";
 	public static final String mcsStatsPrefix = mcsPrefix + ".stats";
 	public static final String mcsStateEventPrefix = mcsPrefix + ".mcsState";
@@ -37,6 +39,8 @@ public class McsConfig {
 	public static final ConfigKey initCK = new ConfigKey(initPrefix);
 	public static final ConfigKey followCK = new ConfigKey(followPrefix);
 	public static final ConfigKey offsetCK = new ConfigKey(offsetPrefix);
+	public static final ConfigKey setAzimuthCK = new ConfigKey(setAzimuthPrefix);
+	public static final ConfigKey setElevationCK = new ConfigKey(setElevationPrefix);
 	public static final ConfigKey mcsStateCK = new ConfigKey(mcsStatePrefix);
 	public static final ConfigKey mcsStatsCK = new ConfigKey(mcsStatsPrefix);
 	public static final ConfigKey positionDemandCK = new ConfigKey(positionDemandPrefix);
