@@ -42,7 +42,7 @@ public class M3FollowActor extends AbstractActor {
 		receive(followingReceive(initialRotation, initialTilt));
 	}
 
-	private PartialFunction<Object, BoxedUnit> followingReceive(DoubleItem rotation, DoubleItem tilt) {
+	private PartialFunction<Object, BoxedUnit> followingReceive(DoubleItem initialRotation, DoubleItem initialTilt) {
 		return ReceiveBuilder.match(StopFollowing.class, t -> {
 			// do nothing
 		}).match(UpdatedEventData.class, t -> {
@@ -61,12 +61,14 @@ public class M3FollowActor extends AbstractActor {
 			log.info("Inside M3FollowActor followingReceive: Got Rotation: " + t.rotation);
 			// No need to call followReceive again since we are using the
 			// UpdateEventData message
-			self().tell(new UpdatedEventData(initialRotation, t.rotation, new EventTime(Instant.now())), self());
+			self().tell(new UpdatedEventData(t.rotation, initialTilt, new EventTime(Instant.now())), self());
+			context().become(followingReceive(t.rotation, initialTilt));
 		}).match(SetTilt.class, t -> {
 			log.info("Inside M3FollowActor followingReceive: Got Tilt: " + t.tilt);
 			// No need to call followReceive again since we are using the
 			// UpdateEventData message
-			self().tell(new UpdatedEventData(t.tilt, initialTilt, new EventTime(Instant.now())), self());
+			self().tell(new UpdatedEventData(initialRotation, t.tilt, new EventTime(Instant.now())), self());
+			context().become(followingReceive(initialRotation, t.tilt));
 		}).matchAny(t -> log.warning("Inside M3FollowActor followingReceive: Unexpected message is: " + t)).build();
 	}
 

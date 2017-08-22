@@ -63,7 +63,7 @@ public class EcsFollowCommand extends BaseCommand {
 		this.eventService = eventService;
 
 		ecsControl = context().actorOf(EcsControl.props(assemblyContext, ecsHcd), "ecscontrol");
-		ActorRef initialFollowActor = createFollower(initialElevation, initialElevation, ecsControl, eventPublisher,
+		ActorRef initialFollowActor = createFollower(initialAzimuth, initialElevation, ecsControl, eventPublisher,
 				eventPublisher);
 		ActorRef initialEventSubscriber = createEventSubscriber(initialFollowActor, eventService);
 

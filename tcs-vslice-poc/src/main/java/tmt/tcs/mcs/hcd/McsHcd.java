@@ -12,7 +12,6 @@ import static javacsw.util.config.JItems.jitem;
 import static javacsw.util.config.JItems.jset;
 import static javacsw.util.config.JItems.jvalue;
 import static tmt.tcs.mcs.McsConfig.mcsStateKey;
-import static tmt.tcs.mcs.McsConfig.McsState.MCS_IDLE;
 
 import java.io.File;
 import java.util.Optional;
@@ -110,7 +109,7 @@ public class McsHcd extends BaseHcd {
 		}).match(McsPosUpdate.class, e -> {
 			log.debug("Inside McsHcd Received McsUpdate");
 			current = e;
-			CurrentState mcsState = cs(McsConfig.currentPosPrefix, jset(mcsStateKey, Choice(MCS_IDLE.toString())),
+			CurrentState mcsState = cs(McsConfig.currentPosPrefix, jset(mcsStateKey, Choice(e.state.toString())),
 					jset(McsConfig.azPosKey, e.azPosition), jset(McsConfig.elPosKey, e.elPosition));
 			notifySubscribers(mcsState);
 		}).matchAny(x -> log.warning("Inside McsHcd Unexpected message :unhandledPF: " + x)).build());

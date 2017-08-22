@@ -18,23 +18,41 @@ public class EcsSimulator extends AbstractActor {
 	LoggingAdapter log = Logging.getLogger(getContext().system(), this);
 
 	private final Optional<ActorRef> replyTo;
+	private EcsState currentState = EcsState.ECS_IDLE;
+	private Double currentAz;
+	private Double currentEl;
 
 	private EcsSimulator(Optional<ActorRef> replyTo) {
 		this.replyTo = replyTo;
+		this.currentAz = 0.0;
+		this.currentEl = 0.0;
 
 		receive(idleReceive());
 	}
 
 	PartialFunction<Object, BoxedUnit> idleReceive() {
 		return ReceiveBuilder.match(Move.class, e -> {
+			// Setting currentState to Moving while performing move operation
+			currentState = EcsState.ECS_MOVING;
 			log.debug("Inside EcsSimulator idleReceive Move received: az is: " + e.az + ": el is: " + e.el);
-			update(replyTo, new EcsUpdate(EcsState.ECS_IDLE));
+
+			// TODO:: Move Operation to be performed here
+
+			currentAz = e.az;
+			currentEl = e.el;
+			currentState = EcsState.ECS_IDLE;
+
+			update(replyTo, getState());
 		}).matchAny(x -> log.warning("Inside EcsSimulator Unexpected message in idleReceive: " + x)).build();
 	}
 
 	void update(Optional<ActorRef> replyTo, Object msg) {
 		log.debug("Inside EcsSimulator update: msg is: " + msg);
 		replyTo.ifPresent(actorRef -> actorRef.tell(msg, self()));
+	}
+
+	EcsPosUpdate getState() {
+		return new EcsPosUpdate(currentState, currentAz, currentEl);
 	}
 
 	public static Props props(final Optional<ActorRef> replyTo) {
@@ -48,11 +66,15 @@ public class EcsSimulator extends AbstractActor {
 		});
 	}
 
-	public static class EcsUpdate {
+	public static class EcsPosUpdate {
 		public final EcsState state;
+		public final Double azPosition;
+		public final Double elPosition;
 
-		public EcsUpdate(EcsState state) {
+		public EcsPosUpdate(EcsState state, Double azPosition, Double elPosition) {
 			this.state = state;
+			this.azPosition = azPosition;
+			this.elPosition = elPosition;
 		}
 	}
 

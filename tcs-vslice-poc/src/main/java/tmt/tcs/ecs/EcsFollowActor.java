@@ -42,7 +42,7 @@ public class EcsFollowActor extends AbstractActor {
 		receive(followingReceive(initialElevation, initialAzimuth));
 	}
 
-	private PartialFunction<Object, BoxedUnit> followingReceive(DoubleItem azimuth, DoubleItem elevation) {
+	private PartialFunction<Object, BoxedUnit> followingReceive(DoubleItem initialAzimuth, DoubleItem initialElevation) {
 		return ReceiveBuilder.match(StopFollowing.class, t -> {
 			// do nothing
 		}).match(UpdatedEventData.class, t -> {
@@ -62,11 +62,13 @@ public class EcsFollowActor extends AbstractActor {
 			// No need to call followReceive again since we are using the
 			// UpdateEventData message
 			self().tell(new UpdatedEventData(initialAzimuth, t.elevation, new EventTime(Instant.now())), self());
+			context().become(followingReceive(initialAzimuth, t.elevation));
 		}).match(SetAzimuth.class, t -> {
 			log.info("Inside EcsFollowActor followingReceive: Got azimuth: " + t.azimuth);
 			// No need to call followReceive again since we are using the
 			// UpdateEventData message
 			self().tell(new UpdatedEventData(t.azimuth, initialElevation, new EventTime(Instant.now())), self());
+			context().become(followingReceive(t.azimuth, initialElevation));
 		}).matchAny(t -> log.warning("Inside EcsFollowActor followingReceive: Unexpected message is: " + t)).build();
 	}
 

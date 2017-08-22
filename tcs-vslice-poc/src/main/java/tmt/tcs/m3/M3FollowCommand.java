@@ -63,7 +63,7 @@ public class M3FollowCommand extends BaseCommand {
 		this.eventService = eventService;
 
 		m3Control = context().actorOf(M3Control.props(assemblyContext, m3Hcd), "m3control");
-		ActorRef initialFollowActor = createFollower(initialTilt, initialTilt, m3Control, eventPublisher,
+		ActorRef initialFollowActor = createFollower(initialRotation, initialTilt, m3Control, eventPublisher,
 				eventPublisher);
 		ActorRef initialEventSubscriber = createEventSubscriber(initialFollowActor, eventService);
 

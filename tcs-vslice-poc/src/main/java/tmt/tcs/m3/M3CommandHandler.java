@@ -216,7 +216,8 @@ public class M3CommandHandler extends BaseCommandHandler {
 			ConfigKey configKey = sc.configKey();
 			log.debug("Inside M3CommandHandler followReceive: ExecuteOne: configKey is: " + configKey);
 
-			if (configKey.equals(M3Config.positionDemandCK)) {
+			if (configKey.equals(M3Config.setRotationCK)) {
+				log.debug("Inside M3CommandHandler followReceive: Started for: " + configKey);
 				try {
 					ask(m3StateActor, new AssemblySetState(azItem(azFollowing), elItem(elFollowing)), 5000)
 							.toCompletableFuture().get();
@@ -225,18 +226,43 @@ public class M3CommandHandler extends BaseCommandHandler {
 				}
 
 				DoubleItem rotationItem = jitem(sc, M3Config.rotationDemandKey);
-				DoubleItem tiltItem = jitem(sc, M3Config.tiltDemandKey);
-				DoubleItem timeItem = jitem(sc, M3Config.timeDemandKey);
 
 				Double rotation = jvalue(rotationItem);
-				Double tilt = jvalue(tiltItem);
-				Double time = jvalue(timeItem);
 
 				followActor.tell(new M3FollowActor.SetRotation(jset(M3Config.rotation, rotation)), self());
 				Timeout timeout = new Timeout(5, TimeUnit.SECONDS);
-				executeMatch(context(), posMatcher(rotation, tilt, time), m3Hcd, commandOriginator, timeout, status -> {
+				executeMatch(context(), rotationPosMatcher(rotation), m3Hcd, commandOriginator, timeout, status -> {
 					if (status == Completed) {
 						try {
+							log.debug("Inside M3CommandHandler followReceive: Command Completed for: " + configKey);
+							ask(m3StateActor, new AssemblySetState(azItem(azFollowing), elItem(elFollowing)), 5000)
+									.toCompletableFuture().get();
+						} catch (Exception e) {
+							log.error(e, "Inside M3CommandHandler followReceive: Error setting state");
+						}
+					} else if (status instanceof Error)
+						log.error("Inside M3CommandHandler followReceive: command failed with message: "
+								+ ((Error) status).message());
+				});
+			} else if (configKey.equals(M3Config.setTiltCK)) {
+				log.debug("Inside M3CommandHandler followReceive: Started for: " + configKey);
+				try {
+					ask(m3StateActor, new AssemblySetState(azItem(azFollowing), elItem(elFollowing)), 5000)
+							.toCompletableFuture().get();
+				} catch (Exception e) {
+					log.error(e, "Inside M3CommandHandler followReceive: Error setting state");
+				}
+
+				DoubleItem tiltItem = jitem(sc, M3Config.tiltDemandKey);
+
+				Double tilt = jvalue(tiltItem);
+
+				followActor.tell(new M3FollowActor.SetTilt(jset(M3Config.tilt, tilt)), self());
+				Timeout timeout = new Timeout(5, TimeUnit.SECONDS);
+				executeMatch(context(), tiltPosMatcher(tilt), m3Hcd, commandOriginator, timeout, status -> {
+					if (status == Completed) {
+						try {
+							log.debug("Inside M3CommandHandler followReceive: Command Completed for: " + configKey);
 							ask(m3StateActor, new AssemblySetState(azItem(azFollowing), elItem(elFollowing)), 5000)
 									.toCompletableFuture().get();
 						} catch (Exception e) {
@@ -307,34 +333,49 @@ public class M3CommandHandler extends BaseCommandHandler {
 	 * generating DemandMatcher which can be used to track for command
 	 * completion status
 	 * 
-	 * @param az
-	 * @param el
-	 * @param time
+	 * @param rotation
+	 * @param tilt
 	 * @return DemandMatcher
 	 */
-	public static DemandMatcher posMatcher(double az, double el, double time) {
+	public static DemandMatcher posMatcher(double rotation, double tilt) {
 		System.out.println("Inside M3CommandHandler posMatcher Move: Starts");
 
-		DemandState ds = jadd(new DemandState(M3Config.m3StatePrefix), jset(m3StateKey, M3_IDLE));
+		DemandState ds = jadd(new DemandState(M3Config.currentPosPrefix), jset(m3StateKey, M3_IDLE),
+				jset(M3Config.rotationPosKey, rotation), jset(M3Config.tiltPosKey, tilt));
 
-		System.out.println("Inside M3CommandHandler posMatcher Move: DemandState is: " + ds);
+		System.out.println("Inside M3CommandHandler posMatcher Move: DemandState is: " + tilt);
 		return new DemandMatcher(ds, false);
 	}
 
 	/**
-	 * Based upon command parameters being passed to offset command this helps
+	 * Based upon command parameters being passed to Set Rotation command this
+	 * helps in generating DemandMatcher which can be used to track for command
+	 * completion status
+	 * 
+	 * @param x
+	 * @return DemandMatcher
+	 */
+	public static DemandMatcher rotationPosMatcher(double rotation) {
+		System.out.println("Inside EcsCommandHandler rotationPosMatcher : Starts");
+
+		DemandState ds = jadd(new DemandState(M3Config.currentPosPrefix), jset(m3StateKey, M3_IDLE),
+				jset(M3Config.rotationPosKey, rotation));
+		return new DemandMatcher(ds, false);
+	}
+
+	/**
+	 * Based upon command parameters being passed to Set Tilt command this helps
 	 * in generating DemandMatcher which can be used to track for command
 	 * completion status
 	 * 
 	 * @param x
-	 * @param y
 	 * @return DemandMatcher
 	 */
-	public static DemandMatcher posMatcher(double x, double y) {
-		System.out.println("Inside M3CommandHandler posMatcher Offset: Starts");
+	public static DemandMatcher tiltPosMatcher(double tilt) {
+		System.out.println("Inside EcsCommandHandler tiltPosMatcher : Starts");
 
-		DemandState ds = jadd(new DemandState(M3Config.m3StateCK.prefix()), jset(M3Config.rotation, x),
-				jset(M3Config.tilt, y));
+		DemandState ds = jadd(new DemandState(M3Config.currentPosPrefix), jset(m3StateKey, M3_IDLE),
+				jset(M3Config.tiltPosKey, tilt));
 		return new DemandMatcher(ds, false);
 	}
 

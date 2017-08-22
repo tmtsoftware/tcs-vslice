@@ -1,5 +1,8 @@
 package tmt.tcs;
 
+import static javacsw.util.config.JItems.jitem;
+import static javacsw.util.config.JItems.jvalue;
+
 import java.util.Optional;
 
 import akka.actor.ActorRef;
@@ -10,12 +13,16 @@ import akka.japi.Creator;
 import akka.japi.pf.ReceiveBuilder;
 import csw.services.events.EventService;
 import csw.services.events.EventService.EventMonitor;
+import csw.util.config.Configurations.ConfigKey;
 import csw.util.config.Events.SystemEvent;
 import javacsw.services.events.IEventService;
 import scala.PartialFunction;
 import scala.runtime.BoxedUnit;
 import tmt.tcs.common.AssemblyContext;
 import tmt.tcs.common.BaseEventSubscriber;
+import tmt.tcs.ecs.EcsConfig;
+import tmt.tcs.m3.M3Config;
+import tmt.tcs.mcs.McsConfig;
 
 /**
  * This Class provides Event Subcription functionality for TCS It extends
@@ -51,21 +58,63 @@ public class TcsEventSubscriber extends BaseEventSubscriber {
 		return ReceiveBuilder.
 
 				match(SystemEvent.class, event -> {
-					log.debug("Inside McsEventSubscriber subscribeReceive received an unknown SystemEvent: "
+					log.debug("Inside TcsEventSubscriber subscribeReceive received an SystemEvent: Config Key is: "
 							+ event.info().source());
-					updateRefActor();
+
+					Double azValue = 0.0;
+					Double elValue = 0.0;
+					Double rotationValue = 0.0;
+					Double tiltValue = 0.0;
+
+					if (McsConfig.currentPosCK.equals(event.info().source())) {
+						log.debug("Inside TcsEventSubscriber subscribeReceive received Mcs Current Position");
+						log.debug(
+								"############################## CURRENT MCS POSITION ##########################################");
+
+						azValue = jvalue(jitem(event, McsConfig.azPosKey));
+						elValue = jvalue(jitem(event, McsConfig.elPosKey));
+
+						log.debug("Azimuth is: " + azValue + ": Elevation is: " + elValue);
+						log.debug(
+								"##############################################################################################");
+					} else if (EcsConfig.currentPosCK.equals(event.info().source())) {
+						log.debug("Inside TcsEventSubscriber subscribeReceive received Ecs Current Position");
+						log.debug(
+								"############################## CURRENT ECS POSITION ##########################################");
+
+						azValue = jvalue(jitem(event, EcsConfig.azPosKey));
+						elValue = jvalue(jitem(event, EcsConfig.elPosKey));
+
+						log.debug("Azimuth is: " + azValue + ": Elevation is: " + elValue);
+						log.debug(
+								"##############################################################################################");
+					} else if (M3Config.currentPosCK.equals(event.info().source())) {
+						log.debug("Inside TcsEventSubscriber subscribeReceive received M3 Current Position");
+						log.debug(
+								"############################## CURRENT M3 POSITION ###########################################");
+
+						rotationValue = jvalue(jitem(event, M3Config.rotationPosKey));
+						tiltValue = jvalue(jitem(event, M3Config.tiltPosKey));
+
+						log.debug("Rotation is: " + azValue + ": Tilt is: " + elValue);
+						log.debug(
+								"##############################################################################################");
+					}
+
+					updateRefActor(event.info().source(), azValue, elValue, rotationValue, tiltValue);
 				}).
 
 				matchAny(t -> System.out
-						.println("Inside McsEventSubscriber Unexpected message received:subscribeReceive: " + t))
+						.println("Inside TcsEventSubscriber Unexpected message received:subscribeReceive: " + t))
 				.build();
 	}
 
 	/**
 	 * This message propagates event to Referenced Actor
 	 */
-	private void updateRefActor() {
-		refActor.ifPresent(actoRef -> actoRef.tell(new String("Test"), self()));
+	private void updateRefActor(ConfigKey ck, Double az, Double el, Double rotation, Double tilt) {
+		//TODO:: Current Position to be sent to subscribed actor
+		refActor.ifPresent(actorRef -> actorRef.tell(new String("Test"), self()));
 	}
 
 	/**
@@ -75,12 +124,16 @@ public class TcsEventSubscriber extends BaseEventSubscriber {
 	 * @return
 	 */
 	private EventMonitor startupSubscriptions(IEventService eventService) {
-
-		EventMonitor subscribeMonitor = subscribeKeys(eventService, TcsConfig.dummyCK);
+		// Subscribe to Mcs Current Position Event
+		EventMonitor subscribeMonitor = subscribeKeys(eventService, McsConfig.currentPosCK);
 
 		log.debug("Inside TcsEventSubscriber actor: " + subscribeMonitor.actorRef());
 
-		subscribeKeys(subscribeMonitor, TcsConfig.dummyCK);
+		// Subscribe to Ecs Current Position Event
+		subscribeKeys(subscribeMonitor, EcsConfig.currentPosCK);
+
+		// Subscribe to M3 Current Position Event
+		subscribeKeys(subscribeMonitor, M3Config.currentPosCK);
 
 		return subscribeMonitor;
 	}

@@ -56,7 +56,7 @@ public class EcsEventPublisher extends BaseEventPublisher {
 			Optional<ITelemetryService> telemetryService) {
 		return ReceiveBuilder.match(SystemUpdate.class, t -> publishSystemEvent(eventService, t.az, t.el))
 				.match(EngrUpdate.class, t -> publishEngr(telemetryService, t.az, t.el))
-				.match(EcsStateUpdate.class, t -> publishEcsState(telemetryService, t.state))
+				.match(EcsStateUpdate.class, t -> publishEcsPositionUpdate(eventService, t.state, t.azItem, t.elItem))
 				.match(AssemblyState.class, t -> publishAssemblyState(telemetryService, t))
 				.match(LocationService.Location.class,
 						location -> handleLocations(location, eventService, telemetryService))
@@ -130,14 +130,15 @@ public class EcsEventPublisher extends BaseEventPublisher {
 	}
 
 	/**
-	 * This method helps publishing ECS State as State Event using Telementry
+	 * This method helps publishing ECS Position Update as State Event using Event
 	 * Service
 	 */
-	private void publishEcsState(Optional<ITelemetryService> telemetryService, ChoiceItem state) {
-		StatusEvent ste = jadd(new StatusEvent(EcsConfig.ecsStateEventPrefix), state);
-		log.debug("Inside EcsEventPublisher publishEcsState " + EcsConfig.ecsStateEventPrefix + ": " + ste);
-		telemetryService.ifPresent(e -> e.publish(ste).handle((x, ex) -> {
-			log.error("Inside EcsEventPublisher ublishEcsState failed to publish ecs state: " + ste, ex);
+	private void publishEcsPositionUpdate(Optional<IEventService> eventService, ChoiceItem state, DoubleItem az,
+			DoubleItem el) {
+		SystemEvent se = jadd(new SystemEvent(EcsConfig.currentPosPrefix), state, az, el);
+		log.debug("Inside EcsEventPublisher publishEcsPositionUpdate " + EcsConfig.currentPosPrefix + ": " + se);
+		eventService.ifPresent(e -> e.publish(se).handle((x, ex) -> {
+			log.error("Inside EcsEventPublisher publishEcsState failed to publish ecs state: " + se, ex);
 			return null;
 		}));
 	}
@@ -148,9 +149,9 @@ public class EcsEventPublisher extends BaseEventPublisher {
 	 */
 	private void publishAssemblyState(Optional<ITelemetryService> telemetryService, AssemblyState ts) {
 		StatusEvent ste = jadd(new StatusEvent(EcsConfig.ecsStateEventPrefix), ts.az, ts.el);
-		log.debug("Inside publishAssemblyState publishState: " + EcsConfig.ecsStateEventPrefix + ": " + ste);
+		log.debug("Inside EcsEventPublisher publishAssemblyState: " + EcsConfig.ecsStateEventPrefix + ": " + ste);
 		telemetryService.ifPresent(e -> e.publish(ste).handle((x, ex) -> {
-			log.error("Inside publishAssemblyState publishState: failed to publish state: " + ste, ex);
+			log.error("Inside EcsEventPublisher publishAssemblyState: failed to publish state: " + ste, ex);
 			return null;
 		}));
 	}
@@ -207,9 +208,13 @@ public class EcsEventPublisher extends BaseEventPublisher {
 
 	public static class EcsStateUpdate {
 		public final ChoiceItem state;
+		public final DoubleItem azItem;
+		public final DoubleItem elItem;
 
-		public EcsStateUpdate(ChoiceItem state) {
+		public EcsStateUpdate(ChoiceItem state, DoubleItem azItem, DoubleItem elItem) {
 			this.state = state;
+			this.azItem = azItem;
+			this.elItem = elItem;
 		}
 	}
 

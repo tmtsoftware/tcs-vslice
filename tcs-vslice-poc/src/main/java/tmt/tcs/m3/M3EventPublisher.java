@@ -56,7 +56,8 @@ public class M3EventPublisher extends BaseEventPublisher {
 			Optional<ITelemetryService> telemetryService) {
 		return ReceiveBuilder.match(SystemUpdate.class, t -> publishSystemEvent(eventService, t.rotation, t.tilt))
 				.match(EngrUpdate.class, t -> publishEngr(telemetryService, t.rotation, t.tilt))
-				.match(M3StateUpdate.class, t -> publishM3State(telemetryService, t.state))
+				.match(M3StateUpdate.class,
+						t -> publishM3PositionUpdate(eventService, t.state, t.rotationItem, t.tiltItem))
 				.match(LocationService.Location.class,
 						location -> handleLocations(location, eventService, telemetryService))
 				.
@@ -129,14 +130,15 @@ public class M3EventPublisher extends BaseEventPublisher {
 	}
 
 	/**
-	 * This method helps publishing M3 State as State Event using Telementry
-	 * Service
+	 * This method helps publishing M3 Position Update as State Event using
+	 * Event Service
 	 */
-	private void publishM3State(Optional<ITelemetryService> telemetryService, ChoiceItem state) {
-		StatusEvent ste = jadd(new StatusEvent(M3Config.m3StateEventPrefix), state);
-		log.debug("Inside publishM3State " + M3Config.m3StateEventPrefix + ": " + ste);
-		telemetryService.ifPresent(e -> e.publish(ste).handle((x, ex) -> {
-			log.error("Inside publishM3State failed to publish m3 state: " + ste, ex);
+	private void publishM3PositionUpdate(Optional<IEventService> eventService, ChoiceItem state, DoubleItem rotation,
+			DoubleItem tilt) {
+		SystemEvent se = jadd(new SystemEvent(M3Config.currentPosPrefix), state, rotation, tilt);
+		log.debug("Inside M3EventPublisher publishM3PositionUpdate " + M3Config.currentPosPrefix + ": " + se);
+		eventService.ifPresent(e -> e.publish(se).handle((x, ex) -> {
+			log.error("Inside M3EventPublisher publishM3PositionUpdate failed to publish m3 position: " + se, ex);
 			return null;
 		}));
 	}
@@ -193,9 +195,13 @@ public class M3EventPublisher extends BaseEventPublisher {
 
 	public static class M3StateUpdate {
 		public final ChoiceItem state;
+		public final DoubleItem rotationItem;
+		public final DoubleItem tiltItem;
 
-		public M3StateUpdate(ChoiceItem state) {
+		public M3StateUpdate(ChoiceItem state, DoubleItem rotationItem, DoubleItem tiltItem) {
 			this.state = state;
+			this.rotationItem = rotationItem;
+			this.tiltItem = tiltItem;
 		}
 	}
 }

@@ -150,15 +150,18 @@ public class M3Test extends JavaTestKit {
 		ActorRef M3Assembly = newM3Assembly(fakeSupervisor.ref());
 		TestProbe fakeClient = new TestProbe(system);
 
-		SetupConfig followSc = jadd(new SetupConfig(M3Config.followCK.prefix()),
-				jset(M3Config.rotationDemandKey, rotationValue), jset(M3Config.tiltDemandKey, tiltValue),
-				jset(M3Config.timeDemandKey, timeValue));
+		SetupConfig followSc = jadd(new SetupConfig(M3Config.followCK.prefix()));
+
+		SetupConfig setRotationSc = jadd(new SetupConfig(M3Config.setRotationCK.prefix()),
+				jset(M3Config.rotationDemandKey, 4.0));
+
+		SetupConfig setTiltSc = jadd(new SetupConfig(M3Config.setTiltCK.prefix()), jset(M3Config.tiltDemandKey, 5.0));
 
 		fakeSupervisor.expectMsg(Initialized);
 		fakeSupervisor.send(M3Assembly, Running);
 
 		SetupConfigArg sca = Configurations.createSetupConfigArg("m3FollowCommand",
-				new SetupConfig(M3Config.initCK.prefix()), followSc);
+				new SetupConfig(M3Config.initCK.prefix()), followSc, setRotationSc, setTiltSc);
 
 		fakeClient.send(M3Assembly, new Submit(sca));
 

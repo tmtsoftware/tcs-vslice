@@ -55,7 +55,7 @@ public class M3DiagnosticPublisher extends BaseDiagnosticPublisher {
 	public PartialFunction<Object, BoxedUnit> operationsReceive(String hcdName, int stateMessageCounter,
 			Optional<ActorRef> hcd, Optional<ActorRef> eventPublisher) {
 		return ReceiveBuilder.match(CurrentState.class, cs -> {
-			if (cs.configKey().equals(M3Config.m3StateCK)) {
+			if (cs.configKey().equals(M3Config.currentPosCK)) {
 				publishM3PosUpdate(cs, eventPublisher);
 			}
 		}).match(Location.class, location -> {
@@ -90,7 +90,7 @@ public class M3DiagnosticPublisher extends BaseDiagnosticPublisher {
 	public PartialFunction<Object, BoxedUnit> diagnosticReceive(String hcdName, int stateMessageCounter,
 			Optional<ActorRef> hcd, Cancellable cancelToken, Optional<ActorRef> eventPublisher) {
 		return ReceiveBuilder.match(CurrentState.class, cs -> {
-			if (cs.configKey().equals(M3Config.m3StateCK)) {
+			if (cs.configKey().equals(M3Config.currentPosCK)) {
 				publishM3PosUpdate(cs, eventPublisher);
 			}
 		}).match(Location.class, location -> {
@@ -128,7 +128,8 @@ public class M3DiagnosticPublisher extends BaseDiagnosticPublisher {
 	 */
 	public void publishM3PosUpdate(CurrentState cs, Optional<ActorRef> eventPublisher) {
 		log.debug("Inside M3DiagPublisher publish state: " + cs);
-		eventPublisher.ifPresent(actorRef -> actorRef.tell(new M3StateUpdate(jitem(cs, M3Config.m3StateKey)), self()));
+		eventPublisher.ifPresent(actorRef -> actorRef.tell(new M3StateUpdate(jitem(cs, M3Config.m3StateKey),
+				jitem(cs, M3Config.rotationPosKey), jitem(cs, M3Config.tiltPosKey)), self()));
 	}
 
 	public static Props props(AssemblyContext assemblyContext, Optional<ActorRef> m3Hcd,

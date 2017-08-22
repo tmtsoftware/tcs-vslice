@@ -12,7 +12,6 @@ import static javacsw.util.config.JItems.jitem;
 import static javacsw.util.config.JItems.jset;
 import static javacsw.util.config.JItems.jvalue;
 import static tmt.tcs.m3.M3Config.m3StateKey;
-import static tmt.tcs.m3.M3Config.M3State.M3_IDLE;
 
 import java.io.File;
 import java.util.Optional;
@@ -32,7 +31,7 @@ import scala.PartialFunction;
 import scala.runtime.BoxedUnit;
 import tmt.tcs.common.BaseHcd;
 import tmt.tcs.m3.M3Config;
-import tmt.tcs.m3.hcd.M3Simulator.M3Update;
+import tmt.tcs.m3.hcd.M3Simulator.M3PosUpdate;
 
 /**
  * This is the Top Level Actor for the M3 HCD It supports below operations-
@@ -46,6 +45,7 @@ public class M3Hcd extends BaseHcd {
 	private final ActorRef supervisor;
 
 	ActorRef m3Simulator;
+	M3PosUpdate current;
 
 	public static File m3ConfigFile = new File("m3/hcd/m3Hcd.conf");
 	public static File resource = new File("m3Hcd.conf");
@@ -96,9 +96,11 @@ public class M3Hcd extends BaseHcd {
 			supervisor.tell(ShutdownComplete, self());
 		}).match(Supervisor.LifecycleFailureInfo.class, e -> {
 			log.error("Inside M3Hcd Received failed state: " + e.state() + " for reason: " + e.reason());
-		}).match(M3Update.class, e -> {
+		}).match(M3PosUpdate.class, e -> {
 			log.debug("Inside M3Hcd Received M3Update");
-			CurrentState m3State = cs(M3Config.m3StatePrefix, jset(m3StateKey, Choice(M3_IDLE.toString())));
+			current = e;
+			CurrentState m3State = cs(M3Config.currentPosPrefix, jset(m3StateKey, Choice(e.state.toString())),
+					jset(M3Config.rotationPosKey, e.rotationPosition), jset(M3Config.tiltPosKey, e.tiltPosition));
 			notifySubscribers(m3State);
 		}).matchAny(x -> log.warning("Inside M3Hcd Unexpected message :unhandledPF: " + x)).build());
 	}

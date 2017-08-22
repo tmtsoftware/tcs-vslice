@@ -135,10 +135,10 @@ public class McsEventPublisher extends BaseEventPublisher {
 	 */
 	private void publishMcsPositionUpdate(Optional<IEventService> eventService, ChoiceItem state, DoubleItem az,
 			DoubleItem el) {
-		StatusEvent ste = jadd(new StatusEvent(McsConfig.currentPosPrefix), state, az, el);
-		log.debug("Inside McsEventPublisher " + McsConfig.currentPosPrefix + ": " + ste);
-		eventService.ifPresent(e -> e.publish(ste).handle((x, ex) -> {
-			log.error("Inside McsEventPublisher failed to publish mcs state: " + ste, ex);
+		SystemEvent se = jadd(new SystemEvent(McsConfig.currentPosPrefix), state, az, el);
+		log.debug("Inside McsEventPublisher publishMcsPositionUpdate " + McsConfig.currentPosPrefix + ": " + se);
+		eventService.ifPresent(e -> e.publish(se).handle((x, ex) -> {
+			log.error("Inside McsEventPublisher publishMcsPositionUpdate : failed to publish mcs position: " + se, ex);
 			return null;
 		}));
 	}
@@ -149,9 +149,9 @@ public class McsEventPublisher extends BaseEventPublisher {
 	 */
 	private void publishAssemblyState(Optional<ITelemetryService> telemetryService, AssemblyState ts) {
 		StatusEvent ste = jadd(new StatusEvent(McsConfig.mcsStateEventPrefix), ts.az, ts.el);
-		log.debug("Inside publishAssemblyState publishState: " + McsConfig.mcsStateEventPrefix + ": " + ste);
+		log.debug("Inside McsEventPublisher publishAssemblyState: " + McsConfig.mcsStateEventPrefix + ": " + ste);
 		telemetryService.ifPresent(e -> e.publish(ste).handle((x, ex) -> {
-			log.error("Inside publishAssemblyState publishState: failed to publish state: " + ste, ex);
+			log.error("Inside McsEventPublisher publishAssemblyState: failed to publish state: " + ste, ex);
 			return null;
 		}));
 	}

@@ -105,46 +105,12 @@ public class EcsTest extends JavaTestKit {
 	}
 
 	/**
-	 * This test case checks for follow command flow from Test Class to Assembly
-	 * to HCD
-	 */
-	@Test
-	public void test1() {
-		logger.debug("Inside EcsTest test1 Follow Command");
-
-		TestProbe fakeSupervisor = new TestProbe(system);
-		ActorRef EcsAssembly = newEcsAssembly(fakeSupervisor.ref());
-		TestProbe fakeClient = new TestProbe(system);
-
-		SetupConfig followSc = jadd(new SetupConfig(EcsConfig.followCK.prefix()), jset(EcsConfig.azDemandKey, azValue),
-				jset(EcsConfig.elDemandKey, elValue), jset(EcsConfig.timeDemandKey, timeValue));
-
-		fakeSupervisor.expectMsg(Initialized);
-		fakeSupervisor.send(EcsAssembly, Running);
-
-		SetupConfigArg sca = Configurations.createSetupConfigArg("ecsFollowCommand",
-				new SetupConfig(EcsConfig.initCK.prefix()), followSc);
-
-		fakeClient.send(EcsAssembly, new Submit(sca));
-
-		CommandResult acceptedMsg = fakeClient.expectMsgClass(duration("3 seconds"), CommandResult.class);
-		assertEquals(acceptedMsg.overall(), Accepted);
-		logger.debug("Inside EcsTest test1 Command Accepted Result: " + acceptedMsg);
-
-		CommandResult completeMsg = fakeClient.expectMsgClass(duration("3 seconds"), CommandResult.class);
-		logger.debug("Inside EcsTest test1 Command Result: " + completeMsg.details().status(0));
-
-		assertEquals(completeMsg.overall(), AllCompleted);
-
-	}
-
-	/**
 	 * This test case checks for offset command flow from Test Class to Assembly
 	 * to HCD
 	 */
 	@Test
-	public void test2() {
-		logger.debug("Inside EcsTest test2 Offset Command");
+	public void test1() {
+		logger.debug("Inside EcsTest test1 Offset Command");
 
 		TestProbe fakeSupervisor = new TestProbe(system);
 		ActorRef EcsAssembly = newEcsAssembly(fakeSupervisor.ref());
@@ -163,12 +129,51 @@ public class EcsTest extends JavaTestKit {
 
 		CommandResult acceptedMsg = fakeClient.expectMsgClass(duration("3 seconds"), CommandResult.class);
 		assertEquals(acceptedMsg.overall(), Accepted);
+		logger.debug("Inside EcsTest test1 Command Accepted Result: " + acceptedMsg);
+
+		CommandResult completeMsg = fakeClient.expectMsgClass(duration("3 seconds"), CommandResult.class);
+		logger.debug("Inside EcsTest test1 Command Result: " + completeMsg.details().status(0));
+
+		assertEquals(completeMsg.overall(), Incomplete);
+
+	}
+
+	/**
+	 * This test case checks for follow command flow from Test Class to Assembly
+	 * to HCD
+	 */
+	@Test
+	public void test2() {
+		logger.debug("Inside EcsTest test2 Follow Command");
+
+		TestProbe fakeSupervisor = new TestProbe(system);
+		ActorRef EcsAssembly = newEcsAssembly(fakeSupervisor.ref());
+		TestProbe fakeClient = new TestProbe(system);
+
+		SetupConfig followSc = jadd(new SetupConfig(EcsConfig.followCK.prefix()));
+
+		SetupConfig setAzimuthSc = jadd(new SetupConfig(EcsConfig.setAzimuthCK.prefix()),
+				jset(EcsConfig.azDemandKey, 4.0));
+
+		SetupConfig setElevationSc = jadd(new SetupConfig(EcsConfig.setElevationCK.prefix()),
+				jset(EcsConfig.elDemandKey, 5.0));
+
+		fakeSupervisor.expectMsg(Initialized);
+		fakeSupervisor.send(EcsAssembly, Running);
+
+		SetupConfigArg sca = Configurations.createSetupConfigArg("ecsFollowCommand",
+				new SetupConfig(EcsConfig.initCK.prefix()), followSc, setAzimuthSc, setElevationSc);
+
+		fakeClient.send(EcsAssembly, new Submit(sca));
+
+		CommandResult acceptedMsg = fakeClient.expectMsgClass(duration("3 seconds"), CommandResult.class);
+		assertEquals(acceptedMsg.overall(), Accepted);
 		logger.debug("Inside EcsTest test2 Command Accepted Result: " + acceptedMsg);
 
 		CommandResult completeMsg = fakeClient.expectMsgClass(duration("3 seconds"), CommandResult.class);
 		logger.debug("Inside EcsTest test2 Command Result: " + completeMsg.details().status(0));
 
-		assertEquals(completeMsg.overall(), Incomplete);
+		assertEquals(completeMsg.overall(), AllCompleted);
 
 	}
 

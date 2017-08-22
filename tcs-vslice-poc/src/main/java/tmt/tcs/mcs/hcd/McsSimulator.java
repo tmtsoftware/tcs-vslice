@@ -32,7 +32,7 @@ public class McsSimulator extends AbstractActor {
 
 	PartialFunction<Object, BoxedUnit> idleReceive() {
 		return ReceiveBuilder.match(Move.class, e -> {
-			// Setting cuurentState to Moving while performing move operation
+			// Setting currentState to Moving while performing move operation
 			currentState = McsState.MCS_MOVING;
 			log.debug("Inside McsSimulator idleReceive Move received: az is: " + e.az + ": el is: " + e.el);
 
@@ -40,6 +40,7 @@ public class McsSimulator extends AbstractActor {
 
 			currentAz = e.az;
 			currentEl = e.el;
+			currentState = McsState.MCS_IDLE;
 
 			update(replyTo, getState());
 		}).matchAny(x -> log.warning("Inside McsSimulator Unexpected message in idleReceive: " + x)).build();

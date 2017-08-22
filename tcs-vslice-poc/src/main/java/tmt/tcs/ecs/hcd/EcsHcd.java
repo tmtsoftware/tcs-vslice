@@ -12,7 +12,6 @@ import static javacsw.util.config.JItems.jitem;
 import static javacsw.util.config.JItems.jset;
 import static javacsw.util.config.JItems.jvalue;
 import static tmt.tcs.ecs.EcsConfig.ecsStateKey;
-import static tmt.tcs.ecs.EcsConfig.EcsState.ECS_IDLE;
 
 import java.io.File;
 import java.util.Optional;
@@ -32,7 +31,7 @@ import scala.PartialFunction;
 import scala.runtime.BoxedUnit;
 import tmt.tcs.common.BaseHcd;
 import tmt.tcs.ecs.EcsConfig;
-import tmt.tcs.ecs.hcd.EcsSimulator.EcsUpdate;
+import tmt.tcs.ecs.hcd.EcsSimulator.EcsPosUpdate;
 
 /**
  * This is the Top Level Actor for the Ecs HCD It supports below operations-
@@ -46,6 +45,7 @@ public class EcsHcd extends BaseHcd {
 	private final ActorRef supervisor;
 
 	ActorRef ecsSimulator;
+	EcsPosUpdate current;
 
 	public static File ecsConfigFile = new File("ecs/hcd/ecsHcd.conf");
 	public static File resource = new File("ecsHcd.conf");
@@ -96,9 +96,11 @@ public class EcsHcd extends BaseHcd {
 			supervisor.tell(ShutdownComplete, self());
 		}).match(Supervisor.LifecycleFailureInfo.class, e -> {
 			log.error("Inside EcsHcd Received failed state: " + e.state() + " for reason: " + e.reason());
-		}).match(EcsUpdate.class, e -> {
+		}).match(EcsPosUpdate.class, e -> {
 			log.debug("Inside EcsHcd Received EcsUpdate");
-			CurrentState ecsState = cs(EcsConfig.ecsStatePrefix, jset(ecsStateKey, Choice(ECS_IDLE.toString())));
+			current = e;
+			CurrentState ecsState = cs(EcsConfig.currentPosPrefix, jset(ecsStateKey, Choice(e.state.toString())),
+					jset(EcsConfig.azPosKey, e.azPosition), jset(EcsConfig.elPosKey, e.elPosition));
 			notifySubscribers(ecsState);
 		}).matchAny(x -> log.warning("Inside EcsHcd Unexpected message :unhandledPF: " + x)).build());
 	}

@@ -20,6 +20,8 @@ public class M3Config {
 	public static final String initPrefix = m3Prefix + ".init";
 	public static final String followPrefix = m3Prefix + ".follow";
 	public static final String offsetPrefix = m3Prefix + ".offset";
+	public static final String setRotationPrefix = m3Prefix + ".rotation";
+	public static final String setTiltPrefix = m3Prefix + ".tilt";
 	public static final String m3StatePrefix = m3Prefix + ".m3State";
 	public static final String m3StatsPrefix = m3Prefix + ".stats";
 	public static final String m3StateEventPrefix = m3Prefix + ".m3State";
@@ -34,6 +36,8 @@ public class M3Config {
 	public static final ConfigKey initCK = new ConfigKey(initPrefix);
 	public static final ConfigKey followCK = new ConfigKey(followPrefix);
 	public static final ConfigKey offsetCK = new ConfigKey(offsetPrefix);
+	public static final ConfigKey setRotationCK = new ConfigKey(setRotationPrefix);
+	public static final ConfigKey setTiltCK = new ConfigKey(setTiltPrefix);
 	public static final ConfigKey m3StateCK = new ConfigKey(m3StatePrefix);
 	public static final ConfigKey m3StatsCK = new ConfigKey(m3StatsPrefix);
 	public static final ConfigKey positionDemandCK = new ConfigKey(positionDemandPrefix);

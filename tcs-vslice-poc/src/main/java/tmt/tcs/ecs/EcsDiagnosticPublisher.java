@@ -55,7 +55,7 @@ public class EcsDiagnosticPublisher extends BaseDiagnosticPublisher {
 	public PartialFunction<Object, BoxedUnit> operationsReceive(String hcdName, int stateMessageCounter,
 			Optional<ActorRef> hcd, Optional<ActorRef> eventPublisher) {
 		return ReceiveBuilder.match(CurrentState.class, cs -> {
-			if (cs.configKey().equals(EcsConfig.ecsStateCK)) {
+			if (cs.configKey().equals(EcsConfig.currentPosCK)) {
 				publishEcsPosUpdate(cs, eventPublisher);
 			}
 		}).match(Location.class, location -> {
@@ -90,7 +90,7 @@ public class EcsDiagnosticPublisher extends BaseDiagnosticPublisher {
 	public PartialFunction<Object, BoxedUnit> diagnosticReceive(String hcdName, int stateMessageCounter,
 			Optional<ActorRef> hcd, Cancellable cancelToken, Optional<ActorRef> eventPublisher) {
 		return ReceiveBuilder.match(CurrentState.class, cs -> {
-			if (cs.configKey().equals(EcsConfig.ecsStateCK)) {
+			if (cs.configKey().equals(EcsConfig.currentPosCK)) {
 				publishEcsPosUpdate(cs, eventPublisher);
 			}
 		}).match(Location.class, location -> {
@@ -119,7 +119,8 @@ public class EcsDiagnosticPublisher extends BaseDiagnosticPublisher {
 							eventPublisher));
 				}
 			}
-		}).matchAny(t -> log.warning("Inside EcsDiagPublisher:diagnosticReceive received an unexpected message: " + t)).build();
+		}).matchAny(t -> log.warning("Inside EcsDiagPublisher:diagnosticReceive received an unexpected message: " + t))
+				.build();
 	}
 
 	/**
@@ -127,8 +128,8 @@ public class EcsDiagnosticPublisher extends BaseDiagnosticPublisher {
 	 */
 	public void publishEcsPosUpdate(CurrentState cs, Optional<ActorRef> eventPublisher) {
 		log.debug("Inside EcsDiagPublisher publish state: " + cs);
-		eventPublisher
-				.ifPresent(actorRef -> actorRef.tell(new EcsStateUpdate(jitem(cs, EcsConfig.ecsStateKey)), self()));
+		eventPublisher.ifPresent(actorRef -> actorRef.tell(new EcsStateUpdate(jitem(cs, EcsConfig.ecsStateKey),
+				jitem(cs, EcsConfig.azPosKey), jitem(cs, EcsConfig.elPosKey)), self()));
 	}
 
 	public static Props props(AssemblyContext assemblyContext, Optional<ActorRef> ecsHcd,

@@ -159,11 +159,14 @@ public class McsTest extends JavaTestKit {
 		SetupConfig setElevationSc = jadd(new SetupConfig(McsConfig.setElevationCK.prefix()),
 				jset(McsConfig.elDemandKey, 5.0));
 
+		SetupConfig setAzimuthSc2 = jadd(new SetupConfig(McsConfig.setAzimuthCK.prefix()),
+				jset(McsConfig.azDemandKey, 7.0));
+
 		fakeSupervisor.expectMsg(Initialized);
 		fakeSupervisor.send(mcsAssembly, Running);
 
 		SetupConfigArg sca = Configurations.createSetupConfigArg("mcsFollowCommand",
-				new SetupConfig(McsConfig.initCK.prefix()), followSc, setAzimuthSc, setElevationSc);
+				new SetupConfig(McsConfig.initCK.prefix()), followSc, setAzimuthSc, setElevationSc, setAzimuthSc2);
 
 		fakeClient.send(mcsAssembly, new Submit(sca));
 

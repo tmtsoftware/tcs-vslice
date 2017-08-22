@@ -23,6 +23,8 @@ public class EcsConfig {
 	public static final String initPrefix = ecsPrefix + ".init";
 	public static final String followPrefix = ecsPrefix + ".follow";
 	public static final String offsetPrefix = ecsPrefix + ".offset";
+	public static final String setAzimuthPrefix = ecsPrefix + ".azimuth";
+	public static final String setElevationPrefix = ecsPrefix + ".elevation";
 	public static final String ecsStatePrefix = ecsPrefix + ".ecsState";
 	public static final String ecsStatsPrefix = ecsPrefix + ".stats";
 	public static final String ecsStateEventPrefix = ecsPrefix + ".ecsState";
@@ -37,6 +39,8 @@ public class EcsConfig {
 	public static final ConfigKey initCK = new ConfigKey(initPrefix);
 	public static final ConfigKey followCK = new ConfigKey(followPrefix);
 	public static final ConfigKey offsetCK = new ConfigKey(offsetPrefix);
+	public static final ConfigKey setAzimuthCK = new ConfigKey(setAzimuthPrefix);
+	public static final ConfigKey setElevationCK = new ConfigKey(setElevationPrefix);
 	public static final ConfigKey ecsStateCK = new ConfigKey(ecsStatePrefix);
 	public static final ConfigKey ecsStatsCK = new ConfigKey(ecsStatsPrefix);
 	public static final ConfigKey positionDemandCK = new ConfigKey(positionDemandPrefix);
