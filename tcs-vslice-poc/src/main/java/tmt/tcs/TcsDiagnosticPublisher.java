@@ -90,8 +90,6 @@ public class TcsDiagnosticPublisher extends BaseDiagnosticPublisher {
 		return ReceiveBuilder.match(CurrentState.class, cs -> {
 			if (cs.configKey().equals(TcsConfig.tcsStateCK)) {
 				publishTcsPosUpdate(cs, eventPublisher);
-			} else if (cs.configKey().equals(TcsConfig.tcsStatsCK)) {
-				publishStatsUpdate(cs, eventPublisher);
 			}
 		}).match(Location.class, location -> {
 

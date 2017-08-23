@@ -54,8 +54,7 @@ public class M3EventPublisher extends BaseEventPublisher {
 	 */
 	public PartialFunction<Object, BoxedUnit> publishingEnabled(Optional<IEventService> eventService,
 			Optional<ITelemetryService> telemetryService) {
-		return ReceiveBuilder.match(SystemUpdate.class, t -> publishSystemEvent(eventService, t.rotation, t.tilt))
-				.match(EngrUpdate.class, t -> publishEngr(telemetryService, t.rotation, t.tilt))
+		return ReceiveBuilder.match(TelemetryUpdate.class, t -> publishTelemetryUpdate(telemetryService, t.rotation, t.tilt))
 				.match(M3StateUpdate.class,
 						t -> publishM3PositionUpdate(eventService, t.state, t.rotationItem, t.tiltItem))
 				.match(LocationService.Location.class,
@@ -104,27 +103,17 @@ public class M3EventPublisher extends BaseEventPublisher {
 		}
 	}
 
-	private void publishSystemEvent(Optional<IEventService> eventService, DoubleItem rotation, DoubleItem tilt) {
-		SystemEvent se = jadd(new SystemEvent(M3Config.systemEventPrefix), rotation, tilt);
-		log.info("Inside M3EventPublisher publishSystemEvent: Status publish of " + M3Config.systemEventPrefix + ": "
-				+ se);
-		eventService.ifPresent(e -> e.publish(se).handle((x, ex) -> {
-			log.error("Inside M3EventPublisher publishSystemEvent: Failed to publish System event: " + se, ex);
-			return null;
-		}));
-	}
-
 	/**
-	 * This method helps publishing M3 Engr Data as State Event using Telementry
+	 * This method helps publishing M3 Telemetry Data as State Event using Telementry
 	 * Service
 	 */
-	private void publishEngr(Optional<ITelemetryService> telemetryService, DoubleItem rotation, DoubleItem tilt) {
-		StatusEvent ste = jadd(new StatusEvent(M3Config.engineeringEventPrefix), rotation, tilt);
-		log.info("Inside M3EventPublisher publishEngr: Status publish of " + M3Config.engineeringEventPrefix + ": "
+	private void publishTelemetryUpdate(Optional<ITelemetryService> telemetryService, DoubleItem rotation, DoubleItem tilt) {
+		StatusEvent ste = jadd(new StatusEvent(M3Config.telemetryEventPrefix), rotation, tilt);
+		log.info("Inside M3EventPublisher publishTelemetryUpdate: Status publish of " + M3Config.telemetryEventPrefix + ": "
 				+ ste);
 
 		telemetryService.ifPresent(e -> e.publish(ste).handle((x, ex) -> {
-			log.error("Inside M3EventPublisher publishEngr: Failed to publish engr: " + ste, ex);
+			log.error("Inside M3EventPublisher publishTelemetryUpdate: Failed to publish telemetry: " + ste, ex);
 			return null;
 		}));
 	}
@@ -156,9 +145,9 @@ public class M3EventPublisher extends BaseEventPublisher {
 	}
 
 	/**
-	 * Used by actors wishing to cause an engineering event update
+	 * Used by actors wishing to cause an telemetry event update
 	 */
-	public static class EngrUpdate {
+	public static class TelemetryUpdate {
 		public final DoubleItem rotation;
 		public final DoubleItem tilt;
 
@@ -167,26 +156,7 @@ public class M3EventPublisher extends BaseEventPublisher {
 		 * @param rotation
 		 * @param tilt
 		 */
-		public EngrUpdate(DoubleItem rotation, DoubleItem tilt) {
-			this.rotation = rotation;
-			this.tilt = tilt;
-		}
-
-	}
-
-	/**
-	 * Used by actors wishing to cause an system event update
-	 */
-	public static class SystemUpdate {
-		public final DoubleItem rotation;
-		public final DoubleItem tilt;
-
-		/**
-		 * 
-		 * @param rotation
-		 * @param tilt
-		 */
-		public SystemUpdate(DoubleItem rotation, DoubleItem tilt) {
+		public TelemetryUpdate(DoubleItem rotation, DoubleItem tilt) {
 			this.rotation = rotation;
 			this.tilt = tilt;
 		}

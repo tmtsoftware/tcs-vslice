@@ -35,6 +35,7 @@ import csw.services.loc.LocationService;
 import csw.util.config.DoubleItem;
 import csw.util.config.Events;
 import csw.util.config.Events.EventServiceEvent;
+import csw.util.config.Events.StatusEvent;
 import csw.util.config.Events.SystemEvent;
 import javacsw.services.events.IEventService;
 import javacsw.services.events.ITelemetryService;
@@ -88,9 +89,9 @@ public class EcsEventPublisherTest extends JavaTestKit {
 				msgs.add(event);
 				log.info("Inside EcsEventPublisherTest TestSubscriber: Received System: " + event.info().source()
 						+ "  event: " + event);
-			}).match(Events.StatusEvent.class, event -> {
+			}).match(StatusEvent.class, event -> {
 				msgs.add(event);
-				log.info("Inside EcsEventPublisherTest TestSubscriber: Received Status " + event.info().source()
+				log.info("Inside EcsEventPublisherTest TestSubscriber: Received Status: " + event.info().source()
 						+ " event: " + event);
 			}).match(GetResults.class, t -> sender().tell(new Results(msgs), self()))
 					.matchAny(t -> log
@@ -108,7 +109,6 @@ public class EcsEventPublisherTest extends JavaTestKit {
 
 	private static AssemblyContext assemblyContext = EcsTestData.ecsTestAssemblyContext;
 
-	@SuppressWarnings("unused")
 	private static ITelemetryService telemetryService;
 
 	private static IEventService eventService;
@@ -176,11 +176,11 @@ public class EcsEventPublisherTest extends JavaTestKit {
 	@Test
 	public void test1() {
 		logger.debug("Inside EcsEventPublisher test1: STARTS");
-		ActorRef publisher = newTestPublisher(Optional.of(eventService), Optional.empty());
+		ActorRef publisher = newTestPublisher(Optional.of(eventService), Optional.of(telemetryService));
 		ActorRef follower = newTestFollower(Optional.empty(), Optional.of(publisher));
 
 		ActorRef resultSubscriber = system.actorOf(TestSubscriber.props());
-		eventService.subscribe(resultSubscriber, false, EcsConfig.systemEventPrefix);
+		telemetryService.subscribe(resultSubscriber, false, EcsConfig.telemetryEventPrefix);
 		expectNoMsg(duration("1 second")); // Wait for the connection
 
 		TestProbe fakeTromboneEventSubscriber = new TestProbe(system);
@@ -196,23 +196,23 @@ public class EcsEventPublisherTest extends JavaTestKit {
 		logger.debug("Inside EcsEventPublisher test1: result is: " + result.msgs + ": result size is: "
 				+ result.msgs.size());
 		assertEquals(result.msgs.size(), 1);
-		SystemEvent se = jadd(new SystemEvent(EcsConfig.systemEventPrefix), jset(EcsConfig.az, 0.0),
+		StatusEvent se = jadd(new StatusEvent(EcsConfig.telemetryEventPrefix), jset(EcsConfig.az, 0.0),
 				jset(EcsConfig.el, 0.0));
-		Vector<SystemEvent> v = new Vector<>();
+		Vector<StatusEvent> v = new Vector<>();
 		v.add(se);
 		assertEquals(result.msgs, v);
-		cleanup(publisher, follower);
+		cleanup(publisher, follower, resultSubscriber);
 		logger.debug("Inside EcsEventPublisher test1: ENDS");
 	}
 
 	@Test
 	public void test2() {
 		logger.debug("Inside EcsEventPublisher test2: STARTS");
-		ActorRef pub = newTestPublisher(Optional.of(eventService), Optional.empty());
-		ActorRef fol = newTestFollower(Optional.empty(), Optional.of(pub));
+		ActorRef publisher = newTestPublisher(Optional.of(eventService), Optional.of(telemetryService));
+		ActorRef follower = newTestFollower(Optional.empty(), Optional.of(publisher));
 
 		ActorRef resultSubscriber = system.actorOf(TestSubscriber.props());
-		eventService.subscribe(resultSubscriber, false, EcsConfig.systemEventPrefix);
+		telemetryService.subscribe(resultSubscriber, false, EcsConfig.telemetryEventPrefix);
 		expectNoMsg(duration("1 second")); // Wait for the connection
 
 		double testEl = 10.0;
@@ -222,9 +222,9 @@ public class EcsEventPublisherTest extends JavaTestKit {
 				.collect(Collectors.toList());
 
 		TestProbe fakeTromboneSubscriber = new TestProbe(system);
-		events.forEach(ev -> fakeTromboneSubscriber.send(fol, ev));
+		events.forEach(ev -> fakeTromboneSubscriber.send(follower, ev));
 
-		expectNoMsg(duration("100 milli"));
+		expectNoMsg(duration("200 milli"));
 
 		resultSubscriber.tell(new TestSubscriber.GetResults(), self());
 		TestSubscriber.Results result = expectMsgClass(TestSubscriber.Results.class);
@@ -233,14 +233,14 @@ public class EcsEventPublisherTest extends JavaTestKit {
 
 		List<Pair<Double, Double>> testResult = newAzAndElData(testEl);
 
-		List<SystemEvent> resultExpected = testResult.stream()
-				.map(f -> jadd(new SystemEvent(EcsConfig.systemEventPrefix), jset(EcsConfig.az, f.first()),
+		List<StatusEvent> resultExpected = testResult.stream()
+				.map(f -> jadd(new StatusEvent(EcsConfig.telemetryEventPrefix), jset(EcsConfig.az, f.first()),
 						jset(EcsConfig.el, f.second())))
 				.collect(Collectors.toList());
 
 		assertEquals(resultExpected, result.msgs);
 
-		cleanup(pub, fol);
+		cleanup(publisher, follower, resultSubscriber);
 		logger.debug("Inside EcsEventPublisher test2: ENDS");
 	}
 

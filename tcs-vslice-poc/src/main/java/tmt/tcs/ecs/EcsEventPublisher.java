@@ -54,8 +54,7 @@ public class EcsEventPublisher extends BaseEventPublisher {
 	 */
 	public PartialFunction<Object, BoxedUnit> publishingEnabled(Optional<IEventService> eventService,
 			Optional<ITelemetryService> telemetryService) {
-		return ReceiveBuilder.match(SystemUpdate.class, t -> publishSystemEvent(eventService, t.az, t.el))
-				.match(EngrUpdate.class, t -> publishEngr(telemetryService, t.az, t.el))
+		return ReceiveBuilder.match(TelemetryUpdate.class, t -> publishTelemetryUpdate(telemetryService, t.az, t.el))
 				.match(EcsStateUpdate.class, t -> publishEcsPositionUpdate(eventService, t.state, t.azItem, t.elItem))
 				.match(AssemblyState.class, t -> publishAssemblyState(telemetryService, t))
 				.match(LocationService.Location.class,
@@ -104,34 +103,24 @@ public class EcsEventPublisher extends BaseEventPublisher {
 		}
 	}
 
-	private void publishSystemEvent(Optional<IEventService> eventService, DoubleItem az, DoubleItem el) {
-		SystemEvent se = jadd(new SystemEvent(EcsConfig.systemEventPrefix), az, el);
-		log.info("Inside EcsEventPublisher publishSystemEvent: Status publish of " + EcsConfig.systemEventPrefix + ": "
-				+ se);
-		eventService.ifPresent(e -> e.publish(se).handle((x, ex) -> {
-			log.error("Inside EcsEventPublisher publishSystemEvent: Failed to publish System event: " + se, ex);
-			return null;
-		}));
-	}
-
 	/**
-	 * This method helps publishing ECS Engr Data as State Event using
+	 * This method helps publishing ECS Telemetry Data as State Event using
 	 * Telementry Service
 	 */
-	private void publishEngr(Optional<ITelemetryService> telemetryService, DoubleItem az, DoubleItem el) {
-		StatusEvent ste = jadd(new StatusEvent(EcsConfig.engineeringEventPrefix), az, el);
-		log.info("Inside EcsEventPublisher publishEngr: Status publish of " + EcsConfig.engineeringEventPrefix + ": "
+	private void publishTelemetryUpdate(Optional<ITelemetryService> telemetryService, DoubleItem az, DoubleItem el) {
+		StatusEvent ste = jadd(new StatusEvent(EcsConfig.telemetryEventPrefix), az, el);
+		log.info("Inside EcsEventPublisher publishTelemetryUpdate: Status publish of " + EcsConfig.telemetryEventPrefix + ": "
 				+ ste);
 
 		telemetryService.ifPresent(e -> e.publish(ste).handle((x, ex) -> {
-			log.error("Inside EcsEventPublisher publishEngr: Failed to publish engr: " + ste, ex);
+			log.error("Inside EcsEventPublisher publishTelemetryUpdate: Failed to publish telemetry: " + ste, ex);
 			return null;
 		}));
 	}
 
 	/**
-	 * This method helps publishing ECS Position Update as State Event using Event
-	 * Service
+	 * This method helps publishing ECS Position Update as State Event using
+	 * Event Service
 	 */
 	private void publishEcsPositionUpdate(Optional<IEventService> eventService, ChoiceItem state, DoubleItem az,
 			DoubleItem el) {
@@ -169,9 +158,9 @@ public class EcsEventPublisher extends BaseEventPublisher {
 	}
 
 	/**
-	 * Used by actors wishing to cause an engineering event update
+	 * Used by actors wishing to cause an telemetry event update
 	 */
-	public static class EngrUpdate {
+	public static class TelemetryUpdate {
 		public final DoubleItem az;
 		public final DoubleItem el;
 
@@ -180,26 +169,7 @@ public class EcsEventPublisher extends BaseEventPublisher {
 		 * @param az
 		 * @param el
 		 */
-		public EngrUpdate(DoubleItem az, DoubleItem el) {
-			this.az = az;
-			this.el = el;
-		}
-
-	}
-
-	/**
-	 * Used by actors wishing to cause an system event update
-	 */
-	public static class SystemUpdate {
-		public final DoubleItem az;
-		public final DoubleItem el;
-
-		/**
-		 * 
-		 * @param az
-		 * @param el
-		 */
-		public SystemUpdate(DoubleItem az, DoubleItem el) {
+		public TelemetryUpdate(DoubleItem az, DoubleItem el) {
 			this.az = az;
 			this.el = el;
 		}

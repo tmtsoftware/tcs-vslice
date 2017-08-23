@@ -117,6 +117,9 @@ public class EcsEventSubscriberTest extends JavaTestKit {
 		DoubleItem azimuth = jset(EcsConfig.azDemandKey, 2.0);
 		DoubleItem elevation = jset(EcsConfig.elDemandKey, 2.0);
 
+		DoubleItem forwardedAzimuth = jset(EcsConfig.az, 2.0);
+		DoubleItem forwardedElevation = jset(EcsConfig.el, 2.0);
+
 		ActorRef es = newEventSubscriber(Optional.of(fakeFollowActor.ref()), eventService);
 
 		IEventService tcsRtc = eventService;
@@ -125,8 +128,8 @@ public class EcsEventSubscriberTest extends JavaTestKit {
 
 		UpdatedEventData msg = fakeFollowActor.expectMsgClass(duration("10 seconds"), UpdatedEventData.class);
 
-		assertEquals(msg.azimuth, azimuth);
-		assertEquals(msg.elevation, elevation);
+		assertEquals(msg.azimuth, forwardedAzimuth);
+		assertEquals(msg.elevation, forwardedElevation);
 
 		// No more messages please
 		fakeFollowActor.expectNoMsg(duration("500 milli"));
@@ -141,6 +144,9 @@ public class EcsEventSubscriberTest extends JavaTestKit {
 		DoubleItem azimuth = jset(EcsConfig.azDemandKey, 2.0);
 		DoubleItem elevation = jset(EcsConfig.elDemandKey, 2.0);
 
+		DoubleItem forwardedAzimuth = jset(EcsConfig.az, 2.0);
+		DoubleItem forwardedElevation = jset(EcsConfig.el, 2.0);
+
 		ActorRef es = newEventSubscriber(Optional.of(fakeFollowActor.ref()), eventService);
 
 		IEventService tcsRtc = eventService;
@@ -149,8 +155,8 @@ public class EcsEventSubscriberTest extends JavaTestKit {
 
 		UpdatedEventData msg = fakeFollowActor.expectMsgClass(duration("10 seconds"), UpdatedEventData.class);
 
-		assertEquals(msg.azimuth, azimuth);
-		assertEquals(msg.elevation, elevation);
+		assertEquals(msg.azimuth, forwardedAzimuth);
+		assertEquals(msg.elevation, forwardedElevation);
 
 		// No more messages please
 		fakeFollowActor.expectNoMsg(duration("500 milli"));

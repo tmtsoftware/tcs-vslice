@@ -116,6 +116,9 @@ public class McsEventSubscriberTest extends JavaTestKit {
 
 		DoubleItem azimuth = jset(McsConfig.azDemandKey, 2.0);
 		DoubleItem elevation = jset(McsConfig.elDemandKey, 2.0);
+		
+		DoubleItem forwardedAzimuth = jset(McsConfig.az, 2.0);
+		DoubleItem forwardedElevation = jset(McsConfig.el, 2.0);
 
 		ActorRef es = newEventSubscriber(Optional.of(fakeFollowActor.ref()), eventService);
 
@@ -125,8 +128,8 @@ public class McsEventSubscriberTest extends JavaTestKit {
 
 		UpdatedEventData msg = fakeFollowActor.expectMsgClass(duration("10 seconds"), UpdatedEventData.class);
 
-		assertEquals(msg.azimuth, azimuth);
-		assertEquals(msg.elevation, elevation);
+		assertEquals(msg.azimuth, forwardedAzimuth);
+		assertEquals(msg.elevation, forwardedElevation);
 
 		// No more messages please
 		fakeFollowActor.expectNoMsg(duration("500 milli"));
@@ -140,6 +143,9 @@ public class McsEventSubscriberTest extends JavaTestKit {
 
 		DoubleItem azimuth = jset(McsConfig.azDemandKey, 2.0);
 		DoubleItem elevation = jset(McsConfig.elDemandKey, 2.0);
+		
+		DoubleItem forwardedAzimuth = jset(McsConfig.az, 2.0);
+		DoubleItem forwardedElevation = jset(McsConfig.el, 2.0);
 
 		ActorRef es = newEventSubscriber(Optional.of(fakeFollowActor.ref()), eventService);
 
@@ -149,8 +155,8 @@ public class McsEventSubscriberTest extends JavaTestKit {
 
 		UpdatedEventData msg = fakeFollowActor.expectMsgClass(duration("10 seconds"), UpdatedEventData.class);
 
-		assertEquals(msg.azimuth, azimuth);
-		assertEquals(msg.elevation, elevation);
+		assertEquals(msg.azimuth, forwardedAzimuth);
+		assertEquals(msg.elevation, forwardedElevation);
 
 		// No more messages please
 		fakeFollowActor.expectNoMsg(duration("500 milli"));

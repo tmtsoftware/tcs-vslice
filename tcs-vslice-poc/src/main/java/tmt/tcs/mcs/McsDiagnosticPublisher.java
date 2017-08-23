@@ -90,7 +90,7 @@ public class McsDiagnosticPublisher extends BaseDiagnosticPublisher {
 	public PartialFunction<Object, BoxedUnit> diagnosticReceive(String hcdName, int stateMessageCounter,
 			Optional<ActorRef> hcd, Cancellable cancelToken, Optional<ActorRef> eventPublisher) {
 		return ReceiveBuilder.match(CurrentState.class, cs -> {
-			if (cs.configKey().equals(McsConfig.mcsStateCK)) {
+			if (cs.configKey().equals(McsConfig.currentPosCK)) {
 				publishMcsPosUpdate(cs, eventPublisher);
 			}
 		}).match(Location.class, location -> {

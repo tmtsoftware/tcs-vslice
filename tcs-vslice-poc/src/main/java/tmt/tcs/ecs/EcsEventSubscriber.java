@@ -24,7 +24,7 @@ import tmt.tcs.common.AssemblyContext;
 import tmt.tcs.common.BaseEventSubscriber;
 
 /**
- * This Class provides Event Subcription functionality for ECS It extends
+ * This Class provides Event Subscription functionality for ECS It extends
  * BaseEventSubscriber
  */
 @SuppressWarnings("unused")
@@ -77,7 +77,7 @@ public class EcsEventSubscriber extends BaseEventSubscriber {
 						DoubleItem elItem = jset(EcsConfig.el, elValue);
 						log.debug("Inside EcsEventSubscriber subscribeReceive received: " + event.info().source()
 								+ ": azItem is: " + azItem + ": eItem is: " + elItem);
-						updateRefActor(azItem, elItem, event.info().eventTime());
+						updateFollowActor(azItem, elItem, event.info().eventTime());
 
 						context().become(subscribeReceive(azItem, elItem));
 					}
@@ -95,9 +95,9 @@ public class EcsEventSubscriber extends BaseEventSubscriber {
 	}
 
 	/**
-	 * This message propagates event to Referenced Actor
+	 * This message propagates event to Follow Actor
 	 */
-	private void updateRefActor(DoubleItem az, DoubleItem el, EventTime eventTime) {
+	private void updateFollowActor(DoubleItem az, DoubleItem el, EventTime eventTime) {
 		log.debug("Inside EcsEventSubscriber updateRefActor: Sending Message to Follow Actor");
 		followActor
 				.ifPresent(actorRef -> actorRef.tell(new EcsFollowActor.UpdatedEventData(az, el, eventTime), self()));

@@ -35,6 +35,7 @@ import csw.services.loc.LocationService;
 import csw.util.config.DoubleItem;
 import csw.util.config.Events;
 import csw.util.config.Events.EventServiceEvent;
+import csw.util.config.Events.StatusEvent;
 import csw.util.config.Events.SystemEvent;
 import javacsw.services.events.IEventService;
 import javacsw.services.events.ITelemetryService;
@@ -78,7 +79,7 @@ public class McsEventPublisherTest extends JavaTestKit {
 			public String toString() {
 				return "Results [msgs=" + msgs + "]";
 			}
-			
+
 		}
 
 		Vector<EventServiceEvent> msgs = new Vector<>();
@@ -88,9 +89,9 @@ public class McsEventPublisherTest extends JavaTestKit {
 				msgs.add(event);
 				log.info("Inside McsEventPublisherTest TestSubscriber: Received System: " + event.info().source()
 						+ "  event: " + event);
-			}).match(Events.StatusEvent.class, event -> {
+			}).match(StatusEvent.class, event -> {
 				msgs.add(event);
-				log.info("Inside McsEventPublisherTest TestSubscriber: Received Status " + event.info().source()
+				log.info("Inside McsEventPublisherTest TestSubscriber: Received Status: " + event.info().source()
 						+ " event: " + event);
 			}).match(GetResults.class, t -> sender().tell(new Results(msgs), self()))
 					.matchAny(t -> log
@@ -108,7 +109,6 @@ public class McsEventPublisherTest extends JavaTestKit {
 
 	private static AssemblyContext assemblyContext = McsTestData.mcsTestAssemblyContext;
 
-	@SuppressWarnings("unused")
 	private static ITelemetryService telemetryService;
 
 	private static IEventService eventService;
@@ -139,6 +139,9 @@ public class McsEventPublisherTest extends JavaTestKit {
 
 		eventService = IEventService.getEventService(IEventService.defaultName, system, timeout).get(5,
 				TimeUnit.SECONDS);
+
+		logger.debug("Inside McsEventPublisherTest eventService is: " + eventService + ": telemetryService is: "
+				+ telemetryService);
 	}
 
 	@AfterClass
@@ -176,16 +179,17 @@ public class McsEventPublisherTest extends JavaTestKit {
 	@Test
 	public void test1() {
 		logger.debug("Inside McsEventPublisherTest test1: STARTS");
-		ActorRef publisher = newTestPublisher(Optional.of(eventService), Optional.empty());
+		ActorRef publisher = newTestPublisher(Optional.of(eventService), Optional.of(telemetryService));
 		ActorRef follower = newTestFollower(Optional.empty(), Optional.of(publisher));
 
 		ActorRef resultSubscriber = system.actorOf(TestSubscriber.props());
-		eventService.subscribe(resultSubscriber, false, McsConfig.systemEventPrefix);
+		telemetryService.subscribe(resultSubscriber, false, McsConfig.telemetryEventPrefix);
 		expectNoMsg(duration("1 second")); // Wait for the connection
 
 		TestProbe fakeTromboneEventSubscriber = new TestProbe(system);
 
-		fakeTromboneEventSubscriber.send(follower, new McsFollowActor.UpdatedEventData(az(0), el(0), Events.getEventTime()));
+		fakeTromboneEventSubscriber.send(follower,
+				new McsFollowActor.UpdatedEventData(az(0), el(0), Events.getEventTime()));
 
 		expectNoMsg(duration("200 milli"));
 
@@ -195,9 +199,9 @@ public class McsEventPublisherTest extends JavaTestKit {
 		logger.debug("Inside McsEventPublisherTest test1: result is: " + result.msgs + ": result size is: "
 				+ result.msgs.size());
 		assertEquals(result.msgs.size(), 1);
-		SystemEvent se = jadd(new SystemEvent(McsConfig.systemEventPrefix), jset(McsConfig.az, 0.0),
+		StatusEvent se = jadd(new StatusEvent(McsConfig.telemetryEventPrefix), jset(McsConfig.az, 0.0),
 				jset(McsConfig.el, 0.0));
-		Vector<SystemEvent> v = new Vector<>();
+		Vector<StatusEvent> v = new Vector<>();
 		v.add(se);
 		assertEquals(result.msgs, v);
 		cleanup(publisher, follower);
@@ -207,11 +211,11 @@ public class McsEventPublisherTest extends JavaTestKit {
 	@Test
 	public void test2() {
 		logger.debug("Inside McsEventPublisherTest test2: STARTS");
-		ActorRef pub = newTestPublisher(Optional.of(eventService), Optional.empty());
-		ActorRef fol = newTestFollower(Optional.empty(), Optional.of(pub));
+		ActorRef publisher = newTestPublisher(Optional.of(eventService), Optional.of(telemetryService));
+		ActorRef follower = newTestFollower(Optional.empty(), Optional.of(publisher));
 
 		ActorRef resultSubscriber = system.actorOf(TestSubscriber.props());
-		eventService.subscribe(resultSubscriber, false, McsConfig.systemEventPrefix);
+		telemetryService.subscribe(resultSubscriber, false, McsConfig.telemetryEventPrefix);
 		expectNoMsg(duration("1 second")); // Wait for the connection
 
 		double testEl = 10.0;
@@ -221,9 +225,9 @@ public class McsEventPublisherTest extends JavaTestKit {
 				.collect(Collectors.toList());
 
 		TestProbe fakeTromboneSubscriber = new TestProbe(system);
-		events.forEach(ev -> fakeTromboneSubscriber.send(fol, ev));
+		events.forEach(ev -> fakeTromboneSubscriber.send(follower, ev));
 
-		expectNoMsg(duration("100 milli"));
+		expectNoMsg(duration("200 milli"));
 
 		resultSubscriber.tell(new TestSubscriber.GetResults(), self());
 		TestSubscriber.Results result = expectMsgClass(TestSubscriber.Results.class);
@@ -232,14 +236,14 @@ public class McsEventPublisherTest extends JavaTestKit {
 
 		List<Pair<Double, Double>> testResult = newAzAndElData(testEl);
 
-		List<SystemEvent> resultExpected = testResult.stream()
-				.map(f -> jadd(new SystemEvent(McsConfig.systemEventPrefix), jset(McsConfig.az, f.first()),
+		List<StatusEvent> resultExpected = testResult.stream()
+				.map(f -> jadd(new StatusEvent(McsConfig.telemetryEventPrefix), jset(McsConfig.az, f.first()),
 						jset(McsConfig.el, f.second())))
 				.collect(Collectors.toList());
 
 		assertEquals(resultExpected, result.msgs);
 
-		cleanup(pub, fol);
+		cleanup(publisher, follower);
 		logger.debug("Inside McsEventPublisherTest test2: ENDS");
 	}
 

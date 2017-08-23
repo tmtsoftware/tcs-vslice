@@ -116,6 +116,9 @@ public class M3EventSubscriberTest extends JavaTestKit {
 		DoubleItem rotation = jset(M3Config.rotationDemandKey, 2.0);
 		DoubleItem tilt = jset(M3Config.tiltDemandKey, 2.0);
 
+		DoubleItem forwardedRotation = jset(M3Config.rotation, 2.0);
+		DoubleItem forwardedtilt = jset(M3Config.tilt, 2.0);
+
 		ActorRef es = newEventSubscriber(Optional.of(fakeFollowActor.ref()), eventService);
 
 		IEventService tcsRtc = eventService;
@@ -124,8 +127,8 @@ public class M3EventSubscriberTest extends JavaTestKit {
 
 		UpdatedEventData msg = fakeFollowActor.expectMsgClass(duration("10 seconds"), UpdatedEventData.class);
 
-		assertEquals(msg.rotation, rotation);
-		assertEquals(msg.tilt, tilt);
+		assertEquals(msg.rotation, forwardedRotation);
+		assertEquals(msg.tilt, forwardedtilt);
 
 		// No more messages please
 		fakeFollowActor.expectNoMsg(duration("500 milli"));
@@ -140,6 +143,9 @@ public class M3EventSubscriberTest extends JavaTestKit {
 		DoubleItem rotation = jset(M3Config.rotationDemandKey, 2.0);
 		DoubleItem tilt = jset(M3Config.tiltDemandKey, 2.0);
 
+		DoubleItem forwardedRotation = jset(M3Config.rotation, 2.0);
+		DoubleItem forwardedtilt = jset(M3Config.tilt, 2.0);
+
 		ActorRef es = newEventSubscriber(Optional.of(fakeFollowActor.ref()), eventService);
 
 		IEventService tcsRtc = eventService;
@@ -148,8 +154,8 @@ public class M3EventSubscriberTest extends JavaTestKit {
 
 		UpdatedEventData msg = fakeFollowActor.expectMsgClass(duration("10 seconds"), UpdatedEventData.class);
 
-		assertEquals(msg.rotation, rotation);
-		assertEquals(msg.tilt, tilt);
+		assertEquals(msg.rotation, forwardedRotation);
+		assertEquals(msg.tilt, forwardedtilt);
 
 		// No more messages please
 		fakeFollowActor.expectNoMsg(duration("500 milli"));

@@ -15,8 +15,7 @@ import csw.util.config.Events.EventTime;
 import scala.PartialFunction;
 import scala.runtime.BoxedUnit;
 import tmt.tcs.common.AssemblyContext;
-import tmt.tcs.m3.M3EventPublisher.EngrUpdate;
-import tmt.tcs.m3.M3EventPublisher.SystemUpdate;
+import tmt.tcs.m3.M3EventPublisher.TelemetryUpdate;
 
 public class M3FollowActor extends AbstractActor {
 
@@ -51,22 +50,17 @@ public class M3FollowActor extends AbstractActor {
 			sendEcsPosition(t.rotation, t.tilt);
 
 			// Post a StatusEvent for telemetry updates
-			sendEngrUpdate(t.rotation, t.tilt);
-
-			// Post a SystemEvent for System updates
-			sendSystemUpdate(t.rotation, t.tilt);
+			sendTelemetryUpdate(t.rotation, t.tilt);
 
 			context().become(followingReceive(t.rotation, t.tilt));
 		}).match(SetRotation.class, t -> {
 			log.info("Inside M3FollowActor followingReceive: Got Rotation: " + t.rotation);
-			// No need to call followReceive again since we are using the
-			// UpdateEventData message
+
 			self().tell(new UpdatedEventData(t.rotation, initialTilt, new EventTime(Instant.now())), self());
 			context().become(followingReceive(t.rotation, initialTilt));
 		}).match(SetTilt.class, t -> {
 			log.info("Inside M3FollowActor followingReceive: Got Tilt: " + t.tilt);
-			// No need to call followReceive again since we are using the
-			// UpdateEventData message
+
 			self().tell(new UpdatedEventData(initialRotation, t.tilt, new EventTime(Instant.now())), self());
 			context().become(followingReceive(initialRotation, t.tilt));
 		}).matchAny(t -> log.warning("Inside M3FollowActor followingReceive: Unexpected message is: " + t)).build();
@@ -77,14 +71,9 @@ public class M3FollowActor extends AbstractActor {
 		m3Control.ifPresent(actorRef -> actorRef.tell(new M3Control.GoToPosition(rotation, tilt), self()));
 	}
 
-	private void sendEngrUpdate(DoubleItem rotation, DoubleItem tilt) {
-		log.debug("Inside M3FollowActor sendEngrUpdate publish engUpdate: " + eventPublisher);
-		eventPublisher.ifPresent(actorRef -> actorRef.tell(new EngrUpdate(rotation, tilt), self()));
-	}
-
-	private void sendSystemUpdate(DoubleItem rotation, DoubleItem tilt) {
-		log.debug("Inside M3FollowActor sendSystemUpdate publish systemUpdate: " + eventPublisher);
-		eventPublisher.ifPresent(actorRef -> actorRef.tell(new SystemUpdate(rotation, tilt), self()));
+	private void sendTelemetryUpdate(DoubleItem rotation, DoubleItem tilt) {
+		log.debug("Inside M3FollowActor sendTelemetryUpdate: " + eventPublisher);
+		eventPublisher.ifPresent(actorRef -> actorRef.tell(new TelemetryUpdate(rotation, tilt), self()));
 	}
 
 	/**

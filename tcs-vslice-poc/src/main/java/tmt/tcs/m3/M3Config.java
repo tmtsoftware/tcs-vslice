@@ -22,24 +22,17 @@ public class M3Config {
 	public static final String offsetPrefix = m3Prefix + ".offset";
 	public static final String setRotationPrefix = m3Prefix + ".rotation";
 	public static final String setTiltPrefix = m3Prefix + ".tilt";
-	public static final String m3StatePrefix = m3Prefix + ".m3State";
-	public static final String m3StatsPrefix = m3Prefix + ".stats";
 	public static final String m3StateEventPrefix = m3Prefix + ".m3State";
-	public static final String m3StatsEventPrefix = m3Prefix + ".stats";
 	public static final String positionDemandPrefix = m3TpkPrefix + ".positiondemands";
 	public static final String offsetDemandPrefix = m3TpkPrefix + ".offsetdemands";
 	public static final String currentPosPrefix = m3Prefix + ".currentposition";
-	public static final String engineeringEventPrefix = m3Prefix + ".engr";
-	public static final String systemEventPrefix = m3Prefix + ".system";
+	public static final String telemetryEventPrefix = m3Prefix + ".telemetry";
 
-	public static final ConfigKey dummyCK = new ConfigKey(m3Prefix);
 	public static final ConfigKey initCK = new ConfigKey(initPrefix);
 	public static final ConfigKey followCK = new ConfigKey(followPrefix);
 	public static final ConfigKey offsetCK = new ConfigKey(offsetPrefix);
 	public static final ConfigKey setRotationCK = new ConfigKey(setRotationPrefix);
 	public static final ConfigKey setTiltCK = new ConfigKey(setTiltPrefix);
-	public static final ConfigKey m3StateCK = new ConfigKey(m3StatePrefix);
-	public static final ConfigKey m3StatsCK = new ConfigKey(m3StatsPrefix);
 	public static final ConfigKey positionDemandCK = new ConfigKey(positionDemandPrefix);
 	public static final ConfigKey offsetDemandCK = new ConfigKey(offsetDemandPrefix);
 	public static final ConfigKey currentPosCK = new ConfigKey(currentPosPrefix);

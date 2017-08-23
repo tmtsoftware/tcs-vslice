@@ -1,6 +1,5 @@
 package tmt.tcs.ecs;
 
-import static javacsw.util.config.JConfigDSL.cs;
 import static javacsw.util.config.JItems.jset;
 
 import csw.util.config.BooleanKey;
@@ -11,7 +10,6 @@ import csw.util.config.Configurations.ConfigKey;
 import csw.util.config.DoubleItem;
 import csw.util.config.DoubleKey;
 import csw.util.config.IntKey;
-import csw.util.config.StateVariable.CurrentState;
 
 /*
  * This class contains all the configurations specific to ECS Assembly
@@ -25,24 +23,17 @@ public class EcsConfig {
 	public static final String offsetPrefix = ecsPrefix + ".offset";
 	public static final String setAzimuthPrefix = ecsPrefix + ".azimuth";
 	public static final String setElevationPrefix = ecsPrefix + ".elevation";
-	public static final String ecsStatePrefix = ecsPrefix + ".ecsState";
-	public static final String ecsStatsPrefix = ecsPrefix + ".stats";
 	public static final String ecsStateEventPrefix = ecsPrefix + ".ecsState";
-	public static final String ecsStatsEventPrefix = ecsPrefix + ".stats";
 	public static final String positionDemandPrefix = ecsTpkPrefix + ".positiondemands";
 	public static final String offsetDemandPrefix = ecsTpkPrefix + ".offsetdemands";
 	public static final String currentPosPrefix = ecsPrefix + ".currentposition";
-	public static final String engineeringEventPrefix = ecsPrefix + ".engr";
-	public static final String systemEventPrefix = ecsPrefix + ".system";
+	public static final String telemetryEventPrefix = ecsPrefix + ".telemetry";
 
-	public static final ConfigKey dummyCK = new ConfigKey(ecsPrefix);
 	public static final ConfigKey initCK = new ConfigKey(initPrefix);
 	public static final ConfigKey followCK = new ConfigKey(followPrefix);
 	public static final ConfigKey offsetCK = new ConfigKey(offsetPrefix);
 	public static final ConfigKey setAzimuthCK = new ConfigKey(setAzimuthPrefix);
 	public static final ConfigKey setElevationCK = new ConfigKey(setElevationPrefix);
-	public static final ConfigKey ecsStateCK = new ConfigKey(ecsStatePrefix);
-	public static final ConfigKey ecsStatsCK = new ConfigKey(ecsStatsPrefix);
 	public static final ConfigKey positionDemandCK = new ConfigKey(positionDemandPrefix);
 	public static final ConfigKey offsetDemandCK = new ConfigKey(offsetDemandPrefix);
 	public static final ConfigKey currentPosCK = new ConfigKey(currentPosPrefix);
@@ -67,8 +58,6 @@ public class EcsConfig {
 	public static final IntKey azPosDmdErrcnt = new IntKey("tcs.ecs.az_pos_dmd_errcnt");
 	public static final IntKey elPosDmdErrcnt = new IntKey("tcs.ecs.el_pos_dmd_errcnt");
 	public static final DoubleKey posTimeKey = new DoubleKey("tcs.ecs.time");
-
-	public static final CurrentState defaultEcsStatsState = cs(ecsStatsCK.prefix(), jset(az, 1.0));
 
 	public static DoubleItem az(double azValue) {
 		return jset(az, azValue);

@@ -54,8 +54,7 @@ public class McsEventPublisher extends BaseEventPublisher {
 	 */
 	public PartialFunction<Object, BoxedUnit> publishingEnabled(Optional<IEventService> eventService,
 			Optional<ITelemetryService> telemetryService) {
-		return ReceiveBuilder.match(SystemUpdate.class, t -> publishSystemEvent(eventService, t.az, t.el))
-				.match(EngrUpdate.class, t -> publishEngr(telemetryService, t.az, t.el))
+		return ReceiveBuilder.match(TelemetryUpdate.class, t -> publishTelemetryUpdate(telemetryService, t.az, t.el))
 				.match(McsStateUpdate.class, t -> publishMcsPositionUpdate(eventService, t.state, t.azItem, t.elItem))
 				.match(AssemblyState.class, t -> publishAssemblyState(telemetryService, t))
 				.match(LocationService.Location.class,
@@ -104,23 +103,13 @@ public class McsEventPublisher extends BaseEventPublisher {
 		}
 	}
 
-	private void publishSystemEvent(Optional<IEventService> eventService, DoubleItem az, DoubleItem el) {
-		SystemEvent se = jadd(new SystemEvent(McsConfig.systemEventPrefix), az, el);
-		log.info("Inside McsEventPublisher publishSystemEvent: Status publish of " + McsConfig.systemEventPrefix + ": "
-				+ se);
-		eventService.ifPresent(e -> e.publish(se).handle((x, ex) -> {
-			log.error("Inside McsEventPublisher publishSystemEvent: Failed to publish System event: " + se, ex);
-			return null;
-		}));
-	}
-
 	/**
-	 * This method helps publishing MCS Engr Data as State Event using
+	 * This method helps publishing MCS Telemetry Data as State Event using
 	 * Telementry Service
 	 */
-	private void publishEngr(Optional<ITelemetryService> telemetryService, DoubleItem az, DoubleItem el) {
-		StatusEvent ste = jadd(new StatusEvent(McsConfig.engineeringEventPrefix), az, el);
-		log.info("Inside McsEventPublisher publishEngr: Status publish of " + McsConfig.engineeringEventPrefix + ": "
+	private void publishTelemetryUpdate(Optional<ITelemetryService> telemetryService, DoubleItem az, DoubleItem el) {
+		StatusEvent ste = jadd(new StatusEvent(McsConfig.telemetryEventPrefix), az, el);
+		log.info("Inside McsEventPublisher publishTelemetryUpdate: Status publish of " + McsConfig.telemetryEventPrefix + ": "
 				+ ste);
 
 		telemetryService.ifPresent(e -> e.publish(ste).handle((x, ex) -> {
@@ -130,8 +119,7 @@ public class McsEventPublisher extends BaseEventPublisher {
 	}
 
 	/**
-	 * This method helps publishing MCS State as State Event using Telementry
-	 * Service
+	 * This method helps publishing MCS State as State Event using Event Service
 	 */
 	private void publishMcsPositionUpdate(Optional<IEventService> eventService, ChoiceItem state, DoubleItem az,
 			DoubleItem el) {
@@ -169,9 +157,9 @@ public class McsEventPublisher extends BaseEventPublisher {
 	}
 
 	/**
-	 * Used by actors wishing to cause an engineering event update
+	 * Used by actors wishing to cause an Telemetry update
 	 */
-	public static class EngrUpdate {
+	public static class TelemetryUpdate {
 		public final DoubleItem az;
 		public final DoubleItem el;
 
@@ -180,26 +168,7 @@ public class McsEventPublisher extends BaseEventPublisher {
 		 * @param az
 		 * @param el
 		 */
-		public EngrUpdate(DoubleItem az, DoubleItem el) {
-			this.az = az;
-			this.el = el;
-		}
-
-	}
-
-	/**
-	 * Used by actors wishing to cause an system event update
-	 */
-	public static class SystemUpdate {
-		public final DoubleItem az;
-		public final DoubleItem el;
-
-		/**
-		 * 
-		 * @param az
-		 * @param el
-		 */
-		public SystemUpdate(DoubleItem az, DoubleItem el) {
+		public TelemetryUpdate(DoubleItem az, DoubleItem el) {
 			this.az = az;
 			this.el = el;
 		}

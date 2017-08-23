@@ -77,7 +77,7 @@ public class McsEventSubscriber extends BaseEventSubscriber {
 						DoubleItem elItem = jset(McsConfig.el, elValue);
 						log.debug("Inside McsEventSubscriber subscribeReceive received : " + event.info().source()
 								+ ": azItem is: " + azItem + ": eItem is: " + elItem);
-						updateRefActor(azItem, elItem, event.info().eventTime());
+						updateFollowActor(azItem, elItem, event.info().eventTime());
 
 						context().become(subscribeReceive(azItem, elItem));
 					}
@@ -95,9 +95,9 @@ public class McsEventSubscriber extends BaseEventSubscriber {
 	}
 
 	/**
-	 * This message propagates event to Referenced Actor
+	 * This message propagates event to Follow Actor
 	 */
-	private void updateRefActor(DoubleItem az, DoubleItem el, EventTime eventTime) {
+	private void updateFollowActor(DoubleItem az, DoubleItem el, EventTime eventTime) {
 		log.debug("Inside McsEventSubscriber updateRefActor: Sending Message to Follow Actor");
 		followActor
 				.ifPresent(actorRef -> actorRef.tell(new McsFollowActor.UpdatedEventData(az, el, eventTime), self()));

@@ -15,8 +15,7 @@ import csw.util.config.Events.EventTime;
 import scala.PartialFunction;
 import scala.runtime.BoxedUnit;
 import tmt.tcs.common.AssemblyContext;
-import tmt.tcs.ecs.EcsEventPublisher.EngrUpdate;
-import tmt.tcs.ecs.EcsEventPublisher.SystemUpdate;
+import tmt.tcs.ecs.EcsEventPublisher.TelemetryUpdate;
 
 public class EcsFollowActor extends AbstractActor {
 
@@ -42,7 +41,8 @@ public class EcsFollowActor extends AbstractActor {
 		receive(followingReceive(initialElevation, initialAzimuth));
 	}
 
-	private PartialFunction<Object, BoxedUnit> followingReceive(DoubleItem initialAzimuth, DoubleItem initialElevation) {
+	private PartialFunction<Object, BoxedUnit> followingReceive(DoubleItem initialAzimuth,
+			DoubleItem initialElevation) {
 		return ReceiveBuilder.match(StopFollowing.class, t -> {
 			// do nothing
 		}).match(UpdatedEventData.class, t -> {
@@ -51,22 +51,17 @@ public class EcsFollowActor extends AbstractActor {
 			sendEcsPosition(t.azimuth, t.elevation);
 
 			// Post a StatusEvent for telemetry updates
-			sendEngrUpdate(t.azimuth, t.elevation);
-
-			// Post a SystemEvent for System updates
-			sendSystemUpdate(t.azimuth, t.elevation);
+			sendTelemetryUpdate(t.azimuth, t.elevation);
 
 			context().become(followingReceive(t.azimuth, t.elevation));
 		}).match(SetElevation.class, t -> {
 			log.info("Inside EcsFollowActor followingReceive: Got elevation: " + t.elevation);
-			// No need to call followReceive again since we are using the
-			// UpdateEventData message
+
 			self().tell(new UpdatedEventData(initialAzimuth, t.elevation, new EventTime(Instant.now())), self());
 			context().become(followingReceive(initialAzimuth, t.elevation));
 		}).match(SetAzimuth.class, t -> {
 			log.info("Inside EcsFollowActor followingReceive: Got azimuth: " + t.azimuth);
-			// No need to call followReceive again since we are using the
-			// UpdateEventData message
+
 			self().tell(new UpdatedEventData(t.azimuth, initialElevation, new EventTime(Instant.now())), self());
 			context().become(followingReceive(t.azimuth, initialElevation));
 		}).matchAny(t -> log.warning("Inside EcsFollowActor followingReceive: Unexpected message is: " + t)).build();
@@ -77,14 +72,9 @@ public class EcsFollowActor extends AbstractActor {
 		ecsControl.ifPresent(actorRef -> actorRef.tell(new EcsControl.GoToPosition(az, el), self()));
 	}
 
-	private void sendEngrUpdate(DoubleItem az, DoubleItem el) {
-		log.debug("Inside EcsFollowActor sendEngrUpdate publish engUpdate: " + eventPublisher);
-		eventPublisher.ifPresent(actorRef -> actorRef.tell(new EngrUpdate(az, el), self()));
-	}
-
-	private void sendSystemUpdate(DoubleItem az, DoubleItem el) {
-		log.debug("Inside McsFollowActor sendSystemUpdate publish systemUpdate: " + eventPublisher);
-		eventPublisher.ifPresent(actorRef -> actorRef.tell(new SystemUpdate(az, el), self()));
+	private void sendTelemetryUpdate(DoubleItem az, DoubleItem el) {
+		log.debug("Inside EcsFollowActor sendTelemetryUpdate publish Telemetry Update: " + eventPublisher);
+		eventPublisher.ifPresent(actorRef -> actorRef.tell(new TelemetryUpdate(az, el), self()));
 	}
 
 	/**
@@ -104,7 +94,7 @@ public class EcsFollowActor extends AbstractActor {
 
 			@Override
 			public EcsFollowActor create() throws Exception {
-				return new EcsFollowActor(assemblyContext, initialAzimuth, initialElivation, ecsControl, 
+				return new EcsFollowActor(assemblyContext, initialAzimuth, initialElivation, ecsControl,
 						eventPublisher);
 			}
 		});

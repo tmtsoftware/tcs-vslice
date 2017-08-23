@@ -24,7 +24,7 @@ import tmt.tcs.common.AssemblyContext;
 import tmt.tcs.common.BaseEventSubscriber;
 
 /**
- * This Class provides Event Subcription functionality for M3 It extends
+ * This Class provides Event Subscription functionality for M3 It extends
  * BaseEventSubscriber
  */
 @SuppressWarnings("unused")
@@ -77,7 +77,7 @@ public class M3EventSubscriber extends BaseEventSubscriber {
 						DoubleItem tiltItem = jset(M3Config.tilt, tiltValue);
 						log.debug("Inside M3EventSubscriber subscribeReceive received: " + event.info().source()
 								+ ": rotationItem is: " + rotationItem + ": tiltItem is: " + tiltItem);
-						updateRefActor(rotationItem, tiltItem, event.info().eventTime());
+						updateFollowActor(rotationItem, tiltItem, event.info().eventTime());
 
 						context().become(subscribeReceive(rotationItem, tiltItem));
 					}
@@ -95,9 +95,9 @@ public class M3EventSubscriber extends BaseEventSubscriber {
 	}
 
 	/**
-	 * This message propagates event to Referenced Actor
+	 * This message propagates event to Follow Actor
 	 */
-	private void updateRefActor(DoubleItem rotation, DoubleItem tilt, EventTime eventTime) {
+	private void updateFollowActor(DoubleItem rotation, DoubleItem tilt, EventTime eventTime) {
 		log.debug("Inside M3EventSubscriber updateRefActor: Sending Message to Follow Actor");
 		followActor.ifPresent(
 				actorRef -> actorRef.tell(new M3FollowActor.UpdatedEventData(rotation, tilt, eventTime), self()));

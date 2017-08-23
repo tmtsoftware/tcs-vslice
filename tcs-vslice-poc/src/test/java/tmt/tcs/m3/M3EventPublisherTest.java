@@ -35,6 +35,7 @@ import csw.services.loc.LocationService;
 import csw.util.config.DoubleItem;
 import csw.util.config.Events;
 import csw.util.config.Events.EventServiceEvent;
+import csw.util.config.Events.StatusEvent;
 import csw.util.config.Events.SystemEvent;
 import javacsw.services.events.IEventService;
 import javacsw.services.events.ITelemetryService;
@@ -88,9 +89,9 @@ public class M3EventPublisherTest extends JavaTestKit {
 				msgs.add(event);
 				log.info("Inside M3EventPublisherTest TestSubscriber: Received System: " + event.info().source()
 						+ "  event: " + event);
-			}).match(Events.StatusEvent.class, event -> {
+			}).match(StatusEvent.class, event -> {
 				msgs.add(event);
-				log.info("Inside M3EventPublisherTest TestSubscriber: Received Status " + event.info().source()
+				log.info("Inside M3EventPublisherTest TestSubscriber: Received Status: " + event.info().source()
 						+ " event: " + event);
 			}).match(GetResults.class, t -> sender().tell(new Results(msgs), self()))
 					.matchAny(t -> log
@@ -108,7 +109,6 @@ public class M3EventPublisherTest extends JavaTestKit {
 
 	private static AssemblyContext assemblyContext = M3TestData.m3TestAssemblyContext;
 
-	@SuppressWarnings("unused")
 	private static ITelemetryService telemetryService;
 
 	private static IEventService eventService;
@@ -176,11 +176,11 @@ public class M3EventPublisherTest extends JavaTestKit {
 	@Test
 	public void test1() {
 		logger.debug("Inside M3EventPublisherTest test1: STARTS");
-		ActorRef publisher = newTestPublisher(Optional.of(eventService), Optional.empty());
+		ActorRef publisher = newTestPublisher(Optional.of(eventService), Optional.of(telemetryService));
 		ActorRef follower = newTestFollower(Optional.empty(), Optional.of(publisher));
 
 		ActorRef resultSubscriber = system.actorOf(TestSubscriber.props());
-		eventService.subscribe(resultSubscriber, false, M3Config.systemEventPrefix);
+		telemetryService.subscribe(resultSubscriber, false, M3Config.telemetryEventPrefix);
 		expectNoMsg(duration("1 second")); // Wait for the connection
 
 		TestProbe fakeTromboneEventSubscriber = new TestProbe(system);
@@ -196,9 +196,9 @@ public class M3EventPublisherTest extends JavaTestKit {
 		logger.debug("Inside M3EventPublisherTest test1: result is: " + result.msgs + ": result size is: "
 				+ result.msgs.size());
 		assertEquals(result.msgs.size(), 1);
-		SystemEvent se = jadd(new SystemEvent(M3Config.systemEventPrefix), jset(M3Config.rotation, 0.0),
+		StatusEvent se = jadd(new StatusEvent(M3Config.telemetryEventPrefix), jset(M3Config.rotation, 0.0),
 				jset(M3Config.tilt, 0.0));
-		Vector<SystemEvent> v = new Vector<>();
+		Vector<StatusEvent> v = new Vector<>();
 		v.add(se);
 		assertEquals(result.msgs, v);
 		cleanup(publisher, follower);
@@ -208,11 +208,11 @@ public class M3EventPublisherTest extends JavaTestKit {
 	@Test
 	public void test2() {
 		logger.debug("Inside M3EventPublisherTest test2: STARTS");
-		ActorRef pub = newTestPublisher(Optional.of(eventService), Optional.empty());
-		ActorRef fol = newTestFollower(Optional.empty(), Optional.of(pub));
+		ActorRef publisher = newTestPublisher(Optional.of(eventService), Optional.of(telemetryService));
+		ActorRef follower = newTestFollower(Optional.empty(), Optional.of(publisher));
 
 		ActorRef resultSubscriber = system.actorOf(TestSubscriber.props());
-		eventService.subscribe(resultSubscriber, false, M3Config.systemEventPrefix);
+		telemetryService.subscribe(resultSubscriber, false, M3Config.telemetryEventPrefix);
 		expectNoMsg(duration("1 second")); // Wait for the connection
 
 		double testTilt = 10.0;
@@ -222,9 +222,9 @@ public class M3EventPublisherTest extends JavaTestKit {
 				.collect(Collectors.toList());
 
 		TestProbe fakeTromboneSubscriber = new TestProbe(system);
-		events.forEach(ev -> fakeTromboneSubscriber.send(fol, ev));
+		events.forEach(ev -> fakeTromboneSubscriber.send(follower, ev));
 
-		expectNoMsg(duration("100 milli"));
+		expectNoMsg(duration("200 milli"));
 
 		resultSubscriber.tell(new TestSubscriber.GetResults(), self());
 		TestSubscriber.Results result = expectMsgClass(TestSubscriber.Results.class);
@@ -233,14 +233,14 @@ public class M3EventPublisherTest extends JavaTestKit {
 
 		List<Pair<Double, Double>> testResult = newRotationAndTiltData(testTilt);
 
-		List<SystemEvent> resultExpected = testResult.stream()
-				.map(f -> jadd(new SystemEvent(M3Config.systemEventPrefix), jset(M3Config.rotation, f.first()),
-						jset(M3Config.tilt, f.second())))
+		List<StatusEvent> resultExpected = testResult
+				.stream().map(f -> jadd(new StatusEvent(M3Config.telemetryEventPrefix),
+						jset(M3Config.rotation, f.first()), jset(M3Config.tilt, f.second())))
 				.collect(Collectors.toList());
 
 		assertEquals(resultExpected, result.msgs);
 
-		cleanup(pub, fol);
+		cleanup(publisher, follower);
 		logger.debug("Inside M3EventPublisherTest test2: ENDS");
 	}
 

@@ -1,6 +1,5 @@
 package tmt.tcs.mcs;
 
-import static javacsw.util.config.JConfigDSL.cs;
 import static javacsw.util.config.JItems.jset;
 
 import csw.util.config.BooleanKey;
@@ -11,7 +10,6 @@ import csw.util.config.Configurations.ConfigKey;
 import csw.util.config.DoubleItem;
 import csw.util.config.DoubleKey;
 import csw.util.config.IntKey;
-import csw.util.config.StateVariable.CurrentState;
 
 /*
  * This class contains all the configurations specific to MCS Assembly
@@ -25,24 +23,17 @@ public class McsConfig {
 	public static final String offsetPrefix = mcsPrefix + ".offset";
 	public static final String setAzimuthPrefix = mcsPrefix + ".azimuth";
 	public static final String setElevationPrefix = mcsPrefix + ".elevation";
-	public static final String mcsStatePrefix = mcsPrefix + ".mcsState";
-	public static final String mcsStatsPrefix = mcsPrefix + ".stats";
 	public static final String mcsStateEventPrefix = mcsPrefix + ".mcsState";
-	public static final String mcsStatsEventPrefix = mcsPrefix + ".stats";
 	public static final String positionDemandPrefix = mcsTpkPrefix + ".positiondemands";
 	public static final String offsetDemandPrefix = mcsTpkPrefix + ".offsetdemands";
 	public static final String currentPosPrefix = mcsPrefix + ".currentposition";
-	public static final String engineeringEventPrefix = mcsPrefix + ".engr";
-	public static final String systemEventPrefix = mcsPrefix + ".system";
+	public static final String telemetryEventPrefix = mcsPrefix + ".telemetry";
 
-	public static final ConfigKey dummyCK = new ConfigKey(mcsPrefix);
 	public static final ConfigKey initCK = new ConfigKey(initPrefix);
 	public static final ConfigKey followCK = new ConfigKey(followPrefix);
 	public static final ConfigKey offsetCK = new ConfigKey(offsetPrefix);
 	public static final ConfigKey setAzimuthCK = new ConfigKey(setAzimuthPrefix);
 	public static final ConfigKey setElevationCK = new ConfigKey(setElevationPrefix);
-	public static final ConfigKey mcsStateCK = new ConfigKey(mcsStatePrefix);
-	public static final ConfigKey mcsStatsCK = new ConfigKey(mcsStatsPrefix);
 	public static final ConfigKey positionDemandCK = new ConfigKey(positionDemandPrefix);
 	public static final ConfigKey offsetDemandCK = new ConfigKey(offsetDemandPrefix);
 	public static final ConfigKey currentPosCK = new ConfigKey(currentPosPrefix);
@@ -67,8 +58,6 @@ public class McsConfig {
 	public static final IntKey azPosDmdErrcnt = new IntKey("tcs.mcs.az_pos_dmd_errcnt");
 	public static final IntKey elPosDmdErrcnt = new IntKey("tcs.mcs.el_pos_dmd_errcnt");
 	public static final DoubleKey posTimeKey = new DoubleKey("tcs.mcs.time");
-
-	public static final CurrentState defaultMcsStatsState = cs(mcsStatsCK.prefix(), jset(az, 1.0));
 
 	public static DoubleItem az(double azValue) {
 		return jset(az, azValue);
