@@ -33,10 +33,12 @@ import akka.japi.pf.ReceiveBuilder;
 import akka.util.Timeout;
 import csw.services.ccs.CommandStatus.CommandStatus;
 import csw.services.ccs.CommandStatus.Error;
+import csw.services.ccs.CommandStatus.Invalid;
 import csw.services.ccs.CommandStatus.NoLongerValid;
 import csw.services.ccs.DemandMatcher;
 import csw.services.ccs.SequentialExecutor.ExecuteOne;
 import csw.services.ccs.Validation.RequiredHCDUnavailableIssue;
+import csw.services.ccs.Validation.UnsupportedCommandInStateIssue;
 import csw.services.ccs.Validation.WrongInternalStateIssue;
 import csw.services.loc.LocationService.Location;
 import csw.services.loc.LocationService.ResolvedAkkaLocation;
@@ -192,6 +194,16 @@ public class EcsCommandHandler extends BaseCommandHandler {
 								currentState(), Optional.of(ecsStateActor)));
 						context().become(actorExecutingReceive(offsetActorRef, commandOriginator));
 						self().tell(JSequentialExecutor.CommandStart(), self());
+					} else {
+						log.error("Inside EcsCommandHandler initReceive: Received an unknown command: " + t + " from "
+								+ sender());
+						commandOriginator
+								.ifPresent(
+										actorRef -> actorRef.tell(
+												new Invalid(new UnsupportedCommandInStateIssue(
+														"Ecs assembly does not support the command "
+																+ configKey.prefix() + " in the current state.")),
+												self()));
 					}
 				}).build());
 	}

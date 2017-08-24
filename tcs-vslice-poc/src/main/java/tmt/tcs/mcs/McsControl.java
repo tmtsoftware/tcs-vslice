@@ -47,8 +47,7 @@ public class McsControl extends AbstractActor {
 		}).match(McsAssembly.UpdateHcd.class, t -> {
 			log.info("Inside McsControl controlReceive: Got UpdateHcd");
 			context().become(controlReceive(t.hcdActorRef));
-		}).matchAny(t -> log.warning("Inside McsControl: controlReceive Unexpected message received : " + t))
-				.build();
+		}).matchAny(t -> log.warning("Inside McsControl: controlReceive Unexpected message received : " + t)).build();
 	}
 
 	// Props for creating the McsControl actor
@@ -71,6 +70,42 @@ public class McsControl extends AbstractActor {
 		GoToPosition(DoubleItem azimuth, DoubleItem elevation) {
 			this.azimuth = azimuth;
 			this.elevation = elevation;
+		}
+
+		@Override
+		public int hashCode() {
+			final int prime = 31;
+			int result = 1;
+			result = prime * result + ((azimuth == null) ? 0 : azimuth.hashCode());
+			result = prime * result + ((elevation == null) ? 0 : elevation.hashCode());
+			return result;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj)
+				return true;
+			if (obj == null)
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			GoToPosition other = (GoToPosition) obj;
+			if (azimuth == null) {
+				if (other.azimuth != null)
+					return false;
+			} else if (!azimuth.equals(other.azimuth))
+				return false;
+			if (elevation == null) {
+				if (other.elevation != null)
+					return false;
+			} else if (!elevation.equals(other.elevation))
+				return false;
+			return true;
+		}
+
+		@Override
+		public String toString() {
+			return "GoToPosition [azimuth=" + azimuth + ", elevation=" + elevation + "]";
 		}
 
 	}

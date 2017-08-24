@@ -32,8 +32,8 @@ public class M3FollowActor extends AbstractActor {
 	private M3FollowActor(AssemblyContext assemblyContext, DoubleItem initialRotation, DoubleItem initialTilt,
 			Optional<ActorRef> m3Control, Optional<ActorRef> eventPublisher) {
 		this.assemblyContext = assemblyContext;
-		this.initialRotation = initialTilt;
-		this.initialTilt = initialRotation;
+		this.initialRotation = initialRotation;
+		this.initialTilt = initialTilt;
 		this.m3Control = m3Control;
 		this.eventPublisher = eventPublisher;
 

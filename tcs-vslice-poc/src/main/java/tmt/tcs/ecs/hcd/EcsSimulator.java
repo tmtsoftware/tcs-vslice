@@ -76,6 +76,11 @@ public class EcsSimulator extends AbstractActor {
 			this.azPosition = azPosition;
 			this.elPosition = elPosition;
 		}
+
+		@Override
+		public String toString() {
+			return "EcsPosUpdate [state=" + state + ", azPosition=" + azPosition + ", elPosition=" + elPosition + "]";
+		}
 	}
 
 	public static class Move {

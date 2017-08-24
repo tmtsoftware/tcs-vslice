@@ -42,7 +42,7 @@ public class M3Simulator extends AbstractActor {
 			currentRotation = e.rotation;
 			currentTilt = e.tilt;
 			currentState = M3State.M3_IDLE;
-			
+
 			update(replyTo, getState());
 		}).matchAny(x -> log.warning("Inside M3Simulator Unexpected message in idleReceive: " + x)).build();
 	}
@@ -76,6 +76,12 @@ public class M3Simulator extends AbstractActor {
 			this.state = state;
 			this.rotationPosition = rotationPosition;
 			this.tiltPosition = tiltPosition;
+		}
+
+		@Override
+		public String toString() {
+			return "M3PosUpdate [state=" + state + ", rotationPosition=" + rotationPosition + ", tiltPosition="
+					+ tiltPosition + "]";
 		}
 	}
 

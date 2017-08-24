@@ -72,5 +72,41 @@ public class M3Control extends AbstractActor {
 			this.tilt = tilt;
 		}
 
+		@Override
+		public int hashCode() {
+			final int prime = 31;
+			int result = 1;
+			result = prime * result + ((rotation == null) ? 0 : rotation.hashCode());
+			result = prime * result + ((tilt == null) ? 0 : tilt.hashCode());
+			return result;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj)
+				return true;
+			if (obj == null)
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			GoToPosition other = (GoToPosition) obj;
+			if (rotation == null) {
+				if (other.rotation != null)
+					return false;
+			} else if (!rotation.equals(other.rotation))
+				return false;
+			if (tilt == null) {
+				if (other.tilt != null)
+					return false;
+			} else if (!tilt.equals(other.tilt))
+				return false;
+			return true;
+		}
+
+		@Override
+		public String toString() {
+			return "GoToPosition [rotation=" + rotation + ", tilt=" + tilt + "]";
+		}
+
 	}
 }

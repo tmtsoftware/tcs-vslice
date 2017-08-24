@@ -96,6 +96,8 @@ public class M3Hcd extends BaseHcd {
 			supervisor.tell(ShutdownComplete, self());
 		}).match(Supervisor.LifecycleFailureInfo.class, e -> {
 			log.error("Inside M3Hcd Received failed state: " + e.state() + " for reason: " + e.reason());
+		}).matchEquals(M3Message.GetM3UpdateNow, e -> {
+			sender().tell(current, self());
 		}).match(M3PosUpdate.class, e -> {
 			log.debug("Inside M3Hcd Received M3Update");
 			current = e;
@@ -137,5 +139,15 @@ public class M3Hcd extends BaseHcd {
 				return new M3Hcd(info, supervisor);
 			}
 		});
+	}
+
+	// Testing messages for M3 Hcd
+	public enum M3Message {
+		GetM3Update,
+
+		/**
+		 * Directly returns an M3PosUpdate to sender
+		 */
+		GetM3UpdateNow
 	}
 }

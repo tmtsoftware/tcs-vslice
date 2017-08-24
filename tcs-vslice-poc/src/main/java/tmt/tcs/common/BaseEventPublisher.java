@@ -13,7 +13,25 @@ import scala.runtime.BoxedUnit;
 /**
  * This is the base Event Publisher class being extended by all Event Publisher
  */
-public abstract class BaseEventPublisher extends AbstractActor implements ILocationSubscriberClient {
+public abstract class BaseEventPublisher extends AbstractActor
+		implements AssemblyStateClient, ILocationSubscriberClient {
+
+	private AssemblyStateActor.AssemblyState internalState = AssemblyStateActor.defaultAssemblyState;
+
+	public static class CommandDone {
+	}
+
+	@Override
+	public void setCurrentState(AssemblyStateActor.AssemblyState mcsState) {
+		internalState = mcsState;
+	}
+
+	/**
+	 * @return AssemblyStateActor.AssemblyState
+	 */
+	public AssemblyStateActor.AssemblyState currentState() {
+		return internalState;
+	}
 
 	public abstract PartialFunction<Object, BoxedUnit> publishingEnabled(Optional<IEventService> eventService,
 			Optional<ITelemetryService> telemetryService);

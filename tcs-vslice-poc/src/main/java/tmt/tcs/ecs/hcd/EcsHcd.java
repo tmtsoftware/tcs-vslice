@@ -96,6 +96,8 @@ public class EcsHcd extends BaseHcd {
 			supervisor.tell(ShutdownComplete, self());
 		}).match(Supervisor.LifecycleFailureInfo.class, e -> {
 			log.error("Inside EcsHcd Received failed state: " + e.state() + " for reason: " + e.reason());
+		}).matchEquals(EcsMessage.GetEcsUpdateNow, e -> {
+			sender().tell(current, self());
 		}).match(EcsPosUpdate.class, e -> {
 			log.debug("Inside EcsHcd Received EcsUpdate");
 			current = e;
@@ -135,5 +137,15 @@ public class EcsHcd extends BaseHcd {
 				return new EcsHcd(info, supervisor);
 			}
 		});
+	}
+
+	// Testing messages for MEHcd
+	public enum EcsMessage {
+		GetEcsUpdate,
+
+		/**
+		 * Directly returns an EcsPosUpdate to sender
+		 */
+		GetEcsUpdateNow
 	}
 }

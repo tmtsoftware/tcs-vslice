@@ -1,4 +1,4 @@
-package tmt.tcs.tcs;
+package tmt.tcs;
 
 import static javacsw.services.ccs.JCommandStatus.Accepted;
 import static javacsw.services.ccs.JCommandStatus.AllCompleted;
@@ -49,6 +49,9 @@ import javacsw.services.pkg.JComponent;
 import scala.concurrent.duration.FiniteDuration;
 import tmt.tcs.TcsAssembly;
 import tmt.tcs.TcsConfig;
+import tmt.tcs.ecs.EcsAssembly;
+import tmt.tcs.m3.M3Assembly;
+import tmt.tcs.mcs.McsAssembly;
 
 /**
  * This is test class for MCS which checks for Command Flow from Test Class ->
@@ -162,12 +165,21 @@ public class TcsTest extends JavaTestKit {
 	 * This test case checks for offset command flow from Test Class to TCS
 	 * Assembly to MCS Assembly
 	 */
+	@SuppressWarnings("unused")
 	@Test
 	public void test1() {
 		logger.debug("Inside TcsTest test1 Offset Command");
 
 		TestProbe fakeSupervisor = new TestProbe(system);
+
+		ActorRef mcsAssembly = newMcsAssembly(fakeSupervisor.ref());
+		ActorRef ecsAssembly = newEcsAssembly(fakeSupervisor.ref());
+		ActorRef m3Assembly = newM3Assembly(fakeSupervisor.ref());
+
+		expectNoMsg(duration("300 millis"));
+
 		ActorRef tcsAssembly = newTcsAssembly(fakeSupervisor.ref());
+
 		TestProbe fakeClient = new TestProbe(system);
 
 		SetupConfig offsetSc = jadd(new SetupConfig(TcsConfig.offsetCK.prefix()), jset(TcsConfig.ra, raOffsetValue),
@@ -190,18 +202,26 @@ public class TcsTest extends JavaTestKit {
 		assertEquals(completeMsg.overall(), AllCompleted);
 
 	}
-	
 
 	/**
 	 * This test case checks for follow command flow from Test Class to TCS
-	 * Assembly to MCS Assembly
+	 * Assembly to MCS, ECS and M3 Assembly
 	 */
+	@SuppressWarnings("unused")
 	@Test
 	public void test2() {
 		logger.debug("Inside TcsTest test2 Position Command");
 
 		TestProbe fakeSupervisor = new TestProbe(system);
+
+		ActorRef mcsAssembly = newMcsAssembly(fakeSupervisor.ref());
+		ActorRef ecsAssembly = newEcsAssembly(fakeSupervisor.ref());
+		ActorRef m3Assembly = newM3Assembly(fakeSupervisor.ref());
+
+		expectNoMsg(duration("300 millis"));
+
 		ActorRef tcsAssembly = newTcsAssembly(fakeSupervisor.ref());
+
 		TestProbe fakeClient = new TestProbe(system);
 
 		SetupConfig positionSc = jadd(new SetupConfig(TcsConfig.positionCK.prefix()),
@@ -252,6 +272,69 @@ public class TcsTest extends JavaTestKit {
 				componentClassName, RegisterAndTrackServices, Collections.singleton(AkkaType), connections);
 
 		Props props = getTcsProps(assemblyInfo, Optional.of(supervisor));
+		expectNoMsg(duration("300 millis"));
+		return system.actorOf(props);
+	}
+
+	Props getMcsProps(AssemblyInfo assemblyInfo, Optional<ActorRef> supervisorIn) {
+		if (!supervisorIn.isPresent())
+			return McsAssembly.props(assemblyInfo, new TestProbe(system).ref());
+		return McsAssembly.props(assemblyInfo, supervisorIn.get());
+	}
+
+	ActorRef newMcsAssembly(ActorRef supervisor) {
+		String componentName = "mcsAssembly";
+		String componentClassName = "tmt.tcs.mcs.McsAssembly";
+		String componentPrefix = "tcs.mcs";
+
+		ComponentId hcdId = JComponentId.componentId("mcsHcd", JComponentType.HCD);
+		Component.AssemblyInfo assemblyInfo = JComponent.assemblyInfo(componentName, componentPrefix,
+				componentClassName, RegisterAndTrackServices, Collections.singleton(AkkaType),
+				Collections.singleton(new Connection.AkkaConnection(hcdId)));
+
+		Props props = getMcsProps(assemblyInfo, Optional.of(supervisor));
+		expectNoMsg(duration("300 millis"));
+		return system.actorOf(props);
+	}
+
+	Props getEcsProps(AssemblyInfo assemblyInfo, Optional<ActorRef> supervisorIn) {
+		if (!supervisorIn.isPresent())
+			return EcsAssembly.props(assemblyInfo, new TestProbe(system).ref());
+		return EcsAssembly.props(assemblyInfo, supervisorIn.get());
+	}
+
+	ActorRef newEcsAssembly(ActorRef supervisor) {
+		String componentName = "EcsAssembly";
+		String componentClassName = "tmt.tcs.ecs.EcsAssembly";
+		String componentPrefix = "tcs.ecs";
+
+		ComponentId hcdId = JComponentId.componentId("ecsHcd", JComponentType.HCD);
+		Component.AssemblyInfo assemblyInfo = JComponent.assemblyInfo(componentName, componentPrefix,
+				componentClassName, RegisterAndTrackServices, Collections.singleton(AkkaType),
+				Collections.singleton(new Connection.AkkaConnection(hcdId)));
+
+		Props props = getEcsProps(assemblyInfo, Optional.of(supervisor));
+		expectNoMsg(duration("300 millis"));
+		return system.actorOf(props);
+	}
+
+	Props getM3Props(AssemblyInfo assemblyInfo, Optional<ActorRef> supervisorIn) {
+		if (!supervisorIn.isPresent())
+			return M3Assembly.props(assemblyInfo, new TestProbe(system).ref());
+		return M3Assembly.props(assemblyInfo, supervisorIn.get());
+	}
+
+	ActorRef newM3Assembly(ActorRef supervisor) {
+		String componentName = "M3Assembly";
+		String componentClassName = "tmt.tcs.m3.M3Assembly";
+		String componentPrefix = "tcs.m3";
+
+		ComponentId hcdId = JComponentId.componentId("m3Hcd", JComponentType.HCD);
+		Component.AssemblyInfo assemblyInfo = JComponent.assemblyInfo(componentName, componentPrefix,
+				componentClassName, RegisterAndTrackServices, Collections.singleton(AkkaType),
+				Collections.singleton(new Connection.AkkaConnection(hcdId)));
+
+		Props props = getM3Props(assemblyInfo, Optional.of(supervisor));
 		expectNoMsg(duration("300 millis"));
 		return system.actorOf(props);
 	}

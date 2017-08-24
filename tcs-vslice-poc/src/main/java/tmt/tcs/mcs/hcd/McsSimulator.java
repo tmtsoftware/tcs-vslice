@@ -76,6 +76,12 @@ public class McsSimulator extends AbstractActor {
 			this.azPosition = azPosition;
 			this.elPosition = elPosition;
 		}
+
+		@Override
+		public String toString() {
+			return "McsPosUpdate [state=" + state + ", azPosition=" + azPosition + ", elPosition=" + elPosition + "]";
+		}
+
 	}
 
 	public static class Move {

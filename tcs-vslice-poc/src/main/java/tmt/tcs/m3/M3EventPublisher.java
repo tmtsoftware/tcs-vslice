@@ -54,7 +54,8 @@ public class M3EventPublisher extends BaseEventPublisher {
 	 */
 	public PartialFunction<Object, BoxedUnit> publishingEnabled(Optional<IEventService> eventService,
 			Optional<ITelemetryService> telemetryService) {
-		return ReceiveBuilder.match(TelemetryUpdate.class, t -> publishTelemetryUpdate(telemetryService, t.rotation, t.tilt))
+		return ReceiveBuilder
+				.match(TelemetryUpdate.class, t -> publishTelemetryUpdate(telemetryService, t.rotation, t.tilt))
 				.match(M3StateUpdate.class,
 						t -> publishM3PositionUpdate(eventService, t.state, t.rotationItem, t.tiltItem))
 				.match(LocationService.Location.class,
@@ -104,13 +105,14 @@ public class M3EventPublisher extends BaseEventPublisher {
 	}
 
 	/**
-	 * This method helps publishing M3 Telemetry Data as State Event using Telementry
-	 * Service
+	 * This method helps publishing M3 Telemetry Data as State Event using
+	 * Telementry Service
 	 */
-	private void publishTelemetryUpdate(Optional<ITelemetryService> telemetryService, DoubleItem rotation, DoubleItem tilt) {
+	private void publishTelemetryUpdate(Optional<ITelemetryService> telemetryService, DoubleItem rotation,
+			DoubleItem tilt) {
 		StatusEvent ste = jadd(new StatusEvent(M3Config.telemetryEventPrefix), rotation, tilt);
-		log.info("Inside M3EventPublisher publishTelemetryUpdate: Status publish of " + M3Config.telemetryEventPrefix + ": "
-				+ ste);
+		log.info("Inside M3EventPublisher publishTelemetryUpdate: Status publish of " + M3Config.telemetryEventPrefix
+				+ ": " + ste);
 
 		telemetryService.ifPresent(e -> e.publish(ste).handle((x, ex) -> {
 			log.error("Inside M3EventPublisher publishTelemetryUpdate: Failed to publish telemetry: " + ste, ex);
@@ -159,6 +161,42 @@ public class M3EventPublisher extends BaseEventPublisher {
 		public TelemetryUpdate(DoubleItem rotation, DoubleItem tilt) {
 			this.rotation = rotation;
 			this.tilt = tilt;
+		}
+
+		@Override
+		public int hashCode() {
+			final int prime = 31;
+			int result = 1;
+			result = prime * result + ((rotation == null) ? 0 : rotation.hashCode());
+			result = prime * result + ((tilt == null) ? 0 : tilt.hashCode());
+			return result;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj)
+				return true;
+			if (obj == null)
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			TelemetryUpdate other = (TelemetryUpdate) obj;
+			if (rotation == null) {
+				if (other.rotation != null)
+					return false;
+			} else if (!rotation.equals(other.rotation))
+				return false;
+			if (tilt == null) {
+				if (other.tilt != null)
+					return false;
+			} else if (!tilt.equals(other.tilt))
+				return false;
+			return true;
+		}
+
+		@Override
+		public String toString() {
+			return "TelemetryUpdate [rotation=" + rotation + ", tilt=" + tilt + "]";
 		}
 
 	}

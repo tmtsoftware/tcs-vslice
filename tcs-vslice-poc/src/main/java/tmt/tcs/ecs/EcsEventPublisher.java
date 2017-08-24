@@ -174,6 +174,42 @@ public class EcsEventPublisher extends BaseEventPublisher {
 			this.el = el;
 		}
 
+		@Override
+		public int hashCode() {
+			final int prime = 31;
+			int result = 1;
+			result = prime * result + ((az == null) ? 0 : az.hashCode());
+			result = prime * result + ((el == null) ? 0 : el.hashCode());
+			return result;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj)
+				return true;
+			if (obj == null)
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			TelemetryUpdate other = (TelemetryUpdate) obj;
+			if (az == null) {
+				if (other.az != null)
+					return false;
+			} else if (!az.equals(other.az))
+				return false;
+			if (el == null) {
+				if (other.el != null)
+					return false;
+			} else if (!el.equals(other.el))
+				return false;
+			return true;
+		}
+
+		@Override
+		public String toString() {
+			return "TelemetryUpdate [az=" + az + ", el=" + el + "]";
+		}
+
 	}
 
 	public static class EcsStateUpdate {

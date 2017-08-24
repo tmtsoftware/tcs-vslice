@@ -106,6 +106,8 @@ public class McsHcd extends BaseHcd {
 			supervisor.tell(ShutdownComplete, self());
 		}).match(Supervisor.LifecycleFailureInfo.class, e -> {
 			log.error("Inside McsHcd Received failed state: " + e.state() + " for reason: " + e.reason());
+		}).matchEquals(McsMessage.GetMcsUpdateNow, e -> {
+			sender().tell(current, self());
 		}).match(McsPosUpdate.class, e -> {
 			log.debug("Inside McsHcd Received McsUpdate");
 			current = e;
@@ -153,6 +155,16 @@ public class McsHcd extends BaseHcd {
 				return new McsHcd(info, supervisor);
 			}
 		});
+	}
+
+	// Testing messages for Mcs Hcd
+	public enum McsMessage {
+		GetMcsUpdate,
+
+		/**
+		 * Directly returns an McsPosUpdate to sender
+		 */
+		GetMcsUpdateNow
 	}
 
 }

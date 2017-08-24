@@ -109,8 +109,8 @@ public class McsEventPublisher extends BaseEventPublisher {
 	 */
 	private void publishTelemetryUpdate(Optional<ITelemetryService> telemetryService, DoubleItem az, DoubleItem el) {
 		StatusEvent ste = jadd(new StatusEvent(McsConfig.telemetryEventPrefix), az, el);
-		log.info("Inside McsEventPublisher publishTelemetryUpdate: Status publish of " + McsConfig.telemetryEventPrefix + ": "
-				+ ste);
+		log.info("Inside McsEventPublisher publishTelemetryUpdate: Status publish of " + McsConfig.telemetryEventPrefix
+				+ ": " + ste);
 
 		telemetryService.ifPresent(e -> e.publish(ste).handle((x, ex) -> {
 			log.error("Inside McsEventPublisher publishEngr: Failed to publish engr: " + ste, ex);
@@ -173,6 +173,42 @@ public class McsEventPublisher extends BaseEventPublisher {
 			this.el = el;
 		}
 
+		@Override
+		public String toString() {
+			return "TelemetryUpdate [az=" + az + ", el=" + el + "]";
+		}
+
+		@Override
+		public int hashCode() {
+			final int prime = 31;
+			int result = 1;
+			result = prime * result + ((az == null) ? 0 : az.hashCode());
+			result = prime * result + ((el == null) ? 0 : el.hashCode());
+			return result;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj)
+				return true;
+			if (obj == null)
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			TelemetryUpdate other = (TelemetryUpdate) obj;
+			if (az == null) {
+				if (other.az != null)
+					return false;
+			} else if (!az.equals(other.az))
+				return false;
+			if (el == null) {
+				if (other.el != null)
+					return false;
+			} else if (!el.equals(other.el))
+				return false;
+			return true;
+		}
+		
 	}
 
 	public static class McsStateUpdate {

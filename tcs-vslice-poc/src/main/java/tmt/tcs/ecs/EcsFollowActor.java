@@ -29,7 +29,7 @@ public class EcsFollowActor extends AbstractActor {
 	public final DoubleItem initialAzimuth;
 	public final DoubleItem initialElevation;
 
-	private EcsFollowActor(AssemblyContext assemblyContext, DoubleItem initialElevation, DoubleItem initialAzimuth,
+	private EcsFollowActor(AssemblyContext assemblyContext, DoubleItem initialAzimuth, DoubleItem initialElevation,
 			Optional<ActorRef> ecsControl, Optional<ActorRef> eventPublisher) {
 		this.assemblyContext = assemblyContext;
 		this.initialAzimuth = initialAzimuth;
@@ -38,7 +38,7 @@ public class EcsFollowActor extends AbstractActor {
 		this.eventPublisher = eventPublisher;
 
 		// Initial receive - start with initial values
-		receive(followingReceive(initialElevation, initialAzimuth));
+		receive(followingReceive(initialAzimuth, initialElevation));
 	}
 
 	private PartialFunction<Object, BoxedUnit> followingReceive(DoubleItem initialAzimuth,
@@ -87,14 +87,14 @@ public class EcsFollowActor extends AbstractActor {
 	 * @param eventPublisher
 	 * @return
 	 */
-	public static Props props(AssemblyContext assemblyContext, DoubleItem initialAzimuth, DoubleItem initialElivation,
+	public static Props props(AssemblyContext assemblyContext, DoubleItem initialAzimuth, DoubleItem initialElevation,
 			Optional<ActorRef> ecsControl, Optional<ActorRef> eventPublisher) {
 		return Props.create(new Creator<EcsFollowActor>() {
 			private static final long serialVersionUID = 1L;
 
 			@Override
 			public EcsFollowActor create() throws Exception {
-				return new EcsFollowActor(assemblyContext, initialAzimuth, initialElivation, ecsControl,
+				return new EcsFollowActor(assemblyContext, initialAzimuth, initialElevation, ecsControl,
 						eventPublisher);
 			}
 		});
