@@ -13,6 +13,7 @@ public class TcsConfig {
 	public static final String mcsPrefix = "tcs.mcs";
 	public static final String ecsPrefix = "tcs.ecs";
 	public static final String m3Prefix = "tcs.m3";
+	public static final String tpkPrefix = "tcs.tpk";
 	public static final String tcsTpkPrefix = "tcs.str";
 	public static final String initPrefix = tcsPrefix + ".init";
 	public static final String movePrefix = tcsPrefix + ".move";

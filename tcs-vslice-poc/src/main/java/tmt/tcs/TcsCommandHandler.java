@@ -50,12 +50,13 @@ public class TcsCommandHandler extends BaseCommandHandler {
 	private ActorRef mcsRefActor;
 	private ActorRef ecsRefActor;
 	private ActorRef m3RefActor;
+	private ActorRef tpkRefActor;
 
 	private Optional<IEventService> badEventService = Optional.empty();
 	private Optional<IEventService> eventService = badEventService;
 
 	public TcsCommandHandler(AssemblyContext ac, Optional<ActorRef> mcsRefActor, Optional<ActorRef> ecsRefActor,
-			Optional<ActorRef> m3RefActor, Optional<ActorRef> allEventPublisher) {
+			Optional<ActorRef> m3RefActor, Optional<ActorRef> tpkRefActor, Optional<ActorRef> allEventPublisher) {
 
 		log.debug("Inside TcsCommandHandler");
 
@@ -64,6 +65,7 @@ public class TcsCommandHandler extends BaseCommandHandler {
 		this.mcsRefActor = mcsRefActor.orElse(badActorReference);
 		this.ecsRefActor = ecsRefActor.orElse(badActorReference);
 		this.m3RefActor = m3RefActor.orElse(badActorReference);
+		this.tpkRefActor = tpkRefActor.orElse(badActorReference);
 		this.allEventPublisher = allEventPublisher;
 		tcsStateActor = context().actorOf(AssemblyStateActor.props());
 
@@ -92,6 +94,9 @@ public class TcsCommandHandler extends BaseCommandHandler {
 			} else if (TcsConfig.m3Prefix.equals(l.prefix())) {
 				log.debug("Inside TcsCommandHandler handleLocations: actorRef for M3Assembly ");
 				m3RefActor = l.getActorRef().orElse(badActorReference);
+			} else if (TcsConfig.tpkPrefix.equals(l.prefix())) {
+				log.debug("Inside TcsCommandHandler handleLocations: actorRef for TpkAssembly ");
+				tpkRefActor = l.getActorRef().orElse(badActorReference);
 			} else {
 				log.debug("Inside TcsCommandHandler handleLocations: actorRef for Unknown Actor ");
 			}
@@ -131,10 +136,10 @@ public class TcsCommandHandler extends BaseCommandHandler {
 					+ configKey);
 
 			if (configKey.equals(TcsConfig.positionCK)) {
-				log.debug("Inside TcsCommandHandler initReceive: ExecuteOne: moveCK Command ");
-				ActorRef moveActorRef = context().actorOf(TcsFollowCommand.props(assemblyContext, sc, mcsRefActor,
-						ecsRefActor, m3RefActor, currentState(), Optional.of(tcsStateActor)));
-				context().become(actorExecutingReceive(moveActorRef, commandOriginator));
+				log.debug("Inside TcsCommandHandler initReceive: ExecuteOne: positionCK Command ");
+				ActorRef followActorRef = context().actorOf(TcsFollowCommand.props(assemblyContext, sc, mcsRefActor,
+						ecsRefActor, m3RefActor, tpkRefActor, currentState(), Optional.of(tcsStateActor)));
+				context().become(actorExecutingReceive(followActorRef, commandOriginator));
 
 				self().tell(JSequentialExecutor.CommandStart(), self());
 
@@ -142,7 +147,7 @@ public class TcsCommandHandler extends BaseCommandHandler {
 			} else if (configKey.equals(TcsConfig.offsetCK)) {
 				log.debug("Inside TcsCommandHandler initReceive: ExecuteOne: offsetCK Command ");
 				ActorRef offsetActorRef = context().actorOf(TcsOffsetCommand.props(assemblyContext, sc, mcsRefActor,
-						ecsRefActor, m3RefActor, currentState(), Optional.of(tcsStateActor)));
+						ecsRefActor, m3RefActor, tpkRefActor, currentState(), Optional.of(tcsStateActor)));
 				context().become(actorExecutingReceive(offsetActorRef, commandOriginator));
 
 				self().tell(JSequentialExecutor.CommandStart(), self());
@@ -194,13 +199,13 @@ public class TcsCommandHandler extends BaseCommandHandler {
 	}
 
 	public static Props props(AssemblyContext ac, Optional<ActorRef> mcsRefActor, Optional<ActorRef> ecsRefActor,
-			Optional<ActorRef> m3RefActor, Optional<ActorRef> allEventPublisher) {
+			Optional<ActorRef> m3RefActor, Optional<ActorRef> tpkRefActor, Optional<ActorRef> allEventPublisher) {
 		return Props.create(new Creator<TcsCommandHandler>() {
 			private static final long serialVersionUID = 1L;
 
 			@Override
 			public TcsCommandHandler create() throws Exception {
-				return new TcsCommandHandler(ac, mcsRefActor, ecsRefActor, m3RefActor, allEventPublisher);
+				return new TcsCommandHandler(ac, mcsRefActor, ecsRefActor, m3RefActor, tpkRefActor, allEventPublisher);
 			}
 		});
 	}

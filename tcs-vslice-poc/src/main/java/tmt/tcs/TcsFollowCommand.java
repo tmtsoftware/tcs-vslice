@@ -1,6 +1,8 @@
 package tmt.tcs;
 
+import static javacsw.util.config.JItems.jadd;
 import static javacsw.util.config.JItems.jitem;
+import static javacsw.util.config.JItems.jset;
 import static javacsw.util.config.JItems.jvalue;
 
 import java.util.Optional;
@@ -24,6 +26,7 @@ import tmt.tcs.common.BaseCommand;
 import tmt.tcs.ecs.EcsConfig;
 import tmt.tcs.m3.M3Config;
 import tmt.tcs.mcs.McsConfig;
+import tmt.tcs.tpk.TpkConfig;
 
 /*
  * This is an actor class which receives command specific to Position Operation
@@ -51,14 +54,14 @@ public class TcsFollowCommand extends BaseCommand {
 	 * @param stateActor
 	 */
 	public TcsFollowCommand(AssemblyContext ac, SetupConfig sc, ActorRef mcsRefActor, ActorRef ecsRefActor,
-			ActorRef m3RefActor, AssemblyState tcsStartState, Optional<ActorRef> stateActor) {
+			ActorRef m3RefActor, ActorRef tpkRefActor, AssemblyState tcsStartState, Optional<ActorRef> stateActor) {
 		this.tcsStateActor = stateActor;
 
-		receive(followReceive(sc, mcsRefActor, ecsRefActor, m3RefActor));
+		receive(followReceive(sc, mcsRefActor, ecsRefActor, m3RefActor, tpkRefActor));
 	}
 
 	public PartialFunction<Object, BoxedUnit> followReceive(SetupConfig sc, ActorRef mcsRefActor, ActorRef ecsRefActor,
-			ActorRef m3RefActor) {
+			ActorRef m3RefActor, ActorRef tpkRefActor) {
 		return ReceiveBuilder.matchEquals(JSequentialExecutor.CommandStart(), t -> {
 			log.debug("Inside TcsFollowCommand: Follow command -- START: " + t + ": Config Key is: " + sc.configKey());
 
@@ -79,7 +82,6 @@ public class TcsFollowCommand extends BaseCommand {
 
 			m3RefActor.tell(new AssemblyController.Submit(m3SetupConfigArg), self());
 
-			// TODO:: Code for calling TPK to be done here
 			// Forward below parameters to TPK
 			String target = jvalue(jitem(sc, TcsConfig.target));
 			Double ra = jvalue(jitem(sc, TcsConfig.ra));
@@ -89,19 +91,27 @@ public class TcsFollowCommand extends BaseCommand {
 			log.debug("Inside TcsFollowCommand: Follow command: target is: " + target + ": ra is: " + ra + ": dec is: "
 					+ dec + ": frame is: " + frame);
 
+			SetupConfig followSc = jadd(new SetupConfig(TpkConfig.followCK.prefix()), jset(TpkConfig.target, target),
+					jset(TpkConfig.ra, ra), jset(TpkConfig.dec, dec), jset(TpkConfig.frame, frame));
+
+			SetupConfigArg tpkSetupConfigArg = Configurations.createSetupConfigArg("tpkFollowCommand", followSc);
+
+			tpkRefActor.tell(new AssemblyController.Submit(tpkSetupConfigArg), self());
+
 		}).matchEquals(JSequentialExecutor.StopCurrentCommand(), t -> {
 			log.debug("Inside TcsFollowCommand: Follow command -- STOP: " + t);
 		}).matchAny(t -> log.warning("Inside TcsFollowCommand: Unknown message received: " + t)).build();
 	}
 
 	public static Props props(AssemblyContext ac, SetupConfig sc, ActorRef mcsRefActor, ActorRef ecsRefActor,
-			ActorRef m3RefActor, AssemblyState tcsState, Optional<ActorRef> stateActor) {
+			ActorRef m3RefActor, ActorRef tpkRefActor, AssemblyState tcsState, Optional<ActorRef> stateActor) {
 		return Props.create(new Creator<TcsFollowCommand>() {
 			private static final long serialVersionUID = 1L;
 
 			@Override
 			public TcsFollowCommand create() throws Exception {
-				return new TcsFollowCommand(ac, sc, mcsRefActor, ecsRefActor, m3RefActor, tcsState, stateActor);
+				return new TcsFollowCommand(ac, sc, mcsRefActor, ecsRefActor, m3RefActor, tpkRefActor, tcsState,
+						stateActor);
 			}
 		});
 	}

@@ -60,6 +60,7 @@ public class TcsAssembly extends BaseAssembly {
 	private Optional<ActorRef> mcsRefActor = badActorReference;
 	private Optional<ActorRef> ecsRefActor = badActorReference;
 	private Optional<ActorRef> m3RefActor = badActorReference;
+	private Optional<ActorRef> tpkRefActor = badActorReference;
 
 	private final Optional<IEventService> badEventService = Optional.empty();
 	private Optional<IEventService> eventService = badEventService;
@@ -104,7 +105,7 @@ public class TcsAssembly extends BaseAssembly {
 					.actorOf(TcsEventPublisher.props(assemblyContext, Optional.empty(), Optional.empty()));
 
 			commandHandler = context().actorOf(TcsCommandHandler.props(assemblyContext, mcsRefActor, ecsRefActor,
-					m3RefActor, Optional.of(eventPublisher)));
+					m3RefActor, tpkRefActor, Optional.of(eventPublisher)));
 
 			diagnosticPublisher = context()
 					.actorOf(TcsDiagnosticPublisher.props(assemblyContext, mcsRefActor, Optional.of(eventPublisher)));
@@ -155,6 +156,9 @@ public class TcsAssembly extends BaseAssembly {
 				} else if (TcsConfig.m3Prefix.equals(l.prefix())) {
 					log.debug("Inside TcsAssembly locationReceive: actorRef for M3Assembly ");
 					m3RefActor = l.getActorRef();
+				} else if (TcsConfig.tpkPrefix.equals(l.prefix())) {
+					log.debug("Inside TcsAssembly locationReceive: actorRef for TpkAssembly ");
+					tpkRefActor = l.getActorRef();
 				} else {
 					log.debug("Inside TcsAssembly locationReceive: actorRef for Unknown Actor ");
 				}

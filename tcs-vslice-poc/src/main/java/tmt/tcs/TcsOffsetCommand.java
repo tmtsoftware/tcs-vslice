@@ -1,6 +1,8 @@
 package tmt.tcs;
 
+import static javacsw.util.config.JItems.jadd;
 import static javacsw.util.config.JItems.jitem;
+import static javacsw.util.config.JItems.jset;
 import static javacsw.util.config.JItems.jvalue;
 
 import java.util.Optional;
@@ -11,13 +13,17 @@ import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import akka.japi.Creator;
 import akka.japi.pf.ReceiveBuilder;
+import csw.services.ccs.AssemblyController;
+import csw.util.config.Configurations;
 import csw.util.config.Configurations.SetupConfig;
+import csw.util.config.Configurations.SetupConfigArg;
 import javacsw.services.ccs.JSequentialExecutor;
 import scala.PartialFunction;
 import scala.runtime.BoxedUnit;
 import tmt.tcs.common.AssemblyContext;
 import tmt.tcs.common.AssemblyStateActor.AssemblyState;
 import tmt.tcs.common.BaseCommand;
+import tmt.tcs.tpk.TpkConfig;
 
 /*
  * This is an actor class which receives command specific to Offset Operation
@@ -44,24 +50,30 @@ public class TcsOffsetCommand extends BaseCommand {
 	 * @param stateActor
 	 */
 	public TcsOffsetCommand(AssemblyContext ac, SetupConfig sc, ActorRef mcsRefActor, ActorRef ecsRefActor,
-			ActorRef m3RefActor, AssemblyState tcsStartState, Optional<ActorRef> stateActor) {
+			ActorRef m3RefActor, ActorRef tpkRefActor, AssemblyState tcsStartState, Optional<ActorRef> stateActor) {
 		this.tcsStateActor = stateActor;
 
-		receive(followReceive(sc, mcsRefActor, ecsRefActor, m3RefActor));
+		receive(followReceive(sc, mcsRefActor, ecsRefActor, m3RefActor, tpkRefActor));
 	}
 
 	public PartialFunction<Object, BoxedUnit> followReceive(SetupConfig sc, ActorRef mcsRefActor, ActorRef ecsRefActor,
-			ActorRef m3RefActor) {
+			ActorRef m3RefActor, ActorRef tpkRefActor) {
 
 		return ReceiveBuilder.matchEquals(JSequentialExecutor.CommandStart(), t -> {
 			log.debug("Inside TcsOffsetCommand: Offset command -- START: " + t + ": Config Key is: " + sc.configKey());
 
-			// TODO:: Code for calling TPK to be done here
 			// Forward below parameters to TPK
 			Double ra = jvalue(jitem(sc, TcsConfig.ra));
 			Double dec = jvalue(jitem(sc, TcsConfig.dec));
 
 			log.debug("Inside TcsOffsetCommand: Offset	 command: ra is: " + ra + ": dec is: " + dec);
+			
+			SetupConfig offsetSc = jadd(new SetupConfig(TpkConfig.offsetCK.prefix()),
+					jset(TpkConfig.ra, ra), jset(TpkConfig.dec, dec));
+
+			SetupConfigArg tpkSetupConfigArg = Configurations.createSetupConfigArg("tpkOffsetCommand", offsetSc);
+
+			tpkRefActor.tell(new AssemblyController.Submit(tpkSetupConfigArg), self());
 
 		}).matchEquals(JSequentialExecutor.StopCurrentCommand(), t -> {
 			log.debug("Inside TcsOffsetCommand: Offset command -- STOP: " + t);
@@ -69,13 +81,14 @@ public class TcsOffsetCommand extends BaseCommand {
 	}
 
 	public static Props props(AssemblyContext ac, SetupConfig sc, ActorRef mcsRefActor, ActorRef ecsRefActor,
-			ActorRef m3RefActor, AssemblyState tcsState, Optional<ActorRef> stateActor) {
+			ActorRef m3RefActor, ActorRef tpkRefActor, AssemblyState tcsState, Optional<ActorRef> stateActor) {
 		return Props.create(new Creator<TcsOffsetCommand>() {
 			private static final long serialVersionUID = 1L;
 
 			@Override
 			public TcsOffsetCommand create() throws Exception {
-				return new TcsOffsetCommand(ac, sc, mcsRefActor, ecsRefActor, m3RefActor, tcsState, stateActor);
+				return new TcsOffsetCommand(ac, sc, mcsRefActor, ecsRefActor, m3RefActor, tpkRefActor, tcsState,
+						stateActor);
 			}
 		});
 	}
