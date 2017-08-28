@@ -47,6 +47,8 @@ public class TcsTest extends JavaTestKit {
 	private static ActorSystem system;
 	private static LoggingAdapter logger;
 
+	private static ActorRef tcsAssembly;
+
 	private static Timeout timeout = Timeout.durationToTimeout(FiniteDuration.apply(10, TimeUnit.SECONDS));
 	@SuppressWarnings("unused")
 	private static IEventService eventService;
@@ -117,6 +119,8 @@ public class TcsTest extends JavaTestKit {
 		JSupervisor.create(M3TestData.m3TestAssemblyContext.info);
 		// JSupervisor.create(TpkTestData.tpkTestAssemblyContext.info);
 
+		tcsAssembly = JSupervisor.create(TcsTestData.tcsTestAssemblyContext.info);
+
 		SequencerEnv.resolveHcd(mcsHcdName);
 		SequencerEnv.resolveHcd(ecsHcdName);
 		SequencerEnv.resolveHcd(m3HcdName);
@@ -131,11 +135,7 @@ public class TcsTest extends JavaTestKit {
 	public void test1() {
 		logger.debug("Inside TcsTest test1 Offset Command");
 
-		ActorRef tcsAssembly = newTcsAssembly();
-
 		TestProbe fakeClient = new TestProbe(system);
-
-		expectNoMsg(duration("300 millis"));
 
 		SetupConfig offsetSc = jadd(new SetupConfig(TcsConfig.offsetCK.prefix()), jset(TcsConfig.ra, raOffsetValue),
 				jset(TcsConfig.dec, decOffsetValue));
@@ -147,6 +147,8 @@ public class TcsTest extends JavaTestKit {
 		CommandResult acceptedMsg = fakeClient.expectMsgClass(duration("3 seconds"), CommandResult.class);
 		assertEquals(acceptedMsg.overall(), Accepted);
 		logger.debug("Inside TcsTest test1 Command Accepted Result: " + acceptedMsg);
+
+		expectNoMsg(duration("300 millis"));
 
 		CommandResult completeMsg = fakeClient.expectMsgClass(duration("3 seconds"), CommandResult.class);
 		logger.debug("Inside TcsTest test1 Command Result: " + completeMsg.details().status(0));
@@ -163,11 +165,7 @@ public class TcsTest extends JavaTestKit {
 	public void test2() {
 		logger.debug("Inside TcsTest test2 Position Command");
 
-		ActorRef tcsAssembly = newTcsAssembly();
-
 		TestProbe fakeClient = new TestProbe(system);
-
-		expectNoMsg(duration("300 millis"));
 
 		SetupConfig positionSc = jadd(new SetupConfig(TcsConfig.positionCK.prefix()),
 				jset(TcsConfig.target, targetValue), jset(TcsConfig.ra, decValue), jset(TcsConfig.dec, decValue),
@@ -181,17 +179,14 @@ public class TcsTest extends JavaTestKit {
 		assertEquals(acceptedMsg.overall(), Accepted);
 		logger.debug("Inside TcsTest test2 Command Accepted Result: " + acceptedMsg);
 
+		expectNoMsg(duration("300 millis"));
+
 		CommandResult completeMsg = fakeClient.expectMsgClass(duration("3 seconds"), CommandResult.class);
 		logger.debug("Inside TcsTest test2 Command Result: " + completeMsg + ": completeMsg.overall(): "
 				+ completeMsg.overall());
 
 		assertEquals(completeMsg.overall(), AllCompleted);
 
-	}
-
-	ActorRef newTcsAssembly() {
-		ActorRef actorRef = JSupervisor.create(TcsTestData.tcsTestAssemblyContext.info);
-		return actorRef;
 	}
 
 	/**

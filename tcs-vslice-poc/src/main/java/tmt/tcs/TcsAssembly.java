@@ -148,7 +148,7 @@ public class TcsAssembly extends BaseAssembly {
 				log.debug("Inside TcsAssembly locationReceive: actorRef: " + l.getActorRef() + ": prefix is: "
 						+ l.prefix());
 				if (TcsConfig.mcsPrefix.equals(l.prefix())) {
-					log.debug("Inside TcsAssembly locationReceive: actorRef for McsAssembly ");
+					log.debug("Inside TcsAssembly locationReceive: actorRef for TcsAssembly ");
 					mcsRefActor = l.getActorRef();
 				} else if (TcsConfig.ecsPrefix.equals(l.prefix())) {
 					log.debug("Inside TcsAssembly locationReceive: actorRef for EcsAssembly ");
@@ -217,10 +217,10 @@ public class TcsAssembly extends BaseAssembly {
 	 */
 	public PartialFunction<Object, BoxedUnit> diagnosticReceive() {
 		return ReceiveBuilder.match(AssemblyMessages.DiagnosticMode.class, t -> {
-			log.debug("Inside McsAssembly diagnosticReceive: diagnostic mode: " + t.hint());
+			log.debug("Inside TcsAssembly diagnosticReceive: diagnostic mode: " + t.hint());
 			diagnosticPublisher.tell(new TcsDiagnosticPublisher.DiagnosticState(), self());
 		}).matchEquals(JAssemblyMessages.OperationsMode, t -> {
-			log.debug("Inside McsAssembly diagnosticReceive: operations mode");
+			log.debug("Inside TcsAssembly diagnosticReceive: operations mode");
 			diagnosticPublisher.tell(new TcsDiagnosticPublisher.OperationsState(), self());
 		}).build();
 	}
@@ -238,6 +238,7 @@ public class TcsAssembly extends BaseAssembly {
 	 */
 	@Override
 	public List<Validation.Validation> setup(SetupConfigArg sca, Optional<ActorRef> commandOriginator) {
+		log.debug("Inside TcsAssembly setup: SetupConfigArg is: " + sca);
 		List<Validation.Validation> validations = validateSequenceConfigArg(sca);
 		if (Validation.isAllValid(validations)) {
 			ActorRef executor = newExecutor(commandHandler, sca, commandOriginator);
