@@ -52,11 +52,11 @@ public class TpkTest extends JavaTestKit {
 	private static IEventService eventService;
 
 	public static final String targetValue = "testtarget";
-	public static final Double raValue = 2.0;
-	public static final Double decValue = 3.0;
+	public static final Double raValue = 185.79;
+	public static final Double decValue = 6.753333;
 	public static final String frameValue = "fa5";
-	public static final Double ra0Value = 0.1;
-	public static final Double dec0Value = 0.2;
+	public static final Double ra0Value = 5.0;
+	public static final Double dec0Value = -5.0;
 
 	public TpkTest() {
 		super(system);
@@ -88,21 +88,21 @@ public class TpkTest extends JavaTestKit {
 	 */
 	@Test
 	public void test1() {
-		logger.debug("Inside TpkTest test1 Follow Command");
+		logger.debug("Inside TpkTest test1 Follow Command: STARTS");
 
 		TestProbe fakeSupervisor = new TestProbe(system);
-		ActorRef mcsAssembly = newTpkAssembly(fakeSupervisor.ref());
+		ActorRef tpkAssembly = newTpkAssembly(fakeSupervisor.ref());
 		TestProbe fakeClient = new TestProbe(system);
 
 		SetupConfig followSc = jadd(new SetupConfig(TpkConfig.followCK.prefix()), jset(TpkConfig.target, targetValue),
 				jset(TpkConfig.ra, raValue), jset(TpkConfig.dec, decValue), jset(TpkConfig.frame, frameValue));
 
 		fakeSupervisor.expectMsg(Initialized);
-		fakeSupervisor.send(mcsAssembly, Running);
+		fakeSupervisor.send(tpkAssembly, Running);
 
 		SetupConfigArg sca = Configurations.createSetupConfigArg("tpkFollowCommand", followSc);
 
-		fakeClient.send(mcsAssembly, new Submit(sca));
+		fakeClient.send(tpkAssembly, new Submit(sca));
 
 		expectNoMsg(duration("300 millis"));
 
@@ -115,6 +115,7 @@ public class TpkTest extends JavaTestKit {
 
 		assertEquals(completeMsg.overall(), AllCompleted);
 
+		logger.debug("Inside TpkTest test1 Follow Command: ENDS");
 	}
 
 	/**
@@ -123,21 +124,21 @@ public class TpkTest extends JavaTestKit {
 	 */
 	@Test
 	public void test2() {
-		logger.debug("Inside TpkTest test2 Offset Command");
+		logger.debug("Inside TpkTest test2 Offset Command: STARTS");
 
 		TestProbe fakeSupervisor = new TestProbe(system);
-		ActorRef mcsAssembly = newTpkAssembly(fakeSupervisor.ref());
+		ActorRef tpkAssembly = newTpkAssembly(fakeSupervisor.ref());
 		TestProbe fakeClient = new TestProbe(system);
 
 		SetupConfig offsetSc = jadd(new SetupConfig(TpkConfig.offsetCK.prefix()), jset(TpkConfig.ra, ra0Value),
 				jset(TpkConfig.dec, dec0Value));
 
 		fakeSupervisor.expectMsg(Initialized);
-		fakeSupervisor.send(mcsAssembly, Running);
+		fakeSupervisor.send(tpkAssembly, Running);
 
 		SetupConfigArg sca = Configurations.createSetupConfigArg("tpkOffsetCommand", offsetSc);
 
-		fakeClient.send(mcsAssembly, new Submit(sca));
+		fakeClient.send(tpkAssembly, new Submit(sca));
 
 		expectNoMsg(duration("300 millis"));
 
@@ -151,6 +152,7 @@ public class TpkTest extends JavaTestKit {
 
 		assertEquals(completeMsg.overall(), AllCompleted);
 
+		logger.debug("Inside TpkTest test2 Offset Comman: ENDS");
 	}
 
 	Props getTpkProps(AssemblyInfo assemblyInfo, Optional<ActorRef> supervisorIn) {
