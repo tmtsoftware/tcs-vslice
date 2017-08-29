@@ -37,13 +37,14 @@ import tmt.tcs.test.common.EcsTestData;
 import tmt.tcs.test.common.M3TestData;
 import tmt.tcs.test.common.McsTestData;
 import tmt.tcs.test.common.TcsTestData;
+import tmt.tcs.test.common.TpkTestData;
 
 /**
  * This is test class for MCS which checks for Command Flow from Test Class ->
  * Assembly -> HCD It also check for Command Acceptance Status and response
  * returned
  */
-public class TcsTest extends JavaTestKit {
+public class TcsOffsetTest extends JavaTestKit {
 	private static ActorSystem system;
 	private static LoggingAdapter logger;
 
@@ -60,15 +61,10 @@ public class TcsTest extends JavaTestKit {
 	private static List<ActorRef> ecsRefActors = Collections.emptyList();
 	private static List<ActorRef> m3RefActors = Collections.emptyList();
 
-	public static final String targetValue = "Test";
-	public static final Double raValue = 0.1;
-	public static final Double decValue = 0.2;
-	public static final String frameValue = "fa5";
+	public static final Double raOffsetValue = 5.0;
+	public static final Double decOffsetValue = -5.0;
 
-	public static final Double raOffsetValue = 1.0;
-	public static final Double decOffsetValue = 2.0;
-
-	public TcsTest() {
+	public TcsOffsetTest() {
 		super(system);
 	}
 
@@ -117,7 +113,7 @@ public class TcsTest extends JavaTestKit {
 		JSupervisor.create(McsTestData.mcsTestAssemblyContext.info);
 		JSupervisor.create(EcsTestData.ecsTestAssemblyContext.info);
 		JSupervisor.create(M3TestData.m3TestAssemblyContext.info);
-		// JSupervisor.create(TpkTestData.tpkTestAssemblyContext.info);
+		JSupervisor.create(TpkTestData.tpkTestAssemblyContext.info);
 
 		tcsAssembly = JSupervisor.create(TcsTestData.tcsTestAssemblyContext.info);
 
@@ -152,38 +148,6 @@ public class TcsTest extends JavaTestKit {
 
 		CommandResult completeMsg = fakeClient.expectMsgClass(duration("3 seconds"), CommandResult.class);
 		logger.debug("Inside TcsTest test1 Command Result: " + completeMsg.details().status(0));
-
-		assertEquals(completeMsg.overall(), AllCompleted);
-
-	}
-
-	/**
-	 * This test case checks for follow command flow from Test Class to TCS
-	 * Assembly to MCS, ECS and M3 Assembly
-	 */
-	@Test
-	public void test2() {
-		logger.debug("Inside TcsTest test2 Position Command");
-
-		TestProbe fakeClient = new TestProbe(system);
-
-		SetupConfig positionSc = jadd(new SetupConfig(TcsConfig.positionCK.prefix()),
-				jset(TcsConfig.target, targetValue), jset(TcsConfig.ra, decValue), jset(TcsConfig.dec, decValue),
-				jset(TcsConfig.frame, frameValue));
-
-		SetupConfigArg sca = Configurations.createSetupConfigArg("tcsPositionCommand", positionSc);
-
-		fakeClient.send(tcsAssembly, new Submit(sca));
-
-		CommandResult acceptedMsg = fakeClient.expectMsgClass(duration("3 seconds"), CommandResult.class);
-		assertEquals(acceptedMsg.overall(), Accepted);
-		logger.debug("Inside TcsTest test2 Command Accepted Result: " + acceptedMsg);
-
-		expectNoMsg(duration("300 millis"));
-
-		CommandResult completeMsg = fakeClient.expectMsgClass(duration("3 seconds"), CommandResult.class);
-		logger.debug("Inside TcsTest test2 Command Result: " + completeMsg + ": completeMsg.overall(): "
-				+ completeMsg.overall());
 
 		assertEquals(completeMsg.overall(), AllCompleted);
 

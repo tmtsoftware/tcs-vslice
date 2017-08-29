@@ -30,8 +30,12 @@ public class AssemblyContext {
 		fullName = componentPrefix + "." + componentName;
 
 		assemblyComponentId = new ComponentId(componentName, componentType);
-		hcdComponentId = info.getConnections().get(0).componentId();
-		// hcdComponentId = info.connections().head().componentId();
+
+		if (info.getConnections() != null && info.getConnections().size() > 0) {
+			hcdComponentId = info.getConnections().get(0).componentId();
+		} else {
+			hcdComponentId = null;
+		}
 
 	}
 

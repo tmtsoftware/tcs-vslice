@@ -12,7 +12,8 @@ import tmt.tcs.common.AssemblyContext;
 public class TpkTestData {
 
 	public static AssemblyInfo tpkTestAssemblyInfo = JComponent.assemblyInfo("tpkAssembly", "tcs.tpk",
-			"tmt.tcs.TpkAssembly", RegisterAndTrackServices, Collections.singleton(AkkaType), Collections.emptySet());
+			"tmt.tcs.tpk.TpkAssembly", RegisterAndTrackServices, Collections.singleton(AkkaType),
+			Collections.emptySet());
 
 	public static AssemblyContext tpkTestAssemblyContext = new AssemblyContext(tpkTestAssemblyInfo);
 
