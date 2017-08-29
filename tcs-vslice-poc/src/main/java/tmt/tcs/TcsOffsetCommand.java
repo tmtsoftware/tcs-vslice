@@ -25,7 +25,7 @@ import tmt.tcs.common.AssemblyStateActor.AssemblyState;
 import tmt.tcs.common.BaseCommand;
 import tmt.tcs.tpk.TpkConfig;
 
-/*
+/**
  * This is an actor class which receives command specific to Offset Operation
  * And after any modifications if required, redirect the same to TPK
  */
@@ -67,9 +67,9 @@ public class TcsOffsetCommand extends BaseCommand {
 			Double dec = jvalue(jitem(sc, TcsConfig.dec));
 
 			log.debug("Inside TcsOffsetCommand: Offset	 command: ra is: " + ra + ": dec is: " + dec);
-			
-			SetupConfig offsetSc = jadd(new SetupConfig(TpkConfig.offsetCK.prefix()),
-					jset(TpkConfig.ra, ra), jset(TpkConfig.dec, dec));
+
+			SetupConfig offsetSc = jadd(new SetupConfig(TpkConfig.offsetCK.prefix()), jset(TpkConfig.ra, ra),
+					jset(TpkConfig.dec, dec));
 
 			SetupConfigArg tpkSetupConfigArg = Configurations.createSetupConfigArg("tpkOffsetCommand", offsetSc);
 

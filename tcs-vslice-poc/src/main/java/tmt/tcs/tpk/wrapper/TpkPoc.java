@@ -40,10 +40,12 @@ public class TpkPoc {
 	}
 
 	public void init() {
+		System.out.println("Inside TpkPoc: Received init");
 		exampleJNI.TpkPoc_init(swigCPtr, this);
 	}
 
 	public void _register(IDemandsCB demandsNotify) {
+		System.out.println("Inside TpkPoc: Received _register");
 		exampleJNI.TpkPoc__register(swigCPtr, this, IDemandsCB.getCPtr(demandsNotify), demandsNotify);
 	}
 

@@ -105,7 +105,7 @@ public class McsFollowCommand extends BaseCommand {
 	private ActorRef createEventSubscriber(ActorRef followActor, IEventService eventService) {
 		log.debug("Inside McsFollowCommand createEventSubscriber: Creating Event Subscriber ");
 		return context().actorOf(McsEventSubscriber.props(assemblyContext, Optional.of(followActor), eventService),
-				"eventsubscriber");
+				"mcseventsubscriber");
 	}
 
 	public static Props props(AssemblyContext ac, DoubleItem initialAzimuth, DoubleItem initialElevation,

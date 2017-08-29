@@ -40,7 +40,7 @@ import tmt.tcs.common.AssemblyStateActor.AssemblySetState;
 import tmt.tcs.common.AssemblyStateActor.AssemblyState;
 import tmt.tcs.common.BaseCommand;
 
-/*
+/**
  * This is an actor class which receives command specific to Offset Operation
  * And after any modifications if required, redirect the same to M3 HCD
  */

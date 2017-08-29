@@ -58,9 +58,9 @@ import tmt.tcs.common.AssemblyStateActor.AssemblySetState;
 import tmt.tcs.common.AssemblyStateActor.AssemblyState;
 import tmt.tcs.common.BaseCommandHandler;
 
-/*
- * This is an actor class which receives commands forwarded by MCS Assembly
- * And based upon the command config key send to specific command actor class
+/**
+ * This is an actor class which receives commands forwarded by MCS Assembly And
+ * based upon the command config key send to specific command actor class
  */
 public class McsCommandHandler extends BaseCommandHandler {
 

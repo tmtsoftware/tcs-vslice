@@ -17,8 +17,6 @@ import javacsw.services.pkg.ILocationSubscriberClient;
 /**
  * This is base class for all command handler classes
  * 
- * @author ajaysingh
- *
  */
 public abstract class BaseCommandHandler extends AbstractActor
 		implements AssemblyStateClient, ILocationSubscriberClient {

@@ -20,9 +20,9 @@ import tmt.tcs.m3.M3FollowActor.SetRotation;
 import tmt.tcs.m3.M3FollowActor.SetTilt;
 import tmt.tcs.m3.M3FollowActor.UpdatedEventData;
 
-/*
- * This is an actor class which receives command specific to Move Operation
- * And after any modifications if required, redirect the same to M3 HCD
+/**
+ * This is an actor class which receives command specific to Move Operation And
+ * after any modifications if required, redirect the same to M3 HCD
  */
 @SuppressWarnings("unused")
 public class M3FollowCommand extends BaseCommand {
@@ -105,7 +105,7 @@ public class M3FollowCommand extends BaseCommand {
 	private ActorRef createEventSubscriber(ActorRef followActor, IEventService eventService) {
 		log.debug("Inside M3FollowCommand createEventSubscriber: Creating Event Subscriber ");
 		return context().actorOf(M3EventSubscriber.props(assemblyContext, Optional.of(followActor), eventService),
-				"eventsubscriber");
+				"m3entsubscriber");
 	}
 
 	public static Props props(AssemblyContext ac, DoubleItem initialRotation, DoubleItem initialTilt,

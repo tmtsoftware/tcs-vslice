@@ -61,20 +61,22 @@ public class TcsEventSubscriber extends BaseEventSubscriber {
 					log.debug("Inside TcsEventSubscriber subscribeReceive received an SystemEvent: Config Key is: "
 							+ event.info().source());
 
-					Double azValue = 0.0;
-					Double elValue = 0.0;
-					Double rotationValue = 0.0;
-					Double tiltValue = 0.0;
+					Double mcsAzValue = 0.0;
+					Double mcsElValue = 0.0;
+					Double ecsAzValue = 0.0;
+					Double ecsElValue = 0.0;
+					Double m3RotationValue = 0.0;
+					Double m3TiltValue = 0.0;
 
 					if (McsConfig.currentPosCK.equals(event.info().source())) {
 						log.debug("Inside TcsEventSubscriber subscribeReceive received Mcs Current Position");
 						log.debug(
 								"############################## CURRENT MCS POSITION ##########################################");
 
-						azValue = jvalue(jitem(event, McsConfig.azPosKey));
-						elValue = jvalue(jitem(event, McsConfig.elPosKey));
+						mcsAzValue = jvalue(jitem(event, McsConfig.azPosKey));
+						mcsElValue = jvalue(jitem(event, McsConfig.elPosKey));
 
-						log.debug("Azimuth is: " + azValue + ": Elevation is: " + elValue);
+						log.debug("Azimuth is: " + mcsAzValue + ": Elevation is: " + mcsElValue);
 						log.debug(
 								"##############################################################################################");
 					} else if (EcsConfig.currentPosCK.equals(event.info().source())) {
@@ -82,10 +84,10 @@ public class TcsEventSubscriber extends BaseEventSubscriber {
 						log.debug(
 								"############################## CURRENT ECS POSITION ##########################################");
 
-						azValue = jvalue(jitem(event, EcsConfig.azPosKey));
-						elValue = jvalue(jitem(event, EcsConfig.elPosKey));
+						ecsAzValue = jvalue(jitem(event, EcsConfig.azPosKey));
+						ecsElValue = jvalue(jitem(event, EcsConfig.elPosKey));
 
-						log.debug("Azimuth is: " + azValue + ": Elevation is: " + elValue);
+						log.debug("Azimuth is: " + ecsAzValue + ": Elevation is: " + ecsElValue);
 						log.debug(
 								"##############################################################################################");
 					} else if (M3Config.currentPosCK.equals(event.info().source())) {
@@ -93,27 +95,28 @@ public class TcsEventSubscriber extends BaseEventSubscriber {
 						log.debug(
 								"############################## CURRENT M3 POSITION ###########################################");
 
-						rotationValue = jvalue(jitem(event, M3Config.rotationPosKey));
-						tiltValue = jvalue(jitem(event, M3Config.tiltPosKey));
+						m3RotationValue = jvalue(jitem(event, M3Config.rotationPosKey));
+						m3TiltValue = jvalue(jitem(event, M3Config.tiltPosKey));
 
-						log.debug("Rotation is: " + azValue + ": Tilt is: " + elValue);
+						log.debug("Rotation is: " + m3RotationValue + ": Tilt is: " + m3TiltValue);
 						log.debug(
 								"##############################################################################################");
 					}
 
-					updateRefActor(event.info().source(), azValue, elValue, rotationValue, tiltValue);
+					updateRefActor(event.info().source(), mcsAzValue, mcsElValue, ecsAzValue, ecsElValue,
+							m3RotationValue, m3TiltValue);
 				}).
 
-				matchAny(t -> System.out
-						.println("Inside TcsEventSubscriber Unexpected message received:subscribeReceive: " + t))
+				matchAny(t -> log.error("Inside TcsEventSubscriber Unexpected message received:subscribeReceive: " + t))
 				.build();
 	}
 
 	/**
 	 * This message propagates event to Referenced Actor
 	 */
-	private void updateRefActor(ConfigKey ck, Double az, Double el, Double rotation, Double tilt) {
-		//TODO:: Current Position to be sent to subscribed actor
+	private void updateRefActor(ConfigKey ck, Double mcsAz, Double mcsEl, Double ecsAz, Double ecsEl, Double m3Rotation,
+			Double m3Tilt) {
+		// TODO:: Current Position to be sent to subscribed actor
 		refActor.ifPresent(actorRef -> actorRef.tell(new String("Test"), self()));
 	}
 

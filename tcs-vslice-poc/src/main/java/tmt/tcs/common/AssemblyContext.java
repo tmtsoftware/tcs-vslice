@@ -4,7 +4,7 @@ import csw.services.loc.ComponentId;
 import csw.services.loc.ComponentType;
 import csw.services.pkg.Component.AssemblyInfo;
 
-/*
+/**
  * This class will handle assembly properties which are common for all
  */
 public class AssemblyContext {

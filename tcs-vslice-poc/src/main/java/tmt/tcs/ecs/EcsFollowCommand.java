@@ -105,7 +105,7 @@ public class EcsFollowCommand extends BaseCommand {
 	private ActorRef createEventSubscriber(ActorRef followActor, IEventService eventService) {
 		log.debug("Inside EcsFollowCommand createEventSubscriber: Creating Event Subscriber ");
 		return context().actorOf(EcsEventSubscriber.props(assemblyContext, Optional.of(followActor), eventService),
-				"eventsubscriber");
+				"ecseventsubscriber");
 	}
 
 	public static Props props(AssemblyContext ac, DoubleItem initialAzimuth, DoubleItem initialElevation,

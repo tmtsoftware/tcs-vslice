@@ -4,7 +4,7 @@ import csw.util.config.Configurations.ConfigKey;
 import csw.util.config.DoubleKey;
 import csw.util.config.StringKey;
 
-/*
+/**
  * This class contains all the configurations specific to TCS Assembly
  */
 public class TcsConfig {

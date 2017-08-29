@@ -58,9 +58,9 @@ import tmt.tcs.common.AssemblyStateActor.AssemblySetState;
 import tmt.tcs.common.AssemblyStateActor.AssemblyState;
 import tmt.tcs.common.BaseCommandHandler;
 
-/*
- * This is an actor class which receives commands forwarded by M3 Assembly
- * And based upon the command config key send to specific command actor class
+/**
+ * This is an actor class which receives commands forwarded by M3 Assembly And
+ * based upon the command config key send to specific command actor class
  */
 @SuppressWarnings("unused")
 public class M3CommandHandler extends BaseCommandHandler {
@@ -197,13 +197,10 @@ public class M3CommandHandler extends BaseCommandHandler {
 					} else {
 						log.error("Inside M3CommandHandler initReceive: Received an unknown command: " + t + " from "
 								+ sender());
-						commandOriginator
-								.ifPresent(
-										actorRef -> actorRef.tell(
-												new Invalid(new UnsupportedCommandInStateIssue(
-														"M3 assembly does not support the command "
-																+ configKey.prefix() + " in the current state.")),
-												self()));
+						commandOriginator.ifPresent(actorRef -> actorRef.tell(new Invalid(
+								new UnsupportedCommandInStateIssue("M3 assembly does not support the command "
+										+ configKey.prefix() + " in the current state.")),
+								self()));
 					}
 
 				}).build());

@@ -31,9 +31,9 @@ import tmt.tcs.common.AssemblyContext;
 import tmt.tcs.common.AssemblyStateActor;
 import tmt.tcs.common.BaseCommandHandler;
 
-/*
- * This is an actor class which receives commands forwarded by TCS Assembly
- * And based upon the command config key send to specific command actor class
+/**
+ * This is an actor class which receives commands forwarded by TCS Assembly And
+ * based upon the command config key send to specific command actor class
  */
 @SuppressWarnings("unused")
 public class TcsCommandHandler extends BaseCommandHandler {
@@ -137,8 +137,9 @@ public class TcsCommandHandler extends BaseCommandHandler {
 
 			if (configKey.equals(TcsConfig.positionCK)) {
 				log.debug("Inside TcsCommandHandler initReceive: ExecuteOne: positionCK Command ");
-				ActorRef followActorRef = context().actorOf(TcsFollowCommand.props(assemblyContext, sc, mcsRefActor,
-						ecsRefActor, m3RefActor, tpkRefActor, currentState(), Optional.of(tcsStateActor)));
+				ActorRef followActorRef = context()
+						.actorOf(TcsFollowCommand.props(assemblyContext, sc, mcsRefActor, ecsRefActor, m3RefActor,
+								tpkRefActor, currentState(), Optional.of(tcsStateActor), eventService.get()));
 				context().become(actorExecutingReceive(followActorRef, commandOriginator));
 
 				self().tell(JSequentialExecutor.CommandStart(), self());

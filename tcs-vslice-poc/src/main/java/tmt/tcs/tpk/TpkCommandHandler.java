@@ -43,9 +43,10 @@ import tmt.tcs.tpk.TpkEventPublisher.McsPosDemand;
 import tmt.tcs.tpk.wrapper.IDemandsCB;
 import tmt.tcs.tpk.wrapper.TpkPoc;
 
-/*
+/**
  * This is an actor class which receives commands forwarded by TCS Assembly
- * Makes call to TPK JNI Wrapper for demand generation and publish the same using event publisher
+ * Makes call to TPK JNI Wrapper for demand generation and publish the same
+ * using event publisher
  */
 @SuppressWarnings("unused")
 public class TpkCommandHandler extends BaseCommandHandler {
@@ -85,10 +86,6 @@ public class TpkCommandHandler extends BaseCommandHandler {
 			}
 		}).start();
 
-		//
-		// This allows commands such as newTarger etc to be accepted and
-		// processed
-		//
 		try {
 			Thread.sleep(100, 0);
 		} catch (InterruptedException e) {
@@ -255,11 +252,13 @@ public class TpkCommandHandler extends BaseCommandHandler {
 		private TpkPoc tpkEndpoint;
 
 		private boolean publishDemands = false;
+		private ConfigKey configKey = null;
 
-		//
-		// Callback which is register with the C++ code and call from the fast
-		// loop
-		//
+		/**
+		 * Callback which is register with the C++ code and call from the fast
+		 * loop
+		 *
+		 */
 		public class DemandsCallback extends IDemandsCB {
 
 			double ci = 32.5;
@@ -269,11 +268,10 @@ public class TpkCommandHandler extends BaseCommandHandler {
 			double cci = Math.cos(ci);
 			double PI2 = Math.PI * 2;
 
-			public void newDemands(double mcsAz, double mcsEl, double ecsAz, double ecsEl, double m3Rotation, double m3Tilt) {
+			public void newDemands(double mcsAz, double mcsEl, double ecsAz, double ecsEl, double m3Rotation,
+					double m3Tilt) {
 
-				//
 				// Convert eAz, eEl into base & cap coordinates
-				//
 				double azShift, base1, cap1, base2, cap2;
 				if ((ecsEl > PI2) || (ecsEl < 0))
 					ecsEl = 0;
@@ -300,26 +298,31 @@ public class TpkCommandHandler extends BaseCommandHandler {
 
 				base1 = 180 * base1 / Math.PI;
 				cap1 = 180 * cap1 / Math.PI;
-				// base 1 & 2 and cap 1 & 2 can be used for CW, CCW and shortest
-				// path
-				// for now just base 1 and cap 1 are used
 
 				if (publishDemands) {
 					// System.out.printf("%.2f, %.2f, %.2f, %.2f, %.2f, %.2f\n",
 					// mAz, mEl, base1, cap1, m3R, m3T);
 
-					DoubleItem mcsAzItem = jset(McsConfig.azDemandKey, mcsAz);
-					DoubleItem mcsElItem = jset(McsConfig.elDemandKey, mcsEl);
-					DoubleItem ecsAzItem = jset(EcsConfig.azDemandKey, base1);
-					DoubleItem ecsElItem = jset(EcsConfig.elDemandKey, cap1);
-					DoubleItem m3RotationItem = jset(M3Config.rotationDemandKey, m3Rotation);
-					DoubleItem m3TiltItem = jset(M3Config.tiltDemandKey, m3Tilt);
+					if (TpkConfig.positionDemandCK.equals(configKey)) {
+						DoubleItem mcsAzItem = jset(McsConfig.azDemandKey, mcsAz);
+						DoubleItem mcsElItem = jset(McsConfig.elDemandKey, mcsEl);
+						DoubleItem ecsAzItem = jset(EcsConfig.azDemandKey, base1);
+						DoubleItem ecsElItem = jset(EcsConfig.elDemandKey, cap1);
+						DoubleItem m3RotationItem = jset(M3Config.rotationDemandKey, m3Rotation);
+						DoubleItem m3TiltItem = jset(M3Config.tiltDemandKey, m3Tilt);
 
-					publishMcsPosDemand(McsConfig.positionDemandCK, mcsAzItem, mcsElItem, eventPublisher);
+						publishMcsPosDemand(McsConfig.positionDemandCK, mcsAzItem, mcsElItem, eventPublisher);
 
-					publishEcsPosDemand(EcsConfig.positionDemandCK, ecsAzItem, ecsElItem, eventPublisher);
+						publishEcsPosDemand(EcsConfig.positionDemandCK, ecsAzItem, ecsElItem, eventPublisher);
 
-					publishM3PosDemand(M3Config.positionDemandCK, m3RotationItem, m3TiltItem, eventPublisher);
+						publishM3PosDemand(M3Config.positionDemandCK, m3RotationItem, m3TiltItem, eventPublisher);
+					} else if (TpkConfig.offsetDemandCK.equals(configKey)) {
+						DoubleItem mcsAzItem = jset(McsConfig.azDemandKey, mcsAz);
+						DoubleItem mcsElItem = jset(McsConfig.elDemandKey, mcsEl);
+
+						publishMcsPosDemand(McsConfig.offsetDemandCK, mcsAzItem, mcsElItem, eventPublisher);
+
+					}
 				}
 			}
 		}
@@ -329,30 +332,33 @@ public class TpkCommandHandler extends BaseCommandHandler {
 			tpkEndpoint = new TpkPoc();
 			tpkEndpoint._register(cb);
 
-			//
-			// This needs to be on a separate Java thread (which it is) if we
-			// want to take any input from
-			// the Java side since the C++ init code will go into a forever loop
-			// to keep the scans alive
-			//
-
 			tpkEndpoint.init();
 		}
 
-		//
-		// New target from Ra, Dec in degrees. Target applies to Mount and
-		// Enclosure
-		//
+		/**
+		 * New target from Ra, Dec in degrees. Target applies to Mount and
+		 * Enclosure
+		 * 
+		 * @param ra
+		 * @param dec
+		 */
 		void newTarget(double ra, double dec) {
 			publishDemands = true;
+			configKey = TpkConfig.positionDemandCK;
+			log.debug("Inside TpkCommandHandler TpkWrapper: newTarget: configKey is: " + configKey);
 			tpkEndpoint.newTarget(ra, dec);
 		}
 
-		//
-		// New mount offset. Ra, Dec offset values are in arcseconds
-		//
+		/**
+		 * New mount offset. Ra, Dec offset values are in arcseconds
+		 * 
+		 * @param raO
+		 * @param decO
+		 */
 		void offset(double raO, double decO) {
 			publishDemands = true;
+			configKey = TpkConfig.offsetDemandCK;
+			log.debug("Inside TpkCommandHandler TpkWrapper: offset: configKey is: " + configKey);
 			tpkEndpoint.offset(raO, decO);
 		}
 

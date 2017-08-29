@@ -18,6 +18,7 @@ import csw.util.config.Configurations;
 import csw.util.config.Configurations.SetupConfig;
 import csw.util.config.Configurations.SetupConfigArg;
 import javacsw.services.ccs.JSequentialExecutor;
+import javacsw.services.events.IEventService;
 import scala.PartialFunction;
 import scala.runtime.BoxedUnit;
 import tmt.tcs.common.AssemblyContext;
@@ -28,10 +29,10 @@ import tmt.tcs.m3.M3Config;
 import tmt.tcs.mcs.McsConfig;
 import tmt.tcs.tpk.TpkConfig;
 
-/*
+/**
  * This is an actor class which receives command specific to Position Operation
- * And after any modifications if required, redirect the same to TPK
- * This also issue follow command to MCS, ECS and M3 Assemblies
+ * And after any modifications if required, redirect the same to TPK This also
+ * issue follow command to MCS, ECS and M3 Assemblies
  */
 public class TcsFollowCommand extends BaseCommand {
 
@@ -39,6 +40,8 @@ public class TcsFollowCommand extends BaseCommand {
 
 	@SuppressWarnings("unused")
 	private final Optional<ActorRef> tcsStateActor;
+
+	AssemblyContext assemblyContext;
 
 	/**
 	 * Constructor Methods helps subscribing to events checks for Assembly state
@@ -53,9 +56,13 @@ public class TcsFollowCommand extends BaseCommand {
 	 * @param tcsStartState
 	 * @param stateActor
 	 */
-	public TcsFollowCommand(AssemblyContext ac, SetupConfig sc, ActorRef mcsRefActor, ActorRef ecsRefActor,
-			ActorRef m3RefActor, ActorRef tpkRefActor, AssemblyState tcsStartState, Optional<ActorRef> stateActor) {
+	public TcsFollowCommand(AssemblyContext assemblyContext, SetupConfig sc, ActorRef mcsRefActor, ActorRef ecsRefActor,
+			ActorRef m3RefActor, ActorRef tpkRefActor, AssemblyState tcsStartState, Optional<ActorRef> stateActor,
+			IEventService eventService) {
 		this.tcsStateActor = stateActor;
+		this.assemblyContext = assemblyContext;
+
+		createEventSubscriber(eventService);
 
 		receive(followReceive(sc, mcsRefActor, ecsRefActor, m3RefActor, tpkRefActor));
 	}
@@ -103,15 +110,22 @@ public class TcsFollowCommand extends BaseCommand {
 		}).matchAny(t -> log.warning("Inside TcsFollowCommand: Unknown message received: " + t)).build();
 	}
 
+	private ActorRef createEventSubscriber(IEventService eventService) {
+		log.debug("Inside TcsFollowCommand createEventSubscriber: Creating Event Subscriber ");
+		return context().actorOf(TcsEventSubscriber.props(assemblyContext, Optional.empty(), eventService),
+				"tcseventsubscriber");
+	}
+
 	public static Props props(AssemblyContext ac, SetupConfig sc, ActorRef mcsRefActor, ActorRef ecsRefActor,
-			ActorRef m3RefActor, ActorRef tpkRefActor, AssemblyState tcsState, Optional<ActorRef> stateActor) {
+			ActorRef m3RefActor, ActorRef tpkRefActor, AssemblyState tcsState, Optional<ActorRef> stateActor,
+			IEventService eventService) {
 		return Props.create(new Creator<TcsFollowCommand>() {
 			private static final long serialVersionUID = 1L;
 
 			@Override
 			public TcsFollowCommand create() throws Exception {
 				return new TcsFollowCommand(ac, sc, mcsRefActor, ecsRefActor, m3RefActor, tpkRefActor, tcsState,
-						stateActor);
+						stateActor, eventService);
 			}
 		});
 	}

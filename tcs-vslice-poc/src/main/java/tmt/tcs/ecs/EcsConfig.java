@@ -11,7 +11,7 @@ import csw.util.config.DoubleItem;
 import csw.util.config.DoubleKey;
 import csw.util.config.IntKey;
 
-/*
+/**
  * This class contains all the configurations specific to ECS Assembly
  */
 public class EcsConfig {
