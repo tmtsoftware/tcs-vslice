@@ -147,8 +147,9 @@ public class TcsCommandHandler extends BaseCommandHandler {
 				commandOriginator.ifPresent(actorRef -> actorRef.tell(Completed, self()));
 			} else if (configKey.equals(TcsConfig.offsetCK)) {
 				log.debug("Inside TcsCommandHandler initReceive: ExecuteOne: offsetCK Command ");
-				ActorRef offsetActorRef = context().actorOf(TcsOffsetCommand.props(assemblyContext, sc, mcsRefActor,
-						ecsRefActor, m3RefActor, tpkRefActor, currentState(), Optional.of(tcsStateActor)));
+				ActorRef offsetActorRef = context()
+						.actorOf(TcsOffsetCommand.props(assemblyContext, sc, mcsRefActor, ecsRefActor, m3RefActor,
+								tpkRefActor, currentState(), Optional.of(tcsStateActor), eventService.get()));
 				context().become(actorExecutingReceive(offsetActorRef, commandOriginator));
 
 				self().tell(JSequentialExecutor.CommandStart(), self());
@@ -187,8 +188,18 @@ public class TcsCommandHandler extends BaseCommandHandler {
 					context().become(initReceive());
 				}).
 
-				match(SetupConfig.class, t -> {
-					log.debug("Inside TcsCommandHandler actorExecutingReceive: SetupConfig");
+				match(SetupConfig.class, sc -> {
+					log.debug("Inside TcsCommandHandler actorExecutingReceive: SetupConfig is: " + sc);
+					if (TcsConfig.offsetCK.equals(sc.configKey())) {
+						ActorRef offsetActorRef = context().actorOf(
+								TcsOffsetCommand.props(assemblyContext, sc, mcsRefActor, ecsRefActor, m3RefActor,
+										tpkRefActor, currentState(), Optional.of(tcsStateActor), eventService.get()));
+						context().become(actorExecutingReceive(offsetActorRef, commandOriginator));
+
+						offsetActorRef.tell(JSequentialExecutor.CommandStart(), self());
+
+						commandOriginator.ifPresent(actorRef -> actorRef.tell(Completed, self()));
+					}
 				}).
 
 				match(ExecuteOne.class, t -> {

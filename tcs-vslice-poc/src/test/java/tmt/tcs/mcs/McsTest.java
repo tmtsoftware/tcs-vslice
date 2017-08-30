@@ -2,7 +2,6 @@ package tmt.tcs.mcs;
 
 import static javacsw.services.ccs.JCommandStatus.Accepted;
 import static javacsw.services.ccs.JCommandStatus.AllCompleted;
-import static javacsw.services.ccs.JCommandStatus.Incomplete;
 import static javacsw.services.loc.JConnectionType.AkkaType;
 import static javacsw.services.pkg.JComponent.RegisterAndTrackServices;
 import static javacsw.services.pkg.JSupervisor.HaltComponent;
@@ -116,7 +115,7 @@ public class McsTest extends JavaTestKit {
 		ActorRef mcsAssembly = newMcsAssembly(fakeSupervisor.ref());
 		TestProbe fakeClient = new TestProbe(system);
 
-		SetupConfig offsetSc = jadd(new SetupConfig(McsConfig.offsetDemandCK.prefix()),
+		SetupConfig offsetSc = jadd(new SetupConfig(McsConfig.offsetCK.prefix()),
 				jset(McsConfig.azDemandKey, offsetAzValue), jset(McsConfig.elDemandKey, offsetElValue));
 
 		fakeSupervisor.expectMsg(Initialized);
@@ -135,7 +134,7 @@ public class McsTest extends JavaTestKit {
 		logger.debug("Inside McsTest test1 Command Result: " + completeMsg + ": completeMsg.overall(): "
 				+ completeMsg.overall());
 
-		assertEquals(completeMsg.overall(), Incomplete);
+		assertEquals(completeMsg.overall(), AllCompleted);
 
 	}
 

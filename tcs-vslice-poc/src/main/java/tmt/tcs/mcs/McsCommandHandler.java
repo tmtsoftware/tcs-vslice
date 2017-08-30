@@ -143,6 +143,9 @@ public class McsCommandHandler extends BaseCommandHandler {
 					Optional<ActorRef> commandOriginator = toJava(t.commandOriginator());
 					ConfigKey configKey = sc.configKey();
 
+					Double initialAz = 0.0;
+					Double initialEl = 0.0;
+
 					log.debug("Inside McsCommandHandler initReceive: ExecuteOne: SetupConfig is: " + sc
 							+ ": configKey is: " + configKey);
 
@@ -168,9 +171,6 @@ public class McsCommandHandler extends BaseCommandHandler {
 						} else {
 							log.debug("Inside McsCommandHandler initReceive: Follow command -- START: " + t);
 
-							Double initialAz = 0.0;
-							Double initialEl = 0.0;
-
 							// The event publisher may be passed in
 							Props props = McsFollowCommand.props(assemblyContext, jset(McsConfig.az, initialAz),
 									jset(McsConfig.el, initialEl), Optional.of(mcsHcd), allEventPublisher,
@@ -189,15 +189,34 @@ public class McsCommandHandler extends BaseCommandHandler {
 							commandOriginator.ifPresent(actorRef -> actorRef.tell(Completed, self()));
 
 						}
-					} else if (configKey.equals(McsConfig.offsetDemandCK)) {
-						if (isHcdAvailable()) {
-							log.debug("Inside McsCommandHandler initReceive: ExecuteOne: offsetCK Command ");
-							ActorRef offsetActorRef = context().actorOf(McsOffsetCommand.props(assemblyContext, sc,
-									mcsHcd, currentState(), Optional.of(mcsStateActor)));
-							context().become(actorExecutingReceive(offsetActorRef, commandOriginator));
-							self().tell(JSequentialExecutor.CommandStart(), self());
+					} else if (configKey.equals(McsConfig.offsetCK)) {
+						if (!(az(currentState()).equals(azDatumed) || az(currentState()).equals(azDrivePowerOn))
+								&& !(el(currentState()).equals(elDatumed)
+										|| az(currentState()).equals(elDrivePowerOn))) {
+							String errorMessage = "Mcs Assembly state of " + az(currentState()) + "/"
+									+ el(currentState()) + " does not allow Offset";
+							log.debug("Inside McsCommandHandler initReceive: Error Message is: " + errorMessage);
+							sender().tell(new NoLongerValid(new WrongInternalStateIssue(errorMessage)), self());
 						} else {
-							hcdNotAvailableResponse(commandOriginator);
+							if (isHcdAvailable()) {
+								log.debug("Inside McsCommandHandler initReceive: ExecuteOne: offsetCK Command ");
+								Props props = McsOffsetCommand.props(assemblyContext, jset(McsConfig.az, initialAz),
+										jset(McsConfig.el, initialEl), Optional.of(mcsHcd), allEventPublisher,
+										eventService.get(), Optional.of(mcsStateActor));
+
+								ActorRef offsetActorRef = context().actorOf(props);
+
+								context().become(actorExecutingReceive(offsetActorRef, commandOriginator));
+								try {
+									ask(mcsStateActor, new AssemblySetState(azItem(azFollowing), elItem(elFollowing)),
+											5000).toCompletableFuture().get();
+								} catch (Exception e) {
+									log.error(e, "Inside McsCommandHandler initReceive: Error setting state");
+								}
+								commandOriginator.ifPresent(actorRef -> actorRef.tell(Completed, self()));
+							} else {
+								hcdNotAvailableResponse(commandOriginator);
+							}
 						}
 					} else {
 						log.error("Inside McsCommandHandler initReceive: Received an unknown command: " + t + " from "

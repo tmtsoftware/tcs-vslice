@@ -18,11 +18,13 @@ import csw.util.config.Configurations;
 import csw.util.config.Configurations.SetupConfig;
 import csw.util.config.Configurations.SetupConfigArg;
 import javacsw.services.ccs.JSequentialExecutor;
+import javacsw.services.events.IEventService;
 import scala.PartialFunction;
 import scala.runtime.BoxedUnit;
 import tmt.tcs.common.AssemblyContext;
 import tmt.tcs.common.AssemblyStateActor.AssemblyState;
 import tmt.tcs.common.BaseCommand;
+import tmt.tcs.mcs.McsConfig;
 import tmt.tcs.tpk.TpkConfig;
 
 /**
@@ -35,6 +37,8 @@ public class TcsOffsetCommand extends BaseCommand {
 
 	@SuppressWarnings("unused")
 	private final Optional<ActorRef> tcsStateActor;
+
+	AssemblyContext assemblyContext;
 
 	/**
 	 * Constructor Methods helps subscribing to events checks for Assembly state
@@ -50,8 +54,12 @@ public class TcsOffsetCommand extends BaseCommand {
 	 * @param stateActor
 	 */
 	public TcsOffsetCommand(AssemblyContext ac, SetupConfig sc, ActorRef mcsRefActor, ActorRef ecsRefActor,
-			ActorRef m3RefActor, ActorRef tpkRefActor, AssemblyState tcsStartState, Optional<ActorRef> stateActor) {
+			ActorRef m3RefActor, ActorRef tpkRefActor, AssemblyState tcsStartState, Optional<ActorRef> stateActor,
+			IEventService eventService) {
 		this.tcsStateActor = stateActor;
+		this.assemblyContext = ac;
+
+		createEventSubscriber(eventService);
 
 		receive(followReceive(sc, mcsRefActor, ecsRefActor, m3RefActor, tpkRefActor));
 	}
@@ -73,6 +81,13 @@ public class TcsOffsetCommand extends BaseCommand {
 
 			SetupConfigArg tpkSetupConfigArg = Configurations.createSetupConfigArg("tpkOffsetCommand", offsetSc);
 
+			SetupConfigArg mcsSetupConfigArg = Configurations.createSetupConfigArg("mcsFollowCommand",
+					new SetupConfig(McsConfig.initPrefix), new SetupConfig(McsConfig.offsetPrefix));
+
+			log.debug("Inside TcsFollowCommand: Offset command -- mcsRefActor is: " + mcsRefActor);
+
+			mcsRefActor.tell(new AssemblyController.Submit(mcsSetupConfigArg), self());
+
 			tpkRefActor.tell(new AssemblyController.Submit(tpkSetupConfigArg), self());
 
 		}).matchEquals(JSequentialExecutor.StopCurrentCommand(), t -> {
@@ -80,15 +95,22 @@ public class TcsOffsetCommand extends BaseCommand {
 		}).matchAny(t -> log.warning("Inside TcsOffsetCommand: Unknown message received: " + t)).build();
 	}
 
+	private ActorRef createEventSubscriber(IEventService eventService) {
+		log.debug("Inside TcsFollowCommand createEventSubscriber: Creating Event Subscriber ");
+		return context().actorOf(TcsEventSubscriber.props(assemblyContext, Optional.empty(), eventService),
+				"tcseventsubscriber");
+	}
+
 	public static Props props(AssemblyContext ac, SetupConfig sc, ActorRef mcsRefActor, ActorRef ecsRefActor,
-			ActorRef m3RefActor, ActorRef tpkRefActor, AssemblyState tcsState, Optional<ActorRef> stateActor) {
+			ActorRef m3RefActor, ActorRef tpkRefActor, AssemblyState tcsState, Optional<ActorRef> stateActor,
+			IEventService eventService) {
 		return Props.create(new Creator<TcsOffsetCommand>() {
 			private static final long serialVersionUID = 1L;
 
 			@Override
 			public TcsOffsetCommand create() throws Exception {
 				return new TcsOffsetCommand(ac, sc, mcsRefActor, ecsRefActor, m3RefActor, tpkRefActor, tcsState,
-						stateActor);
+						stateActor, eventService);
 			}
 		});
 	}
