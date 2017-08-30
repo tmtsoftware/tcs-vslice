@@ -173,7 +173,7 @@ public class EcsCommandHandler extends BaseCommandHandler {
 							// The event publisher may be passed in
 							Props props = EcsFollowCommand.props(assemblyContext, jset(EcsConfig.az, initialAz),
 									jset(EcsConfig.el, initialEl), Optional.of(ecsHcd), allEventPublisher,
-									eventService.get());
+									eventService.get(), Optional.of(ecsStateActor));
 
 							ActorRef followCommandActor = context().actorOf(props);
 							log.info("Inside EcsCommandHandler initReceive: Going to followReceive");

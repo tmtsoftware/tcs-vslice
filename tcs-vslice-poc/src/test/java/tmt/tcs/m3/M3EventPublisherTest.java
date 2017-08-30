@@ -150,8 +150,10 @@ public class M3EventPublisherTest extends JavaTestKit {
 	DoubleItem initialRotation = jset(M3Config.rotation, 0.0);
 	DoubleItem initialTilt = jset(M3Config.tilt, 0.0);
 
-	ActorRef newTestFollower(Optional<ActorRef> m3Control, Optional<ActorRef> publisher) {
-		Props props = M3FollowActor.props(assemblyContext, initialRotation, initialTilt, m3Control, publisher);
+	ActorRef newTestFollower(Optional<ActorRef> m3Control, Optional<ActorRef> publisher,
+			Optional<ActorRef> stateActor) {
+		Props props = M3FollowActor.props(assemblyContext, initialRotation, initialTilt, m3Control, publisher,
+				stateActor);
 		ActorRef a = system.actorOf(props);
 		expectNoMsg(duration("200 millis"));
 		return a;
@@ -177,7 +179,7 @@ public class M3EventPublisherTest extends JavaTestKit {
 	public void test1() {
 		logger.debug("Inside M3EventPublisherTest test1: STARTS");
 		ActorRef publisher = newTestPublisher(Optional.of(eventService), Optional.of(telemetryService));
-		ActorRef follower = newTestFollower(Optional.empty(), Optional.of(publisher));
+		ActorRef follower = newTestFollower(Optional.empty(), Optional.of(publisher), Optional.empty());
 
 		ActorRef resultSubscriber = system.actorOf(TestSubscriber.props());
 		telemetryService.subscribe(resultSubscriber, false, M3Config.telemetryEventPrefix);
@@ -209,7 +211,7 @@ public class M3EventPublisherTest extends JavaTestKit {
 	public void test2() {
 		logger.debug("Inside M3EventPublisherTest test2: STARTS");
 		ActorRef publisher = newTestPublisher(Optional.of(eventService), Optional.of(telemetryService));
-		ActorRef follower = newTestFollower(Optional.empty(), Optional.of(publisher));
+		ActorRef follower = newTestFollower(Optional.empty(), Optional.of(publisher), Optional.empty());
 
 		ActorRef resultSubscriber = system.actorOf(TestSubscriber.props());
 		telemetryService.subscribe(resultSubscriber, false, M3Config.telemetryEventPrefix);

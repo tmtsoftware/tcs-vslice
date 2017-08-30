@@ -143,9 +143,10 @@ public class EcsFollowActorTest extends JavaTestKit {
 	DoubleItem initialAz = jset(EcsConfig.az, 0.0);
 	DoubleItem initialEl = jset(EcsConfig.el, 0.0);
 
-	TestActorRef<EcsFollowActor> newFollower(Optional<ActorRef> ecsControl, Optional<ActorRef> publisher) {
+	TestActorRef<EcsFollowActor> newFollower(Optional<ActorRef> ecsControl, Optional<ActorRef> publisher,
+			Optional<ActorRef> stateActor) {
 
-		Props props = EcsFollowActor.props(assemblyContext, initialAz, initialEl, ecsControl, publisher);
+		Props props = EcsFollowActor.props(assemblyContext, initialAz, initialEl, ecsControl, publisher, stateActor);
 		TestActorRef<EcsFollowActor> followActor = TestActorRef.create(system, props);
 		expectNoMsg(duration("200 milli")); // give it time to initialize...
 		return followActor;
@@ -171,11 +172,12 @@ public class EcsFollowActorTest extends JavaTestKit {
 
 	TestProbe fakeEcsControl = new TestProbe(system);
 	TestProbe fakePublisher = new TestProbe(system);
+	TestProbe fakeStateActor = new TestProbe(system);
 
 	@Test
 	public void test1() {
 		TestActorRef<EcsFollowActor> followActor = newFollower(Optional.of(fakeEcsControl.ref()),
-				Optional.of(fakePublisher.ref()));
+				Optional.of(fakePublisher.ref()), Optional.of(fakeStateActor.ref()));
 
 		assertEquals(followActor.underlyingActor().initialElevation, initialEl);
 
@@ -188,7 +190,7 @@ public class EcsFollowActorTest extends JavaTestKit {
 	@Test
 	public void test2() {
 		TestActorRef<EcsFollowActor> followActor = newFollower(Optional.of(fakeEcsControl.ref()),
-				Optional.of(fakePublisher.ref()));
+				Optional.of(fakePublisher.ref()), Optional.of(fakeStateActor.ref()));
 
 		assertEquals(followActor.underlyingActor().initialElevation, initialEl);
 
@@ -198,7 +200,7 @@ public class EcsFollowActorTest extends JavaTestKit {
 	@Test
 	public void test3() {
 		TestActorRef<EcsFollowActor> followActor = newFollower(Optional.of(fakeEcsControl.ref()),
-				Optional.of(fakePublisher.ref()));
+				Optional.of(fakePublisher.ref()), Optional.of(fakeStateActor.ref()));
 
 		followActor.tell(new UpdatedEventData(az(0), el(0), Events.getEventTime()), self());
 
@@ -210,7 +212,7 @@ public class EcsFollowActorTest extends JavaTestKit {
 	@Test
 	public void test4() {
 		TestActorRef<EcsFollowActor> followActor = newFollower(Optional.of(fakeEcsControl.ref()),
-				Optional.of(fakePublisher.ref()));
+				Optional.of(fakePublisher.ref()), Optional.of(fakeStateActor.ref()));
 
 		double testEl = 10.0;
 

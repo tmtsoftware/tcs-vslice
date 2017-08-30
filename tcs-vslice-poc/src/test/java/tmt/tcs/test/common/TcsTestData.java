@@ -34,6 +34,7 @@ public class TcsTestData {
 		connections.add(new Connection.AkkaConnection(mcsAssemblyId));
 		connections.add(new Connection.AkkaConnection(ecsAssemblyId));
 		connections.add(new Connection.AkkaConnection(m3AssemblyId));
+		connections.add(new Connection.AkkaConnection(tpkAssemblyId));
 
 		return connections;
 	}

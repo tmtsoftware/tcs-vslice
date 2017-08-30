@@ -174,7 +174,7 @@ public class McsCommandHandler extends BaseCommandHandler {
 							// The event publisher may be passed in
 							Props props = McsFollowCommand.props(assemblyContext, jset(McsConfig.az, initialAz),
 									jset(McsConfig.el, initialEl), Optional.of(mcsHcd), allEventPublisher,
-									eventService.get());
+									eventService.get(), Optional.of(mcsStateActor));
 
 							ActorRef followCommandActor = context().actorOf(props);
 							log.info("Inside McsCommandHandler initReceive: Going to followReceive");

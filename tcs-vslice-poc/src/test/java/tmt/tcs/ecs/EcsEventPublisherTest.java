@@ -150,8 +150,9 @@ public class EcsEventPublisherTest extends JavaTestKit {
 	DoubleItem initialAz = jset(EcsConfig.az, 0.0);
 	DoubleItem initialEl = jset(EcsConfig.el, 0.0);
 
-	ActorRef newTestFollower(Optional<ActorRef> ecsControl, Optional<ActorRef> publisher) {
-		Props props = EcsFollowActor.props(assemblyContext, initialAz, initialEl, ecsControl, publisher);
+	ActorRef newTestFollower(Optional<ActorRef> ecsControl, Optional<ActorRef> publisher,
+			Optional<ActorRef> stateActor) {
+		Props props = EcsFollowActor.props(assemblyContext, initialAz, initialEl, ecsControl, publisher, stateActor);
 		ActorRef a = system.actorOf(props);
 		expectNoMsg(duration("200 millis"));
 		return a;
@@ -177,7 +178,7 @@ public class EcsEventPublisherTest extends JavaTestKit {
 	public void test1() {
 		logger.debug("Inside EcsEventPublisher test1: STARTS");
 		ActorRef publisher = newTestPublisher(Optional.of(eventService), Optional.of(telemetryService));
-		ActorRef follower = newTestFollower(Optional.empty(), Optional.of(publisher));
+		ActorRef follower = newTestFollower(Optional.empty(), Optional.of(publisher), Optional.empty());
 
 		ActorRef resultSubscriber = system.actorOf(TestSubscriber.props());
 		telemetryService.subscribe(resultSubscriber, false, EcsConfig.telemetryEventPrefix);
@@ -209,7 +210,7 @@ public class EcsEventPublisherTest extends JavaTestKit {
 	public void test2() {
 		logger.debug("Inside EcsEventPublisher test2: STARTS");
 		ActorRef publisher = newTestPublisher(Optional.of(eventService), Optional.of(telemetryService));
-		ActorRef follower = newTestFollower(Optional.empty(), Optional.of(publisher));
+		ActorRef follower = newTestFollower(Optional.empty(), Optional.of(publisher), Optional.empty());
 
 		ActorRef resultSubscriber = system.actorOf(TestSubscriber.props());
 		telemetryService.subscribe(resultSubscriber, false, EcsConfig.telemetryEventPrefix);

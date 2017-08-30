@@ -34,7 +34,7 @@ public class McsFollowCommand extends BaseCommand {
 	private final DoubleItem initialElevation;
 	private final Optional<ActorRef> eventPublisher;
 	private final IEventService eventService;
-
+	private final Optional<ActorRef> mcsStateActor;
 	private final ActorRef mcsControl;
 
 	final Optional<ActorRef> mcsHcd;
@@ -53,7 +53,7 @@ public class McsFollowCommand extends BaseCommand {
 	 * @param eventService
 	 */
 	public McsFollowCommand(AssemblyContext assemblyContext, DoubleItem initialAzimuth, DoubleItem initialElevation,
-			Optional<ActorRef> mcsHcd, Optional<ActorRef> eventPublisher, IEventService eventService) {
+			Optional<ActorRef> mcsHcd, Optional<ActorRef> eventPublisher, IEventService eventService, Optional<ActorRef> mcsStateActor) {
 
 		this.assemblyContext = assemblyContext;
 		this.initialAzimuth = initialAzimuth;
@@ -61,10 +61,11 @@ public class McsFollowCommand extends BaseCommand {
 		this.mcsHcd = mcsHcd;
 		this.eventPublisher = eventPublisher;
 		this.eventService = eventService;
+		this.mcsStateActor = mcsStateActor;
 
 		mcsControl = context().actorOf(McsControl.props(assemblyContext, mcsHcd), "mcscontrol");
 		ActorRef initialFollowActor = createFollower(initialAzimuth, initialElevation, mcsControl, eventPublisher,
-				eventPublisher);
+				eventPublisher, mcsStateActor);
 		ActorRef initialEventSubscriber = createEventSubscriber(initialFollowActor, eventService);
 
 		receive(followReceive(initialFollowActor, initialEventSubscriber, mcsHcd));
@@ -96,10 +97,10 @@ public class McsFollowCommand extends BaseCommand {
 	}
 
 	private ActorRef createFollower(DoubleItem initialAzimuth, DoubleItem initialElevation, ActorRef mcsControl,
-			Optional<ActorRef> eventPublisher, Optional<ActorRef> telemetryPublisher) {
+			Optional<ActorRef> eventPublisher, Optional<ActorRef> telemetryPublisher, Optional<ActorRef> mcsStateActor) {
 		log.debug("Inside McsFollowCommand createFollower: Creating Follower ");
 		return context().actorOf(McsFollowActor.props(assemblyContext, initialAzimuth, initialElevation,
-				Optional.of(mcsControl), eventPublisher), "follower");
+				Optional.of(mcsControl), eventPublisher, mcsStateActor), "follower");
 	}
 
 	private ActorRef createEventSubscriber(ActorRef followActor, IEventService eventService) {
@@ -109,13 +110,13 @@ public class McsFollowCommand extends BaseCommand {
 	}
 
 	public static Props props(AssemblyContext ac, DoubleItem initialAzimuth, DoubleItem initialElevation,
-			Optional<ActorRef> mcsHcd, Optional<ActorRef> eventPublisher, IEventService eventService) {
+			Optional<ActorRef> mcsHcd, Optional<ActorRef> eventPublisher, IEventService eventService, Optional<ActorRef> mcsStateActor) {
 		return Props.create(new Creator<McsFollowCommand>() {
 			private static final long serialVersionUID = 1L;
 
 			@Override
 			public McsFollowCommand create() throws Exception {
-				return new McsFollowCommand(ac, initialAzimuth, initialElevation, mcsHcd, eventPublisher, eventService);
+				return new McsFollowCommand(ac, initialAzimuth, initialElevation, mcsHcd, eventPublisher, eventService, mcsStateActor);
 			}
 		});
 	}

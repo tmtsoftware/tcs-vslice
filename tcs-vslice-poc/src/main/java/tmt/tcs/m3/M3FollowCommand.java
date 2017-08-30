@@ -34,7 +34,7 @@ public class M3FollowCommand extends BaseCommand {
 	private final DoubleItem initialTilt;
 	private final Optional<ActorRef> eventPublisher;
 	private final IEventService eventService;
-
+	private final Optional<ActorRef> m3StateActor;
 	private final ActorRef m3Control;
 
 	final Optional<ActorRef> m3Hcd;
@@ -53,7 +53,8 @@ public class M3FollowCommand extends BaseCommand {
 	 * @param eventService
 	 */
 	public M3FollowCommand(AssemblyContext assemblyContext, DoubleItem initialRotation, DoubleItem initialTilt,
-			Optional<ActorRef> m3Hcd, Optional<ActorRef> eventPublisher, IEventService eventService) {
+			Optional<ActorRef> m3Hcd, Optional<ActorRef> eventPublisher, IEventService eventService,
+			Optional<ActorRef> m3StateActor) {
 
 		this.assemblyContext = assemblyContext;
 		this.initialRotation = initialRotation;
@@ -61,10 +62,11 @@ public class M3FollowCommand extends BaseCommand {
 		this.m3Hcd = m3Hcd;
 		this.eventPublisher = eventPublisher;
 		this.eventService = eventService;
+		this.m3StateActor = m3StateActor;
 
 		m3Control = context().actorOf(M3Control.props(assemblyContext, m3Hcd), "m3control");
 		ActorRef initialFollowActor = createFollower(initialRotation, initialTilt, m3Control, eventPublisher,
-				eventPublisher);
+				eventPublisher, m3StateActor);
 		ActorRef initialEventSubscriber = createEventSubscriber(initialFollowActor, eventService);
 
 		receive(followReceive(initialFollowActor, initialEventSubscriber, m3Hcd));
@@ -96,26 +98,28 @@ public class M3FollowCommand extends BaseCommand {
 	}
 
 	private ActorRef createFollower(DoubleItem initialRotation, DoubleItem initialTilt, ActorRef m3Control,
-			Optional<ActorRef> eventPublisher, Optional<ActorRef> telemetryPublisher) {
+			Optional<ActorRef> eventPublisher, Optional<ActorRef> telemetryPublisher, Optional<ActorRef> m3StateActor) {
 		log.debug("Inside M3FollowCommand createFollower: Creating Follower ");
 		return context().actorOf(M3FollowActor.props(assemblyContext, initialRotation, initialTilt,
-				Optional.of(m3Control), eventPublisher), "follower");
+				Optional.of(m3Control), eventPublisher, m3StateActor), "follower");
 	}
 
 	private ActorRef createEventSubscriber(ActorRef followActor, IEventService eventService) {
 		log.debug("Inside M3FollowCommand createEventSubscriber: Creating Event Subscriber ");
 		return context().actorOf(M3EventSubscriber.props(assemblyContext, Optional.of(followActor), eventService),
-				"m3entsubscriber");
+				"m3eventsubscriber");
 	}
 
 	public static Props props(AssemblyContext ac, DoubleItem initialRotation, DoubleItem initialTilt,
-			Optional<ActorRef> m3Hcd, Optional<ActorRef> eventPublisher, IEventService eventService) {
+			Optional<ActorRef> m3Hcd, Optional<ActorRef> eventPublisher, IEventService eventService,
+			Optional<ActorRef> m3StateActor) {
 		return Props.create(new Creator<M3FollowCommand>() {
 			private static final long serialVersionUID = 1L;
 
 			@Override
 			public M3FollowCommand create() throws Exception {
-				return new M3FollowCommand(ac, initialRotation, initialTilt, m3Hcd, eventPublisher, eventService);
+				return new M3FollowCommand(ac, initialRotation, initialTilt, m3Hcd, eventPublisher, eventService,
+						m3StateActor);
 			}
 		});
 	}

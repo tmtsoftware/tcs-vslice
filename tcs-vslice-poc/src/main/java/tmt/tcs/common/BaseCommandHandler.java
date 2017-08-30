@@ -27,8 +27,8 @@ public abstract class BaseCommandHandler extends AbstractActor
 	}
 
 	@Override
-	public void setCurrentState(AssemblyStateActor.AssemblyState mcsState) {
-		internalState = mcsState;
+	public void setCurrentState(AssemblyStateActor.AssemblyState state) {
+		internalState = state;
 	}
 
 	/**

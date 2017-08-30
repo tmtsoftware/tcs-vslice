@@ -143,9 +143,11 @@ public class M3FollowActorTest extends JavaTestKit {
 	DoubleItem initialRotation = jset(M3Config.rotation, 0.0);
 	DoubleItem initialTilt = jset(M3Config.tilt, 0.0);
 
-	TestActorRef<M3FollowActor> newFollower(Optional<ActorRef> m3Control, Optional<ActorRef> publisher) {
+	TestActorRef<M3FollowActor> newFollower(Optional<ActorRef> m3Control, Optional<ActorRef> publisher,
+			Optional<ActorRef> stateActor) {
 
-		Props props = M3FollowActor.props(assemblyContext, initialRotation, initialTilt, m3Control, publisher);
+		Props props = M3FollowActor.props(assemblyContext, initialRotation, initialTilt, m3Control, publisher,
+				stateActor);
 		TestActorRef<M3FollowActor> followActor = TestActorRef.create(system, props);
 		expectNoMsg(duration("200 milli")); // give it time to initialize...
 		return followActor;
@@ -171,11 +173,12 @@ public class M3FollowActorTest extends JavaTestKit {
 
 	TestProbe fakeM3Control = new TestProbe(system);
 	TestProbe fakePublisher = new TestProbe(system);
+	TestProbe fakeStateActor = new TestProbe(system);
 
 	@Test
 	public void test1() {
 		TestActorRef<M3FollowActor> followActor = newFollower(Optional.of(fakeM3Control.ref()),
-				Optional.of(fakePublisher.ref()));
+				Optional.of(fakePublisher.ref()), Optional.of(fakeStateActor.ref()));
 
 		assertEquals(followActor.underlyingActor().initialTilt, initialTilt);
 
@@ -188,7 +191,7 @@ public class M3FollowActorTest extends JavaTestKit {
 	@Test
 	public void test2() {
 		TestActorRef<M3FollowActor> followActor = newFollower(Optional.of(fakeM3Control.ref()),
-				Optional.of(fakePublisher.ref()));
+				Optional.of(fakePublisher.ref()), Optional.of(fakeStateActor.ref()));
 
 		assertEquals(followActor.underlyingActor().initialTilt, initialTilt);
 
@@ -198,7 +201,7 @@ public class M3FollowActorTest extends JavaTestKit {
 	@Test
 	public void test3() {
 		TestActorRef<M3FollowActor> followActor = newFollower(Optional.of(fakeM3Control.ref()),
-				Optional.of(fakePublisher.ref()));
+				Optional.of(fakePublisher.ref()), Optional.of(fakeStateActor.ref()));
 
 		followActor.tell(new UpdatedEventData(rotation(0), tilt(0), Events.getEventTime()), self());
 
@@ -210,7 +213,7 @@ public class M3FollowActorTest extends JavaTestKit {
 	@Test
 	public void test4() {
 		TestActorRef<M3FollowActor> followActor = newFollower(Optional.of(fakeM3Control.ref()),
-				Optional.of(fakePublisher.ref()));
+				Optional.of(fakePublisher.ref()), Optional.of(fakeStateActor.ref()));
 
 		double testEl = 10.0;
 

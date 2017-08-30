@@ -1,9 +1,13 @@
 package tmt.tcs.ecs;
 
+import static tmt.tcs.common.AssemblyStateActor.az;
+import static tmt.tcs.common.AssemblyStateActor.azFollowing;
+import static tmt.tcs.common.AssemblyStateActor.el;
+import static tmt.tcs.common.AssemblyStateActor.elFollowing;
+
 import java.time.Instant;
 import java.util.Optional;
 
-import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
 import akka.actor.Props;
 import akka.event.Logging;
@@ -15,9 +19,12 @@ import csw.util.config.Events.EventTime;
 import scala.PartialFunction;
 import scala.runtime.BoxedUnit;
 import tmt.tcs.common.AssemblyContext;
+import tmt.tcs.common.AssemblyStateActor.AssemblyGetState;
+import tmt.tcs.common.AssemblyStateActor.AssemblyState;
+import tmt.tcs.common.BaseFollowActor;
 import tmt.tcs.ecs.EcsEventPublisher.TelemetryUpdate;
 
-public class EcsFollowActor extends AbstractActor {
+public class EcsFollowActor extends BaseFollowActor {
 
 	LoggingAdapter log = Logging.getLogger(getContext().system(), this);
 
@@ -25,17 +32,22 @@ public class EcsFollowActor extends AbstractActor {
 	private final AssemblyContext assemblyContext;
 	private final Optional<ActorRef> ecsControl;
 	private final Optional<ActorRef> eventPublisher;
+	private final Optional<ActorRef> ecsStateActor;
 
 	public final DoubleItem initialAzimuth;
 	public final DoubleItem initialElevation;
 
 	private EcsFollowActor(AssemblyContext assemblyContext, DoubleItem initialAzimuth, DoubleItem initialElevation,
-			Optional<ActorRef> ecsControl, Optional<ActorRef> eventPublisher) {
+			Optional<ActorRef> ecsControl, Optional<ActorRef> eventPublisher, Optional<ActorRef> ecsStateActor) {
 		this.assemblyContext = assemblyContext;
 		this.initialAzimuth = initialAzimuth;
 		this.initialElevation = initialElevation;
 		this.ecsControl = ecsControl;
 		this.eventPublisher = eventPublisher;
+		this.ecsStateActor = ecsStateActor;
+
+		subscribeToLocationUpdates();
+		context().system().eventStream().subscribe(self(), AssemblyState.class);
 
 		// Initial receive - start with initial values
 		receive(followingReceive(initialAzimuth, initialElevation));
@@ -43,17 +55,28 @@ public class EcsFollowActor extends AbstractActor {
 
 	private PartialFunction<Object, BoxedUnit> followingReceive(DoubleItem initialAzimuth,
 			DoubleItem initialElevation) {
-		return ReceiveBuilder.match(StopFollowing.class, t -> {
+		return stateReceive().orElse(ReceiveBuilder.match(StopFollowing.class, t -> {
 			// do nothing
 		}).match(UpdatedEventData.class, t -> {
-			log.info("Inside EcsFollowActor followingReceive: Got an Update Event: " + t);
+			ecsStateActor.ifPresent(actorRef -> actorRef.tell(new AssemblyGetState(), self()));
 
-			sendEcsPosition(t.azimuth, t.elevation);
+			log.info("Inside EcsFollowActor followingReceive: az state is: " + az(currentState()) + ": el state is: "
+					+ el(currentState()));
 
-			// Post a StatusEvent for telemetry updates
-			sendTelemetryUpdate(t.azimuth, t.elevation);
+			if (az(currentState()).equals(azFollowing) && el(currentState()).equals(elFollowing)) {
+				log.info("Inside EcsFollowActor followingReceive: Got an Update Event: " + t);
 
-			context().become(followingReceive(t.azimuth, t.elevation));
+				sendEcsPosition(t.azimuth, t.elevation);
+
+				// Post a StatusEvent for telemetry updates
+				sendTelemetryUpdate(t.azimuth, t.elevation);
+
+				context().become(followingReceive(t.azimuth, t.elevation));
+			} else {
+				String errorMessage = "Assembly State " + az(currentState()) + "/" + el(currentState())
+						+ " does not allow moving Ecs";
+				log.error("Inside EcsFollowActor followingReceive: Error Message is: " + errorMessage);
+			}
 		}).match(SetElevation.class, t -> {
 			log.info("Inside EcsFollowActor followingReceive: Got elevation: " + t.elevation);
 
@@ -64,7 +87,7 @@ public class EcsFollowActor extends AbstractActor {
 
 			self().tell(new UpdatedEventData(t.azimuth, initialElevation, new EventTime(Instant.now())), self());
 			context().become(followingReceive(t.azimuth, initialElevation));
-		}).matchAny(t -> log.warning("Inside EcsFollowActor followingReceive: Unexpected message is: " + t)).build();
+		}).matchAny(t -> log.warning("Inside EcsFollowActor followingReceive: Unexpected message is: " + t)).build());
 	}
 
 	private void sendEcsPosition(DoubleItem az, DoubleItem el) {
@@ -88,14 +111,14 @@ public class EcsFollowActor extends AbstractActor {
 	 * @return
 	 */
 	public static Props props(AssemblyContext assemblyContext, DoubleItem initialAzimuth, DoubleItem initialElevation,
-			Optional<ActorRef> ecsControl, Optional<ActorRef> eventPublisher) {
+			Optional<ActorRef> ecsControl, Optional<ActorRef> eventPublisher, Optional<ActorRef> ecsStateActor) {
 		return Props.create(new Creator<EcsFollowActor>() {
 			private static final long serialVersionUID = 1L;
 
 			@Override
 			public EcsFollowActor create() throws Exception {
-				return new EcsFollowActor(assemblyContext, initialAzimuth, initialElevation, ecsControl,
-						eventPublisher);
+				return new EcsFollowActor(assemblyContext, initialAzimuth, initialElevation, ecsControl, eventPublisher,
+						ecsStateActor);
 			}
 		});
 	}

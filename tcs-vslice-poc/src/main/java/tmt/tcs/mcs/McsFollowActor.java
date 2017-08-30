@@ -1,9 +1,13 @@
 package tmt.tcs.mcs;
 
+import static tmt.tcs.common.AssemblyStateActor.az;
+import static tmt.tcs.common.AssemblyStateActor.azFollowing;
+import static tmt.tcs.common.AssemblyStateActor.el;
+import static tmt.tcs.common.AssemblyStateActor.elFollowing;
+
 import java.time.Instant;
 import java.util.Optional;
 
-import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
 import akka.actor.Props;
 import akka.event.Logging;
@@ -15,9 +19,12 @@ import csw.util.config.Events.EventTime;
 import scala.PartialFunction;
 import scala.runtime.BoxedUnit;
 import tmt.tcs.common.AssemblyContext;
+import tmt.tcs.common.AssemblyStateActor.AssemblyGetState;
+import tmt.tcs.common.AssemblyStateActor.AssemblyState;
+import tmt.tcs.common.BaseFollowActor;
 import tmt.tcs.mcs.McsEventPublisher.TelemetryUpdate;
 
-public class McsFollowActor extends AbstractActor {
+public class McsFollowActor extends BaseFollowActor {
 
 	LoggingAdapter log = Logging.getLogger(getContext().system(), this);
 
@@ -25,17 +32,22 @@ public class McsFollowActor extends AbstractActor {
 	private final AssemblyContext assemblyContext;
 	private final Optional<ActorRef> mcsControl;
 	private final Optional<ActorRef> eventPublisher;
+	private final Optional<ActorRef> mcsStateActor;
 
 	public final DoubleItem initialAzimuth;
 	public final DoubleItem initialElevation;
 
 	private McsFollowActor(AssemblyContext assemblyContext, DoubleItem initialAzimuth, DoubleItem initialElevation,
-			Optional<ActorRef> mcsControl, Optional<ActorRef> eventPublisher) {
+			Optional<ActorRef> mcsControl, Optional<ActorRef> eventPublisher, Optional<ActorRef> mcsStateActor) {
 		this.assemblyContext = assemblyContext;
 		this.initialAzimuth = initialAzimuth;
 		this.initialElevation = initialElevation;
 		this.mcsControl = mcsControl;
 		this.eventPublisher = eventPublisher;
+		this.mcsStateActor = mcsStateActor;
+
+		subscribeToLocationUpdates();
+		context().system().eventStream().subscribe(self(), AssemblyState.class);
 
 		// Initial receive - start with initial values
 		receive(followingReceive(initialAzimuth, initialElevation));
@@ -43,17 +55,27 @@ public class McsFollowActor extends AbstractActor {
 
 	private PartialFunction<Object, BoxedUnit> followingReceive(DoubleItem initialAzimuth,
 			DoubleItem initialElevation) {
-		return ReceiveBuilder.match(StopFollowing.class, t -> {
+		return stateReceive().orElse(ReceiveBuilder.match(StopFollowing.class, t -> {
 			// do nothing
 		}).match(UpdatedEventData.class, t -> {
-			log.info("Inside McsFollowActor followingReceive: Got an Update Event: " + t);
+			mcsStateActor.ifPresent(actorRef -> actorRef.tell(new AssemblyGetState(), self()));
 
-			sendMcsPosition(t.azimuth, t.elevation);
+			log.info("Inside McsFollowActor followingReceive: az state is: " + az(currentState()) + ": el state is: "
+					+ el(currentState()));
+			if (az(currentState()).equals(azFollowing) && el(currentState()).equals(elFollowing)) {
+				log.info("Inside McsFollowActor followingReceive: Got an Update Event: " + t);
 
-			// Post a StatusEvent for telemetry updates
-			sendTelemetryUpdate(t.azimuth, t.elevation);
+				sendMcsPosition(t.azimuth, t.elevation);
 
-			context().become(followingReceive(t.azimuth, t.elevation));
+				// Post a StatusEvent for telemetry updates
+				sendTelemetryUpdate(t.azimuth, t.elevation);
+
+				context().become(followingReceive(t.azimuth, t.elevation));
+			} else {
+				String errorMessage = "Assembly State " + az(currentState()) + "/" + el(currentState())
+						+ " does not allow moving Mcs";
+				log.error("Inside McsFollowActor followingReceive: Error Message is: " + errorMessage);
+			}
 		}).match(SetElevation.class, t -> {
 			log.info("Inside McsFollowActor followingReceive: Got elevation: " + t.elevation);
 
@@ -64,7 +86,7 @@ public class McsFollowActor extends AbstractActor {
 
 			self().tell(new UpdatedEventData(t.azimuth, initialElevation, new EventTime(Instant.now())), self());
 			context().become(followingReceive(t.azimuth, initialElevation));
-		}).matchAny(t -> log.warning("Inside McsFollowActor followingReceive: Unexpected message is: " + t)).build();
+		}).matchAny(t -> log.warning("Inside McsFollowActor followingReceive: Unexpected message is: " + t)).build());
 	}
 
 	private void sendMcsPosition(DoubleItem az, DoubleItem el) {
@@ -89,14 +111,14 @@ public class McsFollowActor extends AbstractActor {
 	 * @return
 	 */
 	public static Props props(AssemblyContext assemblyContext, DoubleItem initialAzimuth, DoubleItem initialElivation,
-			Optional<ActorRef> mcsControl, Optional<ActorRef> eventPublisher) {
+			Optional<ActorRef> mcsControl, Optional<ActorRef> eventPublisher, Optional<ActorRef> mcsStateActor) {
 		return Props.create(new Creator<McsFollowActor>() {
 			private static final long serialVersionUID = 1L;
 
 			@Override
 			public McsFollowActor create() throws Exception {
-				return new McsFollowActor(assemblyContext, initialAzimuth, initialElivation, mcsControl,
-						eventPublisher);
+				return new McsFollowActor(assemblyContext, initialAzimuth, initialElivation, mcsControl, eventPublisher,
+						mcsStateActor);
 			}
 		});
 	}

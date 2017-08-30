@@ -1,9 +1,13 @@
 package tmt.tcs.m3;
 
+import static tmt.tcs.common.AssemblyStateActor.az;
+import static tmt.tcs.common.AssemblyStateActor.azFollowing;
+import static tmt.tcs.common.AssemblyStateActor.el;
+import static tmt.tcs.common.AssemblyStateActor.elFollowing;
+
 import java.time.Instant;
 import java.util.Optional;
 
-import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
 import akka.actor.Props;
 import akka.event.Logging;
@@ -15,9 +19,12 @@ import csw.util.config.Events.EventTime;
 import scala.PartialFunction;
 import scala.runtime.BoxedUnit;
 import tmt.tcs.common.AssemblyContext;
+import tmt.tcs.common.AssemblyStateActor.AssemblyGetState;
+import tmt.tcs.common.AssemblyStateActor.AssemblyState;
+import tmt.tcs.common.BaseFollowActor;
 import tmt.tcs.m3.M3EventPublisher.TelemetryUpdate;
 
-public class M3FollowActor extends AbstractActor {
+public class M3FollowActor extends BaseFollowActor {
 
 	LoggingAdapter log = Logging.getLogger(getContext().system(), this);
 
@@ -25,34 +32,50 @@ public class M3FollowActor extends AbstractActor {
 	private final AssemblyContext assemblyContext;
 	private final Optional<ActorRef> m3Control;
 	private final Optional<ActorRef> eventPublisher;
+	private final Optional<ActorRef> m3StateActor;
 
 	public final DoubleItem initialRotation;
 	public final DoubleItem initialTilt;
 
 	private M3FollowActor(AssemblyContext assemblyContext, DoubleItem initialRotation, DoubleItem initialTilt,
-			Optional<ActorRef> m3Control, Optional<ActorRef> eventPublisher) {
+			Optional<ActorRef> m3Control, Optional<ActorRef> eventPublisher, Optional<ActorRef> m3StateActor) {
 		this.assemblyContext = assemblyContext;
 		this.initialRotation = initialRotation;
 		this.initialTilt = initialTilt;
 		this.m3Control = m3Control;
 		this.eventPublisher = eventPublisher;
+		this.m3StateActor = m3StateActor;
+
+		subscribeToLocationUpdates();
+		context().system().eventStream().subscribe(self(), AssemblyState.class);
 
 		// Initial receive - start with initial values
 		receive(followingReceive(initialRotation, initialTilt));
 	}
 
 	private PartialFunction<Object, BoxedUnit> followingReceive(DoubleItem initialRotation, DoubleItem initialTilt) {
-		return ReceiveBuilder.match(StopFollowing.class, t -> {
+		return stateReceive().orElse(ReceiveBuilder.match(StopFollowing.class, t -> {
 			// do nothing
 		}).match(UpdatedEventData.class, t -> {
-			log.info("Inside M3FollowActor followingReceive: Got an Update Event: " + t);
+			m3StateActor.ifPresent(actorRef -> actorRef.tell(new AssemblyGetState(), self()));
 
-			sendEcsPosition(t.rotation, t.tilt);
+			log.info("Inside M3FollowActor followingReceive: Rotation state is: " + az(currentState())
+					+ ": Tilt state is: " + el(currentState()));
 
-			// Post a StatusEvent for telemetry updates
-			sendTelemetryUpdate(t.rotation, t.tilt);
+			if (az(currentState()).equals(azFollowing) && el(currentState()).equals(elFollowing)) {
+				log.info("Inside M3FollowActor followingReceive: Got an Update Event: " + t);
 
-			context().become(followingReceive(t.rotation, t.tilt));
+				sendEcsPosition(t.rotation, t.tilt);
+
+				// Post a StatusEvent for telemetry updates
+				sendTelemetryUpdate(t.rotation, t.tilt);
+
+				context().become(followingReceive(t.rotation, t.tilt));
+			} else {
+				String errorMessage = "Assembly State " + az(currentState()) + "/" + el(currentState())
+						+ " does not allow moving M3";
+				log.error("Inside M3FollowActor followingReceive: Error Message is: " + errorMessage);
+			}
 		}).match(SetRotation.class, t -> {
 			log.info("Inside M3FollowActor followingReceive: Got Rotation: " + t.rotation);
 
@@ -63,7 +86,7 @@ public class M3FollowActor extends AbstractActor {
 
 			self().tell(new UpdatedEventData(initialRotation, t.tilt, new EventTime(Instant.now())), self());
 			context().become(followingReceive(initialRotation, t.tilt));
-		}).matchAny(t -> log.warning("Inside M3FollowActor followingReceive: Unexpected message is: " + t)).build();
+		}).matchAny(t -> log.warning("Inside M3FollowActor followingReceive: Unexpected message is: " + t)).build());
 	}
 
 	private void sendEcsPosition(DoubleItem rotation, DoubleItem tilt) {
@@ -87,13 +110,14 @@ public class M3FollowActor extends AbstractActor {
 	 * @return
 	 */
 	public static Props props(AssemblyContext assemblyContext, DoubleItem initialRotation, DoubleItem initialTilt,
-			Optional<ActorRef> m3Control, Optional<ActorRef> eventPublisher) {
+			Optional<ActorRef> m3Control, Optional<ActorRef> eventPublisher, Optional<ActorRef> m3StateActor) {
 		return Props.create(new Creator<M3FollowActor>() {
 			private static final long serialVersionUID = 1L;
 
 			@Override
 			public M3FollowActor create() throws Exception {
-				return new M3FollowActor(assemblyContext, initialRotation, initialTilt, m3Control, eventPublisher);
+				return new M3FollowActor(assemblyContext, initialRotation, initialTilt, m3Control, eventPublisher,
+						m3StateActor);
 			}
 		});
 	}

@@ -173,7 +173,8 @@ public class M3CommandHandler extends BaseCommandHandler {
 							// The event publisher may be passed in
 							Props props = M3FollowCommand.props(assemblyContext,
 									jset(M3Config.rotation, initialRotation), jset(M3Config.tilt, initialTilt),
-									Optional.of(m3Hcd), allEventPublisher, eventService.get());
+									Optional.of(m3Hcd), allEventPublisher, eventService.get(),
+									Optional.of(m3StateActor));
 
 							ActorRef followCommandActor = context().actorOf(props);
 							log.info("Inside M3CommandHandler initReceive: Going to followReceive");

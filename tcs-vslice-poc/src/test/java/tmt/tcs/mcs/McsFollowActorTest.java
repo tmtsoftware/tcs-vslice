@@ -143,9 +143,10 @@ public class McsFollowActorTest extends JavaTestKit {
 	DoubleItem initialAz = jset(McsConfig.az, 0.0);
 	DoubleItem initialEl = jset(McsConfig.el, 0.0);
 
-	TestActorRef<McsFollowActor> newFollower(Optional<ActorRef> mcsControl, Optional<ActorRef> publisher) {
+	TestActorRef<McsFollowActor> newFollower(Optional<ActorRef> mcsControl, Optional<ActorRef> publisher,
+			Optional<ActorRef> stateActor) {
 
-		Props props = McsFollowActor.props(assemblyContext, initialAz, initialEl, mcsControl, publisher);
+		Props props = McsFollowActor.props(assemblyContext, initialAz, initialEl, mcsControl, publisher, stateActor);
 		TestActorRef<McsFollowActor> followActor = TestActorRef.create(system, props);
 		expectNoMsg(duration("200 milli")); // give it time to initialize...
 		return followActor;
@@ -169,13 +170,14 @@ public class McsFollowActorTest extends JavaTestKit {
 
 	// --- Basic tests for connectivity ----
 
+	TestProbe fakeStateActor = new TestProbe(system);
 	TestProbe fakeMcsControl = new TestProbe(system);
 	TestProbe fakePublisher = new TestProbe(system);
 
 	@Test
 	public void test1() {
 		TestActorRef<McsFollowActor> followActor = newFollower(Optional.of(fakeMcsControl.ref()),
-				Optional.of(fakePublisher.ref()));
+				Optional.of(fakePublisher.ref()), Optional.of(fakeStateActor.ref()));
 
 		assertEquals(followActor.underlyingActor().initialElevation, initialEl);
 
@@ -188,7 +190,7 @@ public class McsFollowActorTest extends JavaTestKit {
 	@Test
 	public void test2() {
 		TestActorRef<McsFollowActor> followActor = newFollower(Optional.of(fakeMcsControl.ref()),
-				Optional.of(fakePublisher.ref()));
+				Optional.of(fakePublisher.ref()), Optional.of(fakePublisher.ref()));
 
 		assertEquals(followActor.underlyingActor().initialElevation, initialEl);
 
@@ -198,7 +200,7 @@ public class McsFollowActorTest extends JavaTestKit {
 	@Test
 	public void test3() {
 		TestActorRef<McsFollowActor> followActor = newFollower(Optional.of(fakeMcsControl.ref()),
-				Optional.of(fakePublisher.ref()));
+				Optional.of(fakePublisher.ref()), Optional.of(fakeStateActor.ref()));
 
 		followActor.tell(new UpdatedEventData(az(0), el(0), Events.getEventTime()), self());
 
@@ -210,7 +212,7 @@ public class McsFollowActorTest extends JavaTestKit {
 	@Test
 	public void test4() {
 		TestActorRef<McsFollowActor> followActor = newFollower(Optional.of(fakeMcsControl.ref()),
-				Optional.of(fakePublisher.ref()));
+				Optional.of(fakePublisher.ref()), Optional.of(fakeStateActor.ref()));
 
 		double testEl = 10.0;
 

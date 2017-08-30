@@ -73,6 +73,10 @@ public class TpkCommandHandler extends BaseCommandHandler {
 		receive(initReceive());
 	}
 
+	/**
+	 * This helps in initializing TPK JNI Wrapper in seperate thread, so that
+	 * New Target and Offset requests can be passed on to it
+	 */
 	public void initiateTpkEndpoint() {
 		log.debug("Inside TpkCommandHandler initiateTpkEndpoint");
 
