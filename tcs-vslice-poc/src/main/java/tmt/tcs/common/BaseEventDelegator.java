@@ -13,7 +13,7 @@ import scala.runtime.BoxedUnit;
  * This is the base Diagnostic Publisher class being extended by all Diag
  * Publisher
  */
-public abstract class BaseDiagnosticPublisher extends AbstractActor implements ILocationSubscriberClient {
+public abstract class BaseEventDelegator extends AbstractActor implements ILocationSubscriberClient {
 
 	public abstract PartialFunction<Object, BoxedUnit> operationsReceive(String hcdName, int stateMessageCounter,
 			Optional<ActorRef> hcd, Optional<ActorRef> eventPublisher);

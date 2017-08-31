@@ -1,4 +1,4 @@
-package tmt.tcs.mcs;
+package tmt.tcs.m3;
 
 import static javacsw.util.config.JItems.jitem;
 
@@ -20,33 +20,33 @@ import javacsw.util.config.JPublisherActor;
 import scala.PartialFunction;
 import scala.runtime.BoxedUnit;
 import tmt.tcs.common.AssemblyContext;
-import tmt.tcs.common.BaseDiagnosticPublisher;
-import tmt.tcs.mcs.McsEventPublisher.McsStateUpdate;
+import tmt.tcs.common.BaseEventDelegator;
+import tmt.tcs.m3.M3EventPublisher.M3StateUpdate;
 
 /**
- * This class provides diagnostic for MCS telemetry in the form of two events.
- * It operates in the 'OperationsState' or 'DiagnosticState'.
+ * This class provides diagnostic telemetry for M3 in the form of two events. It
+ * operates in the 'OperationsState' or 'DiagnosticState'.
  */
 @SuppressWarnings({ "unused" })
-public class McsDiagnosticPublisher extends BaseDiagnosticPublisher {
+public class M3EventDelegator extends BaseEventDelegator {
 
 	LoggingAdapter log = Logging.getLogger(getContext().system(), this);
 
 	private final Optional<ActorRef> eventPublisher;
 	private final String hcdName;
 
-	private McsDiagnosticPublisher(AssemblyContext assemblyContext, Optional<ActorRef> mcsHcd,
+	private M3EventDelegator(AssemblyContext assemblyContext, Optional<ActorRef> m3Hcd,
 			Optional<ActorRef> eventPublisher) {
 
-		log.debug("Inside McsDiagPublisher");
+		log.debug("Inside M3EventDelegator");
 		this.eventPublisher = eventPublisher;
 
 		subscribeToLocationUpdates();
 
-		mcsHcd.ifPresent(actorRef -> actorRef.tell(JPublisherActor.Subscribe, self()));
+		m3Hcd.ifPresent(actorRef -> actorRef.tell(JPublisherActor.Subscribe, self()));
 		this.hcdName = assemblyContext.info.getConnections().get(0).name();
 
-		receive(operationsReceive(hcdName, 0, mcsHcd, eventPublisher));
+		receive(operationsReceive(hcdName, 0, m3Hcd, eventPublisher));
 	}
 
 	/**
@@ -55,15 +55,15 @@ public class McsDiagnosticPublisher extends BaseDiagnosticPublisher {
 	public PartialFunction<Object, BoxedUnit> operationsReceive(String hcdName, int stateMessageCounter,
 			Optional<ActorRef> hcd, Optional<ActorRef> eventPublisher) {
 		return ReceiveBuilder.match(CurrentState.class, cs -> {
-			if (cs.configKey().equals(McsConfig.currentPosCK)) {
-				publishMcsPosUpdate(cs, eventPublisher);
+			if (cs.configKey().equals(M3Config.currentPosCK)) {
+				publishM3PosUpdate(cs, eventPublisher);
 			}
 		}).match(Location.class, location -> {
 
 			if (location instanceof LocationService.ResolvedAkkaLocation) {
 				if (Objects.equals(location.connection().name(), hcdName)) {
 					LocationService.ResolvedAkkaLocation rloc = (LocationService.ResolvedAkkaLocation) location;
-					log.debug("Inside McsDiagPublisher operationsReceive updated actorRef: " + rloc.getActorRef());
+					log.debug("Inside M3EventDelegator operationsReceive updated actorRef: " + rloc.getActorRef());
 					Optional<ActorRef> newHcdActorRef = rloc.getActorRef();
 					newHcdActorRef.ifPresent(actorRef -> actorRef.tell(JHcdController.Subscribe, self()));
 					context().become(operationsReceive(hcdName, stateMessageCounter, newHcdActorRef, eventPublisher));
@@ -71,16 +71,16 @@ public class McsDiagnosticPublisher extends BaseDiagnosticPublisher {
 
 			} else if (location instanceof LocationService.Unresolved) {
 				if (Objects.equals(location.connection().name(), hcdName)) {
-					log.debug("Inside McsDiagPublisher operationsReceive got unresolve for HCD");
+					log.debug("Inside M3EventDelegator operationsReceive got unresolve for HCD");
 					context().become(operationsReceive(hcdName, stateMessageCounter, Optional.empty(), eventPublisher));
 				}
 			} else if (location instanceof LocationService.UnTrackedLocation) {
 				if (Objects.equals(location.connection().name(), hcdName)) {
-					log.debug("Inside McsDiagPublisher operationsReceive got untrack for HCD");
+					log.debug("Inside M3EventDelegator operationsReceive got untrack for HCD");
 					context().become(operationsReceive(hcdName, stateMessageCounter, Optional.empty(), eventPublisher));
 				}
 			}
-		}).matchAny(t -> log.warning("Inside McsDiagPublisher :operationsReceive received an unexpected message: " + t))
+		}).matchAny(t -> log.warning("Inside M3EventDelegator :operationsReceive received an unexpected message: " + t))
 				.build();
 	}
 
@@ -90,15 +90,15 @@ public class McsDiagnosticPublisher extends BaseDiagnosticPublisher {
 	public PartialFunction<Object, BoxedUnit> diagnosticReceive(String hcdName, int stateMessageCounter,
 			Optional<ActorRef> hcd, Cancellable cancelToken, Optional<ActorRef> eventPublisher) {
 		return ReceiveBuilder.match(CurrentState.class, cs -> {
-			if (cs.configKey().equals(McsConfig.currentPosCK)) {
-				publishMcsPosUpdate(cs, eventPublisher);
+			if (cs.configKey().equals(M3Config.currentPosCK)) {
+				publishM3PosUpdate(cs, eventPublisher);
 			}
 		}).match(Location.class, location -> {
 
 			if (location instanceof LocationService.ResolvedAkkaLocation) {
 				if (Objects.equals(location.connection().name(), hcdName)) {
 					LocationService.ResolvedAkkaLocation rloc = (LocationService.ResolvedAkkaLocation) location;
-					log.debug("Inside McsDiagPublisher diagnosticReceive updated actorRef: " + rloc.getActorRef());
+					log.debug("Inside M3EventDelegator diagnosticReceive updated actorRef: " + rloc.getActorRef());
 					Optional<ActorRef> newHcdActorRef = rloc.getActorRef();
 					newHcdActorRef.ifPresent(actorRef -> actorRef.tell(JHcdController.Subscribe, self()));
 					context().become(diagnosticReceive(hcdName, stateMessageCounter, newHcdActorRef, cancelToken,
@@ -107,39 +107,41 @@ public class McsDiagnosticPublisher extends BaseDiagnosticPublisher {
 
 			} else if (location instanceof LocationService.Unresolved) {
 				if (Objects.equals(location.connection().name(), hcdName)) {
-					log.debug("Inside McsDiagPublisher diagnosticReceive got unresolve for HCD");
+					log.debug("Inside M3EventDelegator diagnosticReceive got unresolve for HCD");
 					context().become(diagnosticReceive(hcdName, stateMessageCounter, Optional.empty(), cancelToken,
 							eventPublisher));
 				}
 
 			} else if (location instanceof LocationService.UnTrackedLocation) {
 				if (Objects.equals(location.connection().name(), hcdName)) {
-					log.debug("Inside McsDiagPublisher diagnosticReceive got untrack for HCD");
+					log.debug("Inside M3EventDelegator diagnosticReceive got untrack for HCD");
 					context().become(diagnosticReceive(hcdName, stateMessageCounter, Optional.empty(), cancelToken,
 							eventPublisher));
 				}
 			}
-		}).matchAny(t -> log.warning("DiagPublisher:diagnosticReceive received an unexpected message: " + t)).build();
+		}).matchAny(t -> log.warning("Inside M3EventDelegator:diagnosticReceive received an unexpected message: " + t))
+				.build();
 	}
 
 	/**
 	 * This publishes State Updates
 	 */
-	public void publishMcsPosUpdate(CurrentState cs, Optional<ActorRef> eventPublisher) {
-		log.debug("Inside McsDiagPublisher publish state: " + cs);
-		eventPublisher.ifPresent(actorRef -> actorRef.tell(new McsStateUpdate(jitem(cs, McsConfig.mcsStateKey),
-				jitem(cs, McsConfig.azPosKey), jitem(cs, McsConfig.elPosKey)), self()));
+	public void publishM3PosUpdate(CurrentState cs, Optional<ActorRef> eventPublisher) {
+		log.debug("Inside M3EventDelegator publish state: " + cs);
+		eventPublisher.ifPresent(actorRef -> actorRef.tell(new M3StateUpdate(jitem(cs, M3Config.m3StateKey),
+				jitem(cs, M3Config.rotationPosKey), jitem(cs, M3Config.tiltPosKey)), self()));
 	}
 
-	public static Props props(AssemblyContext assemblyContext, Optional<ActorRef> mcsHcd,
+	public static Props props(AssemblyContext assemblyContext, Optional<ActorRef> m3Hcd,
 			Optional<ActorRef> eventPublisher) {
-		return Props.create(new Creator<McsDiagnosticPublisher>() {
+		return Props.create(new Creator<M3EventDelegator>() {
 			private static final long serialVersionUID = 1L;
 
 			@Override
-			public McsDiagnosticPublisher create() throws Exception {
-				return new McsDiagnosticPublisher(assemblyContext, mcsHcd, eventPublisher);
+			public M3EventDelegator create() throws Exception {
+				return new M3EventDelegator(assemblyContext, m3Hcd, eventPublisher);
 			}
 		});
 	}
+
 }

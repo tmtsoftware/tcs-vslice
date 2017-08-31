@@ -104,7 +104,7 @@ public class M3Assembly extends BaseAssembly {
 					.actorOf(M3CommandHandler.props(assemblyContext, m3Hcd, Optional.of(eventPublisher)));
 
 			diagnosticPublisher = context()
-					.actorOf(M3DiagnosticPublisher.props(assemblyContext, m3Hcd, Optional.of(eventPublisher)));
+					.actorOf(M3EventDelegator.props(assemblyContext, m3Hcd, Optional.of(eventPublisher)));
 
 			LocationSubscriberActor.trackConnections(info.connections(), trackerSubscriber);
 			LocationSubscriberActor.trackConnection(IEventService.eventServiceConnection(), trackerSubscriber);
@@ -201,10 +201,10 @@ public class M3Assembly extends BaseAssembly {
 	public PartialFunction<Object, BoxedUnit> diagnosticReceive() {
 		return ReceiveBuilder.match(AssemblyMessages.DiagnosticMode.class, t -> {
 			log.debug("Inside M3Assembly diagnosticReceive: diagnostic mode: " + t.hint());
-			diagnosticPublisher.tell(new M3DiagnosticPublisher.DiagnosticState(), self());
+			diagnosticPublisher.tell(new M3EventDelegator.DiagnosticState(), self());
 		}).matchEquals(JAssemblyMessages.OperationsMode, t -> {
 			log.debug("Inside M3Assembly diagnosticReceive: operations mode");
-			diagnosticPublisher.tell(new M3DiagnosticPublisher.OperationsState(), self());
+			diagnosticPublisher.tell(new M3EventDelegator.OperationsState(), self());
 		}).build();
 	}
 

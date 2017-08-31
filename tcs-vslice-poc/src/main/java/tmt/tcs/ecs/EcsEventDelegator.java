@@ -20,7 +20,7 @@ import javacsw.util.config.JPublisherActor;
 import scala.PartialFunction;
 import scala.runtime.BoxedUnit;
 import tmt.tcs.common.AssemblyContext;
-import tmt.tcs.common.BaseDiagnosticPublisher;
+import tmt.tcs.common.BaseEventDelegator;
 import tmt.tcs.ecs.EcsEventPublisher.EcsStateUpdate;
 
 /**
@@ -28,17 +28,17 @@ import tmt.tcs.ecs.EcsEventPublisher.EcsStateUpdate;
  * operates in the 'OperationsState' or 'DiagnosticState'.
  */
 @SuppressWarnings({ "unused" })
-public class EcsDiagnosticPublisher extends BaseDiagnosticPublisher {
+public class EcsEventDelegator extends BaseEventDelegator {
 
 	LoggingAdapter log = Logging.getLogger(getContext().system(), this);
 
 	private final Optional<ActorRef> eventPublisher;
 	private final String hcdName;
 
-	private EcsDiagnosticPublisher(AssemblyContext assemblyContext, Optional<ActorRef> ecsHcd,
+	private EcsEventDelegator(AssemblyContext assemblyContext, Optional<ActorRef> ecsHcd,
 			Optional<ActorRef> eventPublisher) {
 
-		log.debug("Inside EcsDiagPublisher");
+		log.debug("Inside EcsEventDelegator");
 		this.eventPublisher = eventPublisher;
 
 		subscribeToLocationUpdates();
@@ -63,7 +63,7 @@ public class EcsDiagnosticPublisher extends BaseDiagnosticPublisher {
 			if (location instanceof LocationService.ResolvedAkkaLocation) {
 				if (Objects.equals(location.connection().name(), hcdName)) {
 					LocationService.ResolvedAkkaLocation rloc = (LocationService.ResolvedAkkaLocation) location;
-					log.debug("Inside EcsDiagPublisher operationsReceive updated actorRef: " + rloc.getActorRef());
+					log.debug("Inside EcsEventDelegator operationsReceive updated actorRef: " + rloc.getActorRef());
 					Optional<ActorRef> newHcdActorRef = rloc.getActorRef();
 					newHcdActorRef.ifPresent(actorRef -> actorRef.tell(JHcdController.Subscribe, self()));
 					context().become(operationsReceive(hcdName, stateMessageCounter, newHcdActorRef, eventPublisher));
@@ -71,16 +71,16 @@ public class EcsDiagnosticPublisher extends BaseDiagnosticPublisher {
 
 			} else if (location instanceof LocationService.Unresolved) {
 				if (Objects.equals(location.connection().name(), hcdName)) {
-					log.debug("Inside EcsDiagPublisher operationsReceive got unresolve for HCD");
+					log.debug("Inside EcsEventDelegator operationsReceive got unresolve for HCD");
 					context().become(operationsReceive(hcdName, stateMessageCounter, Optional.empty(), eventPublisher));
 				}
 			} else if (location instanceof LocationService.UnTrackedLocation) {
 				if (Objects.equals(location.connection().name(), hcdName)) {
-					log.debug("Inside EcsDiagPublisher operationsReceive got untrack for HCD");
+					log.debug("Inside EcsEventDelegator operationsReceive got untrack for HCD");
 					context().become(operationsReceive(hcdName, stateMessageCounter, Optional.empty(), eventPublisher));
 				}
 			}
-		}).matchAny(t -> log.warning("Inside EcsDiagPublisher :operationsReceive received an unexpected message: " + t))
+		}).matchAny(t -> log.warning("Inside EcsEventDelegator :operationsReceive received an unexpected message: " + t))
 				.build();
 	}
 
@@ -98,7 +98,7 @@ public class EcsDiagnosticPublisher extends BaseDiagnosticPublisher {
 			if (location instanceof LocationService.ResolvedAkkaLocation) {
 				if (Objects.equals(location.connection().name(), hcdName)) {
 					LocationService.ResolvedAkkaLocation rloc = (LocationService.ResolvedAkkaLocation) location;
-					log.debug("Inside EcsDiagPublisher diagnosticReceive updated actorRef: " + rloc.getActorRef());
+					log.debug("Inside EcsEventDelegator diagnosticReceive updated actorRef: " + rloc.getActorRef());
 					Optional<ActorRef> newHcdActorRef = rloc.getActorRef();
 					newHcdActorRef.ifPresent(actorRef -> actorRef.tell(JHcdController.Subscribe, self()));
 					context().become(diagnosticReceive(hcdName, stateMessageCounter, newHcdActorRef, cancelToken,
@@ -107,19 +107,19 @@ public class EcsDiagnosticPublisher extends BaseDiagnosticPublisher {
 
 			} else if (location instanceof LocationService.Unresolved) {
 				if (Objects.equals(location.connection().name(), hcdName)) {
-					log.debug("Inside EcsDiagPublisher diagnosticReceive got unresolve for HCD");
+					log.debug("Inside EcsEventDelegator diagnosticReceive got unresolve for HCD");
 					context().become(diagnosticReceive(hcdName, stateMessageCounter, Optional.empty(), cancelToken,
 							eventPublisher));
 				}
 
 			} else if (location instanceof LocationService.UnTrackedLocation) {
 				if (Objects.equals(location.connection().name(), hcdName)) {
-					log.debug("Inside EcsDiagPublisher diagnosticReceive got untrack for HCD");
+					log.debug("Inside EcsEventDelegator diagnosticReceive got untrack for HCD");
 					context().become(diagnosticReceive(hcdName, stateMessageCounter, Optional.empty(), cancelToken,
 							eventPublisher));
 				}
 			}
-		}).matchAny(t -> log.warning("Inside EcsDiagPublisher:diagnosticReceive received an unexpected message: " + t))
+		}).matchAny(t -> log.warning("Inside EcsEventDelegator:diagnosticReceive received an unexpected message: " + t))
 				.build();
 	}
 
@@ -127,19 +127,19 @@ public class EcsDiagnosticPublisher extends BaseDiagnosticPublisher {
 	 * This publishes State Updates
 	 */
 	public void publishEcsPosUpdate(CurrentState cs, Optional<ActorRef> eventPublisher) {
-		log.debug("Inside EcsDiagPublisher publish state: " + cs);
+		log.debug("Inside EcsEventDelegator publish state: " + cs);
 		eventPublisher.ifPresent(actorRef -> actorRef.tell(new EcsStateUpdate(jitem(cs, EcsConfig.ecsStateKey),
 				jitem(cs, EcsConfig.azPosKey), jitem(cs, EcsConfig.elPosKey)), self()));
 	}
 
 	public static Props props(AssemblyContext assemblyContext, Optional<ActorRef> ecsHcd,
 			Optional<ActorRef> eventPublisher) {
-		return Props.create(new Creator<EcsDiagnosticPublisher>() {
+		return Props.create(new Creator<EcsEventDelegator>() {
 			private static final long serialVersionUID = 1L;
 
 			@Override
-			public EcsDiagnosticPublisher create() throws Exception {
-				return new EcsDiagnosticPublisher(assemblyContext, ecsHcd, eventPublisher);
+			public EcsEventDelegator create() throws Exception {
+				return new EcsEventDelegator(assemblyContext, ecsHcd, eventPublisher);
 			}
 		});
 	}

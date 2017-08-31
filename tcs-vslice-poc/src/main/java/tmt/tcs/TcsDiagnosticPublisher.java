@@ -18,14 +18,14 @@ import javacsw.util.config.JPublisherActor;
 import scala.PartialFunction;
 import scala.runtime.BoxedUnit;
 import tmt.tcs.common.AssemblyContext;
-import tmt.tcs.common.BaseDiagnosticPublisher;
+import tmt.tcs.common.BaseEventDelegator;
 
 /**
  * This class provides diagnostic telemetry for TCS in the form of two events.
  * It operates in the 'OperationsState' or 'DiagnosticState'.
  */
 @SuppressWarnings({ "unused" })
-public class TcsDiagnosticPublisher extends BaseDiagnosticPublisher {
+public class TcsDiagnosticPublisher extends BaseEventDelegator {
 
 	LoggingAdapter log = Logging.getLogger(getContext().system(), this);
 

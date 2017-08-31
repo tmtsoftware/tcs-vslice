@@ -48,7 +48,7 @@ import scala.PartialFunction;
 import scala.runtime.BoxedUnit;
 import tmt.tcs.common.AssemblyContext;
 import tmt.tcs.common.BaseAssembly;
-import tmt.tcs.mcs.McsDiagnosticPublisher;
+import tmt.tcs.mcs.McsEventDelegator;
 
 /**
  * Top Level Actor for ECS Assembly
@@ -116,7 +116,7 @@ public class EcsAssembly extends BaseAssembly {
 					.actorOf(EcsCommandHandler.props(assemblyContext, ecsHcd, Optional.of(eventPublisher)));
 
 			diagnosticPublisher = context()
-					.actorOf(EcsDiagnosticPublisher.props(assemblyContext, ecsHcd, Optional.of(eventPublisher)));
+					.actorOf(EcsEventDelegator.props(assemblyContext, ecsHcd, Optional.of(eventPublisher)));
 
 			LocationSubscriberActor.trackConnections(info.connections(), trackerSubscriber);
 			LocationSubscriberActor.trackConnection(IEventService.eventServiceConnection(), trackerSubscriber);
@@ -213,10 +213,10 @@ public class EcsAssembly extends BaseAssembly {
 	public PartialFunction<Object, BoxedUnit> diagnosticReceive() {
 		return ReceiveBuilder.match(AssemblyMessages.DiagnosticMode.class, t -> {
 			log.debug("Inside EcsAssembly diagnosticReceive: diagnostic mode: " + t.hint());
-			diagnosticPublisher.tell(new EcsDiagnosticPublisher.DiagnosticState(), self());
+			diagnosticPublisher.tell(new EcsEventDelegator.DiagnosticState(), self());
 		}).matchEquals(JAssemblyMessages.OperationsMode, t -> {
 			log.debug("Inside EcsAssembly diagnosticReceive: operations mode");
-			diagnosticPublisher.tell(new EcsDiagnosticPublisher.OperationsState(), self());
+			diagnosticPublisher.tell(new EcsEventDelegator.OperationsState(), self());
 		}).build();
 	}
 

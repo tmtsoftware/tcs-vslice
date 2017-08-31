@@ -107,7 +107,7 @@ public class McsAssembly extends BaseAssembly {
 
 			// This sets up the diagnostic data publisher
 			diagnosticPublisher = context()
-					.actorOf(McsDiagnosticPublisher.props(assemblyContext, mcsHcd, Optional.of(eventPublisher)));
+					.actorOf(McsEventDelegator.props(assemblyContext, mcsHcd, Optional.of(eventPublisher)));
 
 			// This tracks the HCD
 			LocationSubscriberActor.trackConnections(info.connections(), trackerSubscriber);
@@ -206,10 +206,10 @@ public class McsAssembly extends BaseAssembly {
 	public PartialFunction<Object, BoxedUnit> diagnosticReceive() {
 		return ReceiveBuilder.match(AssemblyMessages.DiagnosticMode.class, t -> {
 			log.debug("Inside McsAssembly diagnosticReceive: diagnostic mode: " + t.hint());
-			diagnosticPublisher.tell(new McsDiagnosticPublisher.DiagnosticState(), self());
+			diagnosticPublisher.tell(new McsEventDelegator.DiagnosticState(), self());
 		}).matchEquals(JAssemblyMessages.OperationsMode, t -> {
 			log.debug("Inside McsAssembly diagnosticReceive: operations mode");
-			diagnosticPublisher.tell(new McsDiagnosticPublisher.OperationsState(), self());
+			diagnosticPublisher.tell(new McsEventDelegator.OperationsState(), self());
 		}).build();
 	}
 
