@@ -70,36 +70,36 @@ public class TcsEventSubscriber extends BaseEventSubscriber {
 
 					if (McsConfig.currentPosCK.equals(event.info().source())) {
 						log.debug("Inside TcsEventSubscriber subscribeReceive received Mcs Current Position");
-						log.debug(
+						System.out.println(
 								"############################## CURRENT MCS POSITION ##########################################");
 
 						mcsAzValue = jvalue(jitem(event, McsConfig.azPosKey));
 						mcsElValue = jvalue(jitem(event, McsConfig.elPosKey));
 
-						log.debug("Azimuth is: " + mcsAzValue + ": Elevation is: " + mcsElValue);
-						log.debug(
+						System.out.println("Azimuth is: " + mcsAzValue + ": Elevation is: " + mcsElValue);
+						System.out.println(
 								"##############################################################################################");
 					} else if (EcsConfig.currentPosCK.equals(event.info().source())) {
 						log.debug("Inside TcsEventSubscriber subscribeReceive received Ecs Current Position");
-						log.debug(
+						System.out.println(
 								"############################## CURRENT ECS POSITION ##########################################");
 
 						ecsAzValue = jvalue(jitem(event, EcsConfig.azPosKey));
 						ecsElValue = jvalue(jitem(event, EcsConfig.elPosKey));
 
-						log.debug("Azimuth is: " + ecsAzValue + ": Elevation is: " + ecsElValue);
-						log.debug(
+						System.out.println("Azimuth is: " + ecsAzValue + ": Elevation is: " + ecsElValue);
+						System.out.println(
 								"##############################################################################################");
 					} else if (M3Config.currentPosCK.equals(event.info().source())) {
 						log.debug("Inside TcsEventSubscriber subscribeReceive received M3 Current Position");
-						log.debug(
+						System.out.println(
 								"############################## CURRENT M3 POSITION ###########################################");
 
 						m3RotationValue = jvalue(jitem(event, M3Config.rotationPosKey));
 						m3TiltValue = jvalue(jitem(event, M3Config.tiltPosKey));
 
-						log.debug("Rotation is: " + m3RotationValue + ": Tilt is: " + m3TiltValue);
-						log.debug(
+						System.out.println("Rotation is: " + m3RotationValue + ": Tilt is: " + m3TiltValue);
+						System.out.println(
 								"##############################################################################################");
 					}
 
