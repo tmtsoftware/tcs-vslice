@@ -35,7 +35,6 @@ import tmt.tcs.common.BaseCommandHandler;
  * This is an actor class which receives commands forwarded by TCS Assembly And
  * based upon the command config key send to specific command actor class
  */
-@SuppressWarnings("unused")
 public class TcsCommandHandler extends BaseCommandHandler {
 
 	private LoggingAdapter log = Logging.getLogger(getContext().system(), this);
@@ -135,11 +134,11 @@ public class TcsCommandHandler extends BaseCommandHandler {
 			log.debug("Inside TcsCommandHandler initReceive: ExecuteOne: SetupConfig is: " + sc + ": configKey is: "
 					+ configKey);
 
-			if (configKey.equals(TcsConfig.positionCK)) {
-				log.debug("Inside TcsCommandHandler initReceive: ExecuteOne: positionCK Command ");
+			if (configKey.equals(TcsConfig.followCK)) {
+				log.debug("Inside TcsCommandHandler initReceive: ExecuteOne: followCK Command ");
 				ActorRef followActorRef = context()
 						.actorOf(TcsFollowCommand.props(assemblyContext, sc, mcsRefActor, ecsRefActor, m3RefActor,
-								tpkRefActor, currentState(), Optional.of(tcsStateActor), eventService.get()));
+								tpkRefActor, currentState(), Optional.of(tcsStateActor), eventService.get(), allEventPublisher));
 				context().become(actorExecutingReceive(followActorRef, commandOriginator));
 
 				self().tell(JSequentialExecutor.CommandStart(), self());
@@ -149,7 +148,7 @@ public class TcsCommandHandler extends BaseCommandHandler {
 				log.debug("Inside TcsCommandHandler initReceive: ExecuteOne: offsetCK Command ");
 				ActorRef offsetActorRef = context()
 						.actorOf(TcsOffsetCommand.props(assemblyContext, sc, mcsRefActor, ecsRefActor, m3RefActor,
-								tpkRefActor, currentState(), Optional.of(tcsStateActor), eventService.get()));
+								tpkRefActor, currentState(), Optional.of(tcsStateActor), eventService.get(), allEventPublisher));
 				context().become(actorExecutingReceive(offsetActorRef, commandOriginator));
 
 				self().tell(JSequentialExecutor.CommandStart(), self());
@@ -193,7 +192,7 @@ public class TcsCommandHandler extends BaseCommandHandler {
 					if (TcsConfig.offsetCK.equals(sc.configKey())) {
 						ActorRef offsetActorRef = context().actorOf(
 								TcsOffsetCommand.props(assemblyContext, sc, mcsRefActor, ecsRefActor, m3RefActor,
-										tpkRefActor, currentState(), Optional.of(tcsStateActor), eventService.get()));
+										tpkRefActor, currentState(), Optional.of(tcsStateActor), eventService.get(), allEventPublisher));
 						context().become(actorExecutingReceive(offsetActorRef, commandOriginator));
 
 						offsetActorRef.tell(JSequentialExecutor.CommandStart(), self());

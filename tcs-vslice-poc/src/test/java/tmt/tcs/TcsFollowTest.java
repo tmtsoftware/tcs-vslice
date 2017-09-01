@@ -135,7 +135,7 @@ public class TcsFollowTest extends JavaTestKit {
 
 		TestProbe fakeClient = new TestProbe(system);
 
-		SetupConfig positionSc = jadd(new SetupConfig(TcsConfig.positionCK.prefix()),
+		SetupConfig positionSc = jadd(new SetupConfig(TcsConfig.followCK.prefix()),
 				jset(TcsConfig.target, targetValue), jset(TcsConfig.ra, raValue), jset(TcsConfig.dec, decValue),
 				jset(TcsConfig.frame, frameValue));
 

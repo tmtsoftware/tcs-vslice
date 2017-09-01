@@ -58,6 +58,9 @@ public class McsConfig {
 	public static final IntKey azPosDmdErrcnt = new IntKey("tcs.mcs.az_pos_dmd_errcnt");
 	public static final IntKey elPosDmdErrcnt = new IntKey("tcs.mcs.el_pos_dmd_errcnt");
 	public static final DoubleKey posTimeKey = new DoubleKey("tcs.mcs.time");
+	
+	public static final Double defaultAzValue = 1.1;
+	public static final Double defaultElValue = 1.2;
 
 	public static DoubleItem az(double azValue) {
 		return jset(az, azValue);

@@ -1,7 +1,6 @@
 package tmt.tcs;
 
 import static javacsw.util.config.JItems.jitem;
-import static javacsw.util.config.JItems.jvalue;
 
 import java.util.Optional;
 
@@ -13,7 +12,8 @@ import akka.japi.Creator;
 import akka.japi.pf.ReceiveBuilder;
 import csw.services.events.EventService;
 import csw.services.events.EventService.EventMonitor;
-import csw.util.config.Configurations.ConfigKey;
+import csw.util.config.ChoiceItem;
+import csw.util.config.DoubleItem;
 import csw.util.config.Events.SystemEvent;
 import javacsw.services.events.IEventService;
 import scala.PartialFunction;
@@ -21,8 +21,11 @@ import scala.runtime.BoxedUnit;
 import tmt.tcs.common.AssemblyContext;
 import tmt.tcs.common.BaseEventSubscriber;
 import tmt.tcs.ecs.EcsConfig;
+import tmt.tcs.ecs.EcsEventPublisher.EcsStateUpdate;
 import tmt.tcs.m3.M3Config;
+import tmt.tcs.m3.M3EventPublisher.M3StateUpdate;
 import tmt.tcs.mcs.McsConfig;
+import tmt.tcs.mcs.McsEventPublisher.McsStateUpdate;
 
 /**
  * This Class provides Event Subcription functionality for TCS It extends
@@ -34,17 +37,17 @@ public class TcsEventSubscriber extends BaseEventSubscriber {
 	private LoggingAdapter log = Logging.getLogger(getContext().system(), this);
 
 	private final AssemblyContext assemblyContext;
-	private final Optional<ActorRef> refActor;
+	private final Optional<ActorRef> eventPublisher;
 	private final EventService.EventMonitor subscribeMonitor;
 
-	private TcsEventSubscriber(AssemblyContext assemblyContext, Optional<ActorRef> refActor,
+	private TcsEventSubscriber(AssemblyContext assemblyContext, Optional<ActorRef> eventPublisher,
 			IEventService eventService) {
 
 		log.debug("Inside TcsEventSubscriber");
 
 		subscribeToLocationUpdates();
 		this.assemblyContext = assemblyContext;
-		this.refActor = refActor;
+		this.eventPublisher = eventPublisher;
 		subscribeMonitor = startupSubscriptions(eventService);
 
 		receive(subscribeReceive());
@@ -61,50 +64,58 @@ public class TcsEventSubscriber extends BaseEventSubscriber {
 					log.debug("Inside TcsEventSubscriber subscribeReceive received an SystemEvent: Config Key is: "
 							+ event.info().source());
 
-					Double mcsAzValue = 0.0;
-					Double mcsElValue = 0.0;
-					Double ecsAzValue = 0.0;
-					Double ecsElValue = 0.0;
-					Double m3RotationValue = 0.0;
-					Double m3TiltValue = 0.0;
+					DoubleItem mcsAzItem;
+					DoubleItem mcsElItem;
+					DoubleItem ecsAzItem;
+					DoubleItem ecsElItem;
+					DoubleItem m3RotationItem;
+					DoubleItem m3TiltItem;
+					ChoiceItem stateItem;
 
 					if (McsConfig.currentPosCK.equals(event.info().source())) {
 						log.debug("Inside TcsEventSubscriber subscribeReceive received Mcs Current Position");
-						System.out.println(
+						log.debug(
 								"############################## CURRENT MCS POSITION ##########################################");
 
-						mcsAzValue = jvalue(jitem(event, McsConfig.azPosKey));
-						mcsElValue = jvalue(jitem(event, McsConfig.elPosKey));
+						mcsAzItem = jitem(event, McsConfig.azPosKey);
+						mcsElItem = jitem(event, McsConfig.elPosKey);
+						stateItem = jitem(event, McsConfig.mcsStateKey);
 
-						System.out.println("Azimuth is: " + mcsAzValue + ": Elevation is: " + mcsElValue);
-						System.out.println(
+						log.debug("Azimuth is: " + mcsAzItem + ": Elevation is: " + mcsElItem);
+						log.debug(
 								"##############################################################################################");
+
+						updateMcsPublisher(stateItem, mcsAzItem, mcsElItem);
 					} else if (EcsConfig.currentPosCK.equals(event.info().source())) {
 						log.debug("Inside TcsEventSubscriber subscribeReceive received Ecs Current Position");
-						System.out.println(
+						log.debug(
 								"############################## CURRENT ECS POSITION ##########################################");
 
-						ecsAzValue = jvalue(jitem(event, EcsConfig.azPosKey));
-						ecsElValue = jvalue(jitem(event, EcsConfig.elPosKey));
+						ecsAzItem = jitem(event, EcsConfig.azPosKey);
+						ecsElItem = jitem(event, EcsConfig.elPosKey);
+						stateItem = jitem(event, EcsConfig.ecsStateKey);
 
-						System.out.println("Azimuth is: " + ecsAzValue + ": Elevation is: " + ecsElValue);
-						System.out.println(
+						log.debug("Azimuth is: " + ecsAzItem + ": Elevation is: " + ecsElItem);
+						log.debug(
 								"##############################################################################################");
+
+						updateEcsPublisher(stateItem, ecsAzItem, ecsElItem);
 					} else if (M3Config.currentPosCK.equals(event.info().source())) {
 						log.debug("Inside TcsEventSubscriber subscribeReceive received M3 Current Position");
-						System.out.println(
+						log.debug(
 								"############################## CURRENT M3 POSITION ###########################################");
 
-						m3RotationValue = jvalue(jitem(event, M3Config.rotationPosKey));
-						m3TiltValue = jvalue(jitem(event, M3Config.tiltPosKey));
+						m3RotationItem = jitem(event, M3Config.rotationPosKey);
+						m3TiltItem = jitem(event, M3Config.tiltPosKey);
+						stateItem = jitem(event, M3Config.m3StateKey);
 
-						System.out.println("Rotation is: " + m3RotationValue + ": Tilt is: " + m3TiltValue);
-						System.out.println(
+						log.debug("Rotation is: " + m3RotationItem + ": Tilt is: " + m3TiltItem);
+						log.debug(
 								"##############################################################################################");
+
+						updateM3Publisher(stateItem, m3RotationItem, m3TiltItem);
 					}
 
-					updateRefActor(event.info().source(), mcsAzValue, mcsElValue, ecsAzValue, ecsElValue,
-							m3RotationValue, m3TiltValue);
 				}).
 
 				matchAny(t -> log.error("Inside TcsEventSubscriber Unexpected message received:subscribeReceive: " + t))
@@ -112,12 +123,28 @@ public class TcsEventSubscriber extends BaseEventSubscriber {
 	}
 
 	/**
-	 * This message propagates event to Referenced Actor
+	 * This propagates MCS Position to publisher for further publishing for
+	 * outside systems
 	 */
-	private void updateRefActor(ConfigKey ck, Double mcsAz, Double mcsEl, Double ecsAz, Double ecsEl, Double m3Rotation,
-			Double m3Tilt) {
-		// TODO:: Current Position to be sent to subscribed actor
-		refActor.ifPresent(actorRef -> actorRef.tell(new String("Test"), self()));
+	private void updateMcsPublisher(ChoiceItem mcsState, DoubleItem mcsAzItem, DoubleItem mcsElItem) {
+		eventPublisher.ifPresent(actorRef -> actorRef.tell(new McsStateUpdate(mcsState, mcsAzItem, mcsElItem), self()));
+	}
+
+	/**
+	 * This propagates ECS Position to publisher for further publishing for
+	 * outside systems
+	 */
+	private void updateEcsPublisher(ChoiceItem ecsState, DoubleItem ecsAzItem, DoubleItem ecsElItem) {
+		eventPublisher.ifPresent(actorRef -> actorRef.tell(new EcsStateUpdate(ecsState, ecsAzItem, ecsElItem), self()));
+	}
+
+	/**
+	 * This propagates M3 Position to publisher for further publishing for
+	 * outside systems
+	 */
+	private void updateM3Publisher(ChoiceItem m3State, DoubleItem m3RotationItem, DoubleItem m3TiltItem) {
+		eventPublisher
+				.ifPresent(actorRef -> actorRef.tell(new M3StateUpdate(m3State, m3RotationItem, m3TiltItem), self()));
 	}
 
 	/**

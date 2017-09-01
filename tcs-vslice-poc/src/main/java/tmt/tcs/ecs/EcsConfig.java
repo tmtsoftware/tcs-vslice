@@ -58,6 +58,9 @@ public class EcsConfig {
 	public static final IntKey azPosDmdErrcnt = new IntKey("tcs.ecs.az_pos_dmd_errcnt");
 	public static final IntKey elPosDmdErrcnt = new IntKey("tcs.ecs.el_pos_dmd_errcnt");
 	public static final DoubleKey posTimeKey = new DoubleKey("tcs.ecs.time");
+	
+	public static final Double defaultAzValue = 2.1;
+	public static final Double defaultElValue = 2.2;
 
 	public static DoubleItem az(double azValue) {
 		return jset(az, azValue);

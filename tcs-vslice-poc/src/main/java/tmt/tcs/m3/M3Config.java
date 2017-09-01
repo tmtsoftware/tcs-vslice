@@ -57,6 +57,9 @@ public class M3Config {
 	public static final IntKey rotationPosDmdErrcnt = new IntKey("tcs.m3.rotation_pos_dmd_errcnt");
 	public static final IntKey tiltPosDmdErrcnt = new IntKey("tcs.m3.tilt_pos_dmd_errcnt");
 	public static final DoubleKey posTimeKey = new DoubleKey("tcs.m3.time");
+	
+	public static final Double defaultRotationValue = 3.1;
+	public static final Double defaultTiltValue = 3.2;
 
 	public static DoubleItem rotation(double rotationValue) {
 		return jset(rotation, rotationValue);

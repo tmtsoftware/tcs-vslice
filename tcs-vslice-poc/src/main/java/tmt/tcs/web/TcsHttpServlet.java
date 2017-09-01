@@ -8,14 +8,16 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import tmt.tcs.TcsConfig;
+
 /**
  * Servlet implementation class TcsServlet
  */
 @WebServlet(description = "TCS Servlet", urlPatterns = { "/tcsProcessor", "/tcsProcessor.do" })
-public class TcsServlet extends HttpServlet {
+public class TcsHttpServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 
-	public TcsServlet() {
+	public TcsHttpServlet() {
 		super();
 	}
 
@@ -34,19 +36,27 @@ public class TcsServlet extends HttpServlet {
 	 */
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
+
 		System.out.println("Inside CommandServlet: POST: " + request.getParameter("ra"));
+
 		String targetName = request.getParameter("targetName");
 		Double ra = new Double(request.getParameter("ra"));
 		Double dec = new Double(request.getParameter("dec"));
 		String frame = request.getParameter("frame");
+		String command = request.getParameter("command");
 
-		System.out.println(
-				"Target Name is: " + targetName + "Ra is: " + ra + ": Dec is: " + dec + ": F	rame is: " + frame);
+		System.out.println("Target Name is: " + targetName + "Ra is: " + ra + ": Dec is: " + dec + ": Frame is: "
+				+ frame + ": Command is: " + command);
 
-		TcsHandler tcsHandler = new TcsHandler();
-		tcsHandler.executeFollowCommand(targetName, ra, dec, frame);
+		TcsHttpRequestHandler tcsHandler = new TcsHttpRequestHandler();
 
-		response.sendRedirect("Index.html");
+		if (TcsConfig.followPrefix.equals(command)) {
+			tcsHandler.executeFollowCommand(targetName, ra, dec, frame);
+		} else if (TcsConfig.offsetPrefix.equals(command)) {
+			tcsHandler.executeOffsetCommand(ra, dec);
+		}
+
+		response.sendRedirect("Index.jsp?ra=" + ra + "&dec=" + dec + "&targetName=" + targetName + "&frame=" + frame);
 	}
 
 }

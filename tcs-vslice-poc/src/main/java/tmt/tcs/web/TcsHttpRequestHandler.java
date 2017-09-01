@@ -31,7 +31,7 @@ import tmt.tcs.test.common.McsTestData;
 import tmt.tcs.test.common.TcsTestData;
 import tmt.tcs.test.common.TpkTestData;
 
-public class TcsHandler {
+public class TcsHttpRequestHandler {
 
 	private static ActorSystem system;
 	private static LoggingAdapter logger;
@@ -105,11 +105,24 @@ public class TcsHandler {
 
 		TestProbe fakeClient = new TestProbe(system);
 
-		SetupConfig positionSc = jadd(new SetupConfig(TcsConfig.positionCK.prefix()),
-				jset(TcsConfig.target, targetValue), jset(TcsConfig.ra, raValue), jset(TcsConfig.dec, decValue),
-				jset(TcsConfig.frame, frameValue));
+		SetupConfig positionSc = jadd(new SetupConfig(TcsConfig.followCK.prefix()), jset(TcsConfig.target, targetValue),
+				jset(TcsConfig.ra, raValue), jset(TcsConfig.dec, decValue), jset(TcsConfig.frame, frameValue));
 
 		SetupConfigArg sca = Configurations.createSetupConfigArg("tcsPositionCommand", positionSc);
+
+		fakeClient.send(tcsAssembly, new Submit(sca));
+
+	}
+
+	public void executeOffsetCommand(Double raOffsetValue, Double decOffsetValue) {
+		logger.debug("Inside CommandServlet executeOffsetCommand Starts");
+
+		TestProbe fakeClient = new TestProbe(system);
+
+		SetupConfig offsetSc = jadd(new SetupConfig(TcsConfig.offsetCK.prefix()), jset(TcsConfig.ra, raOffsetValue),
+				jset(TcsConfig.dec, decOffsetValue));
+
+		SetupConfigArg sca = Configurations.createSetupConfigArg("tcsOffsetCommand", offsetSc);
 
 		fakeClient.send(tcsAssembly, new Submit(sca));
 

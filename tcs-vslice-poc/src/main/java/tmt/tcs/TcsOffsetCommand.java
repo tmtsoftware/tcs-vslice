@@ -26,6 +26,7 @@ import tmt.tcs.common.AssemblyStateActor.AssemblyState;
 import tmt.tcs.common.BaseCommand;
 import tmt.tcs.mcs.McsConfig;
 import tmt.tcs.tpk.TpkConfig;
+import tmt.tcs.web.WebEventSubscriber;
 
 /**
  * This is an actor class which receives command specific to Offset Operation
@@ -37,6 +38,8 @@ public class TcsOffsetCommand extends BaseCommand {
 
 	@SuppressWarnings("unused")
 	private final Optional<ActorRef> tcsStateActor;
+	
+	private final Optional<ActorRef> eventPublisher;
 
 	AssemblyContext assemblyContext;
 
@@ -55,11 +58,14 @@ public class TcsOffsetCommand extends BaseCommand {
 	 */
 	public TcsOffsetCommand(AssemblyContext ac, SetupConfig sc, ActorRef mcsRefActor, ActorRef ecsRefActor,
 			ActorRef m3RefActor, ActorRef tpkRefActor, AssemblyState tcsStartState, Optional<ActorRef> stateActor,
-			IEventService eventService) {
+			IEventService eventService, Optional<ActorRef> eventPublisher) {
 		this.tcsStateActor = stateActor;
 		this.assemblyContext = ac;
+		this.eventPublisher = eventPublisher;
 
 		createEventSubscriber(eventService);
+		
+		createWebEventSubscriber(eventService);
 
 		receive(followReceive(sc, mcsRefActor, ecsRefActor, m3RefActor, tpkRefActor));
 	}
@@ -96,21 +102,27 @@ public class TcsOffsetCommand extends BaseCommand {
 	}
 
 	private ActorRef createEventSubscriber(IEventService eventService) {
-		log.debug("Inside TcsFollowCommand createEventSubscriber: Creating Event Subscriber ");
-		return context().actorOf(TcsEventSubscriber.props(assemblyContext, Optional.empty(), eventService),
+		log.debug("Inside TcsOffsetCommand createEventSubscriber: Creating Event Subscriber ");
+		return context().actorOf(TcsEventSubscriber.props(assemblyContext, eventPublisher, eventService),
 				"tcseventsubscriber");
+	}
+	
+	private ActorRef createWebEventSubscriber(IEventService eventService) {
+		log.debug("Inside TcsOffsetCommand createWebEventSubscriber: Creating Event Subscriber ");
+		return context().actorOf(WebEventSubscriber.props(assemblyContext, Optional.empty(), eventService),
+				"webeventsubscriber");
 	}
 
 	public static Props props(AssemblyContext ac, SetupConfig sc, ActorRef mcsRefActor, ActorRef ecsRefActor,
 			ActorRef m3RefActor, ActorRef tpkRefActor, AssemblyState tcsState, Optional<ActorRef> stateActor,
-			IEventService eventService) {
+			IEventService eventService, Optional<ActorRef> eventPublisher) {
 		return Props.create(new Creator<TcsOffsetCommand>() {
 			private static final long serialVersionUID = 1L;
 
 			@Override
 			public TcsOffsetCommand create() throws Exception {
 				return new TcsOffsetCommand(ac, sc, mcsRefActor, ecsRefActor, m3RefActor, tpkRefActor, tcsState,
-						stateActor, eventService);
+						stateActor, eventService, eventPublisher);
 			}
 		});
 	}
