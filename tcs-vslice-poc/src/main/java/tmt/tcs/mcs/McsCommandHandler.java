@@ -163,7 +163,7 @@ public class McsCommandHandler extends BaseCommandHandler {
 					} else if (configKey.equals(McsConfig.followCK)) {
 						if (!(az(currentState()).equals(azDatumed) || az(currentState()).equals(azDrivePowerOn))
 								&& !(el(currentState()).equals(elDatumed)
-										|| az(currentState()).equals(elDrivePowerOn))) {
+										|| el(currentState()).equals(elDrivePowerOn))) {
 							String errorMessage = "Mcs Assembly state of " + az(currentState()) + "/"
 									+ el(currentState()) + " does not allow follow";
 							log.debug("Inside McsCommandHandler initReceive: Error Message is: " + errorMessage);
@@ -192,7 +192,7 @@ public class McsCommandHandler extends BaseCommandHandler {
 					} else if (configKey.equals(McsConfig.offsetCK)) {
 						if (!(az(currentState()).equals(azDatumed) || az(currentState()).equals(azDrivePowerOn))
 								&& !(el(currentState()).equals(elDatumed)
-										|| az(currentState()).equals(elDrivePowerOn))) {
+										|| el(currentState()).equals(elDrivePowerOn))) {
 							String errorMessage = "Mcs Assembly state of " + az(currentState()) + "/"
 									+ el(currentState()) + " does not allow Offset";
 							log.debug("Inside McsCommandHandler initReceive: Error Message is: " + errorMessage);
@@ -307,7 +307,39 @@ public class McsCommandHandler extends BaseCommandHandler {
 						log.error("Inside McsCommandHandler followReceive: command failed with message: "
 								+ ((Error) status).message());
 				});
-			}
+			} else if (configKey.equals(McsConfig.offsetCK)) {
+				if (!(az(currentState()).equals(azDatumed) || az(currentState()).equals(azDrivePowerOn))
+						&& !(el(currentState()).equals(elDatumed)
+								|| el(currentState()).equals(elDrivePowerOn))) {
+					String errorMessage = "Mcs Assembly state of " + az(currentState()) + "/"
+							+ el(currentState()) + " does not allow Offset";
+					log.debug("Inside McsCommandHandler followReceive: Error Message is: " + errorMessage);
+					sender().tell(new NoLongerValid(new WrongInternalStateIssue(errorMessage)), self());
+				} else {
+					Double initialAz = 0.0;
+					Double initialEl = 0.0;
+					
+					if (isHcdAvailable()) {
+						log.debug("Inside McsCommandHandler followReceive: ExecuteOne: offsetCK Command ");
+						Props props = McsOffsetCommand.props(assemblyContext, jset(McsConfig.az, initialAz),
+								jset(McsConfig.el, initialEl), Optional.of(mcsHcd), allEventPublisher,
+								eventService.get(), Optional.of(mcsStateActor));
+
+						ActorRef offsetActorRef = context().actorOf(props);
+
+						context().become(actorExecutingReceive(offsetActorRef, commandOriginator));
+						try {
+							ask(mcsStateActor, new AssemblySetState(azItem(azFollowing), elItem(elFollowing)),
+									5000).toCompletableFuture().get();
+						} catch (Exception e) {
+							log.error(e, "Inside McsCommandHandler followReceive: Error setting state");
+						}
+						commandOriginator.ifPresent(actorRef -> actorRef.tell(Completed, self()));
+					} else {
+						hcdNotAvailableResponse(commandOriginator);
+					}
+				}
+			} 
 		}).matchAny(t -> log.warning("Inside McsCommandHandler followReceive:  received an unknown message: " + t))
 				.build());
 	}

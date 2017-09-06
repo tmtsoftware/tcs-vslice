@@ -1,6 +1,5 @@
 package tmt.tcs.tpk;
 
-import static akka.pattern.PatternsCS.ask;
 import static javacsw.services.ccs.JCommandStatus.Completed;
 import static javacsw.util.config.JItems.jitem;
 import static javacsw.util.config.JItems.jset;
@@ -8,17 +7,13 @@ import static javacsw.util.config.JItems.jvalue;
 import static scala.compat.java8.OptionConverters.toJava;
 
 import java.util.Optional;
-import java.util.concurrent.TimeUnit;
 
 import akka.actor.ActorRef;
-import akka.actor.PoisonPill;
 import akka.actor.Props;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import akka.japi.Creator;
 import akka.japi.pf.ReceiveBuilder;
-import akka.util.Timeout;
-import csw.services.ccs.CommandStatus.CommandStatus;
 import csw.services.ccs.CommandStatus.Invalid;
 import csw.services.ccs.SequentialExecutor.ExecuteOne;
 import csw.services.ccs.Validation.UnsupportedCommandInStateIssue;
@@ -29,7 +24,6 @@ import csw.services.loc.LocationService.Unresolved;
 import csw.util.config.Configurations.ConfigKey;
 import csw.util.config.Configurations.SetupConfig;
 import csw.util.config.DoubleItem;
-import javacsw.services.ccs.JSequentialExecutor;
 import javacsw.services.events.IEventService;
 import scala.PartialFunction;
 import scala.runtime.BoxedUnit;
@@ -177,46 +171,6 @@ public class TpkCommandHandler extends BaseCommandHandler {
 					}
 
 				}).build());
-	}
-
-	/**
-	 * This method helps in executing receive operation
-	 * 
-	 * @param currentCommand
-	 * @param commandOriginator
-	 * @return
-	 */
-	private PartialFunction<Object, BoxedUnit> actorExecutingReceive(ActorRef currentCommand,
-			Optional<ActorRef> commandOriginator) {
-		Timeout timeout = new Timeout(5, TimeUnit.SECONDS);
-
-		return ReceiveBuilder.matchEquals(JSequentialExecutor.CommandStart(), t -> {
-			log.debug("Inside TpkCommandHandler actorExecutingReceive: JSequentialExecutor.CommandStart");
-
-			ask(currentCommand, JSequentialExecutor.CommandStart(), timeout.duration().toMillis()).thenApply(reply -> {
-				CommandStatus cs = (CommandStatus) reply;
-				log.debug("Inside TpkCommandHandler actorExecutingReceive: CommandStatus is: " + cs);
-				commandOriginator.ifPresent(actorRef -> actorRef.tell(cs, self()));
-				currentCommand.tell(PoisonPill.getInstance(), self());
-				return null;
-			});
-		}).
-
-				match(CommandDone.class, t -> {
-					log.debug("Inside TpkCommandHandler actorExecutingReceive: CommandDone");
-					context().become(initReceive());
-				}).
-
-				match(SetupConfig.class, t -> {
-					log.debug("Inside TpkCommandHandler actorExecutingReceive: SetupConfig");
-				}).
-
-				match(ExecuteOne.class, t -> {
-					log.debug("Inside TpkCommandHandler actorExecutingReceive: ExecuteOne");
-				})
-				.matchAny(t -> log
-						.warning("Inside TpkCommandHandler actorExecutingReceive: received an unknown message: " + t))
-				.build();
 	}
 
 	public void publishMcsPosDemand(ConfigKey configKey, DoubleItem azItem, DoubleItem elItem,

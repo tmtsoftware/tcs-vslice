@@ -10,11 +10,14 @@
 <script type="text/javascript">
 	function getPreviousValues() {
 		<%
-	      String ra = request.getParameter("ra") == null ? "": request.getParameter("ra");
+		  String command = request.getParameter("command") == null ? "": request.getParameter("command");
+		  String ra = request.getParameter("ra") == null ? "": request.getParameter("ra");
 		  String dec = request.getParameter("dec") == null ? "": request.getParameter("dec");
 		  String targetName = request.getParameter("targetName") == null ? "": request.getParameter("targetName");
 		  String frame = request.getParameter("frame") == null ? "": request.getParameter("frame");
+		  
 		%>
+		document.getElementById('command').value = '<%=command%>';
 	}
 </script>
 <body onload="getPreviousValues()">
