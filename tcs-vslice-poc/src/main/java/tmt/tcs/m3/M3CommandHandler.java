@@ -19,6 +19,7 @@ import static tmt.tcs.common.AssemblyStateActor.elFollowing;
 import static tmt.tcs.common.AssemblyStateActor.elItem;
 import static tmt.tcs.m3.M3Config.M3_IDLE;
 import static tmt.tcs.m3.M3Config.m3StateKey;
+import static tmt.tcs.m3.hcd.M3Hcd.M3Message.GetM3DefaultUpdate;
 
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -154,6 +155,7 @@ public class M3CommandHandler extends BaseCommandHandler {
 						} catch (Exception e) {
 							log.error(e, "Inside M3CommandHandler Error setting state");
 						}
+						m3Hcd.tell(GetM3DefaultUpdate, self());
 						commandOriginator.ifPresent(actorRef -> actorRef.tell(Completed, self()));
 
 					} else if (configKey.equals(M3Config.followCK)) {

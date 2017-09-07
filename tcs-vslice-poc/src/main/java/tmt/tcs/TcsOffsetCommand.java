@@ -26,19 +26,18 @@ import tmt.tcs.common.AssemblyStateActor.AssemblyState;
 import tmt.tcs.common.BaseCommand;
 import tmt.tcs.mcs.McsConfig;
 import tmt.tcs.tpk.TpkConfig;
-import tmt.tcs.web.WebEventSubscriber;
 
 /**
  * This is an actor class which receives command specific to Offset Operation
  * And after any modifications if required, redirect the same to TPK
  */
+@SuppressWarnings("unused")
 public class TcsOffsetCommand extends BaseCommand {
 
 	private LoggingAdapter log = Logging.getLogger(getContext().system(), this);
 
-	@SuppressWarnings("unused")
 	private final Optional<ActorRef> tcsStateActor;
-	
+
 	private final Optional<ActorRef> eventPublisher;
 
 	AssemblyContext assemblyContext;
@@ -63,10 +62,6 @@ public class TcsOffsetCommand extends BaseCommand {
 		this.assemblyContext = ac;
 		this.eventPublisher = eventPublisher;
 
-		createEventSubscriber(eventService);
-		
-		createWebEventSubscriber(eventService);
-
 		receive(followReceive(sc, mcsRefActor, ecsRefActor, m3RefActor, tpkRefActor));
 	}
 
@@ -88,7 +83,7 @@ public class TcsOffsetCommand extends BaseCommand {
 			SetupConfigArg tpkSetupConfigArg = Configurations.createSetupConfigArg("tpkOffsetCommand", offsetSc);
 
 			SetupConfigArg mcsSetupConfigArg = Configurations.createSetupConfigArg("mcsFollowCommand",
-					new SetupConfig(McsConfig.initPrefix), new SetupConfig(McsConfig.offsetPrefix));
+					new SetupConfig(McsConfig.offsetPrefix));
 
 			log.debug("Inside TcsFollowCommand: Offset command -- mcsRefActor is: " + mcsRefActor);
 
@@ -99,18 +94,6 @@ public class TcsOffsetCommand extends BaseCommand {
 		}).matchEquals(JSequentialExecutor.StopCurrentCommand(), t -> {
 			log.debug("Inside TcsOffsetCommand: Offset command -- STOP: " + t);
 		}).matchAny(t -> log.warning("Inside TcsOffsetCommand: Unknown message received: " + t)).build();
-	}
-
-	private ActorRef createEventSubscriber(IEventService eventService) {
-		log.debug("Inside TcsOffsetCommand createEventSubscriber: Creating Event Subscriber ");
-		return context().actorOf(TcsEventSubscriber.props(assemblyContext, eventPublisher, eventService),
-				"tcseventsubscriber");
-	}
-	
-	private ActorRef createWebEventSubscriber(IEventService eventService) {
-		log.debug("Inside TcsOffsetCommand createWebEventSubscriber: Creating Event Subscriber ");
-		return context().actorOf(WebEventSubscriber.props(assemblyContext, Optional.empty(), eventService),
-				"webeventsubscriber");
 	}
 
 	public static Props props(AssemblyContext ac, SetupConfig sc, ActorRef mcsRefActor, ActorRef ecsRefActor,

@@ -68,9 +68,9 @@ public class M3Simulator extends AbstractActor {
 	}
 
 	public static class M3PosUpdate {
-		public final M3State state;
-		public final Double rotationPosition;
-		public final Double tiltPosition;
+		public M3State state;
+		public Double rotationPosition;
+		public Double tiltPosition;
 
 		public M3PosUpdate(M3State state, Double rotationPosition, Double tiltPosition) {
 			this.state = state;

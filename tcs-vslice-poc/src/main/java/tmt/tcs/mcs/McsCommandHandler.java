@@ -19,6 +19,7 @@ import static tmt.tcs.common.AssemblyStateActor.elFollowing;
 import static tmt.tcs.common.AssemblyStateActor.elItem;
 import static tmt.tcs.mcs.McsConfig.MCS_IDLE;
 import static tmt.tcs.mcs.McsConfig.mcsStateKey;
+import static tmt.tcs.mcs.hcd.McsHcd.McsMessage.GetMcsDefaultUpdate;
 
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -158,6 +159,8 @@ public class McsCommandHandler extends BaseCommandHandler {
 						} catch (Exception e) {
 							log.error(e, "Inside McsCommandHandler initReceive: Error setting state");
 						}
+						
+						mcsHcd.tell(GetMcsDefaultUpdate, self());
 						commandOriginator.ifPresent(actorRef -> actorRef.tell(Completed, self()));
 
 					} else if (configKey.equals(McsConfig.followCK)) {

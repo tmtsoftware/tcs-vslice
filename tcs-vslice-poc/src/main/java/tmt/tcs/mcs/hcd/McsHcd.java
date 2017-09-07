@@ -35,6 +35,7 @@ import scala.concurrent.duration.Duration;
 import scala.runtime.BoxedUnit;
 import tmt.tcs.common.BaseHcd;
 import tmt.tcs.mcs.McsConfig;
+import tmt.tcs.mcs.McsConfig.McsState;
 import tmt.tcs.mcs.hcd.McsSimulator.McsPosUpdate;
 
 /**
@@ -50,6 +51,7 @@ public class McsHcd extends BaseHcd {
 
 	ActorRef mcsSimulator;
 	McsPosUpdate current;
+	private static boolean publishDefaultEvent = true;
 
 	// McsHWConfig mcsHWConfig;
 
@@ -65,6 +67,7 @@ public class McsHcd extends BaseHcd {
 		// TODO: Giving Ask timeout exception, to be fixed
 		// this.mcsHWConfig = getMcsHWConfig().get();
 		this.mcsSimulator = getSimulator();
+		this.current = new McsPosUpdate(McsState.MCS_IDLE, McsConfig.defaultAzValue, McsConfig.defaultElValue);
 
 		try {
 			supervisor.tell(Initialized, self());
@@ -108,6 +111,17 @@ public class McsHcd extends BaseHcd {
 			log.error("Inside McsHcd Received failed state: " + e.state() + " for reason: " + e.reason());
 		}).matchEquals(McsMessage.GetMcsUpdateNow, e -> {
 			sender().tell(current, self());
+		}).matchEquals(McsMessage.GetMcsDefaultUpdate, e -> {
+			log.debug("Inside McsHcd Received GetMcsDefaultUpdate: publishDefaultEvent is: " + publishDefaultEvent);
+			Thread.sleep(1000);
+			CurrentState mcsState = cs(McsConfig.currentPosPrefix, jset(mcsStateKey, Choice(current.state.toString())),
+					jset(McsConfig.azPosKey, current.azPosition), jset(McsConfig.elPosKey, current.elPosition));
+			notifySubscribers(mcsState);
+			if (publishDefaultEvent) {
+				current.azPosition += McsConfig.defaultAzIncrementer;
+				current.elPosition += McsConfig.defaultElIncrementer;
+				self().tell(McsMessage.GetMcsDefaultUpdate, self());
+			}
 		}).match(McsPosUpdate.class, e -> {
 			log.debug("Inside McsHcd Received McsUpdate");
 			current = e;
@@ -125,10 +139,12 @@ public class McsHcd extends BaseHcd {
 
 		if (configKey.equals(McsConfig.followCK)) {
 			log.debug("Inside McsHcd process received move command");
+			publishDefaultEvent = false;
 			mcsSimulator.tell(new McsSimulator.Move(jvalue(jitem(sc, McsConfig.az)), jvalue(jitem(sc, McsConfig.el))),
 					self());
 		} else {
 			log.debug("Inside McsHcd process received offset command");
+			publishDefaultEvent = false;
 			mcsSimulator.tell(new McsSimulator.Move(jvalue(jitem(sc, McsConfig.az)), jvalue(jitem(sc, McsConfig.el))),
 					self());
 		}
@@ -157,9 +173,8 @@ public class McsHcd extends BaseHcd {
 		});
 	}
 
-	// Testing messages for Mcs Hcd
 	public enum McsMessage {
-		GetMcsUpdate,
+		GetMcsDefaultUpdate,
 
 		/**
 		 * Directly returns an McsPosUpdate to sender

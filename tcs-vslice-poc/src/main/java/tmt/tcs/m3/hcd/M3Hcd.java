@@ -31,6 +31,7 @@ import scala.PartialFunction;
 import scala.runtime.BoxedUnit;
 import tmt.tcs.common.BaseHcd;
 import tmt.tcs.m3.M3Config;
+import tmt.tcs.m3.M3Config.M3State;
 import tmt.tcs.m3.hcd.M3Simulator.M3PosUpdate;
 
 /**
@@ -46,6 +47,7 @@ public class M3Hcd extends BaseHcd {
 
 	ActorRef m3Simulator;
 	M3PosUpdate current;
+	private static boolean publishDefaultEvent = true;
 
 	public static File m3ConfigFile = new File("m3/hcd/m3Hcd.conf");
 	public static File resource = new File("m3Hcd.conf");
@@ -55,6 +57,7 @@ public class M3Hcd extends BaseHcd {
 
 		this.supervisor = supervisor;
 		this.m3Simulator = getSimulator();
+		this.current = new M3PosUpdate(M3State.M3_IDLE, M3Config.defaultRotationValue, M3Config.defaultTiltValue);
 
 		try {
 			supervisor.tell(Initialized, self());
@@ -98,6 +101,18 @@ public class M3Hcd extends BaseHcd {
 			log.error("Inside M3Hcd Received failed state: " + e.state() + " for reason: " + e.reason());
 		}).matchEquals(M3Message.GetM3UpdateNow, e -> {
 			sender().tell(current, self());
+		}).matchEquals(M3Message.GetM3DefaultUpdate, e -> {
+			log.debug("Inside M3Hcd Received GetM3DefaultUpdate: publishDefaultEvent is: " + publishDefaultEvent);
+			Thread.sleep(1000);
+			CurrentState m3State = cs(M3Config.currentPosPrefix, jset(m3StateKey, Choice(current.state.toString())),
+					jset(M3Config.rotationPosKey, current.rotationPosition),
+					jset(M3Config.tiltPosKey, current.tiltPosition));
+			notifySubscribers(m3State);
+			if (publishDefaultEvent) {
+				current.rotationPosition += M3Config.defaultRotationIncrementer;
+				current.tiltPosition += M3Config.defaultTiltIncrementer;
+				self().tell(M3Message.GetM3DefaultUpdate, self());
+			}
 		}).match(M3PosUpdate.class, e -> {
 			log.debug("Inside M3Hcd Received M3Update");
 			current = e;
@@ -115,11 +130,13 @@ public class M3Hcd extends BaseHcd {
 
 		if (configKey.equals(M3Config.followCK)) {
 			log.debug("Inside M3Hcd process received move command");
+			publishDefaultEvent = false;
 			m3Simulator.tell(
 					new M3Simulator.Move(jvalue(jitem(sc, M3Config.rotation)), jvalue(jitem(sc, M3Config.tilt))),
 					self());
 		} else {
 			log.debug("Inside M3Hcd process received offset command");
+			publishDefaultEvent = false;
 			m3Simulator.tell(
 					new M3Simulator.Move(jvalue(jitem(sc, M3Config.rotation)), jvalue(jitem(sc, M3Config.tilt))),
 					self());
@@ -141,9 +158,8 @@ public class M3Hcd extends BaseHcd {
 		});
 	}
 
-	// Testing messages for M3 Hcd
 	public enum M3Message {
-		GetM3Update,
+		GetM3DefaultUpdate,
 
 		/**
 		 * Directly returns an M3PosUpdate to sender

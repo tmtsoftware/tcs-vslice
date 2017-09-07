@@ -19,6 +19,7 @@ import static tmt.tcs.common.AssemblyStateActor.elFollowing;
 import static tmt.tcs.common.AssemblyStateActor.elItem;
 import static tmt.tcs.ecs.EcsConfig.ECS_IDLE;
 import static tmt.tcs.ecs.EcsConfig.ecsStateKey;
+import static tmt.tcs.ecs.hcd.EcsHcd.EcsMessage.GetEcsDefaultUpdate;
 
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -154,6 +155,7 @@ public class EcsCommandHandler extends BaseCommandHandler {
 						} catch (Exception e) {
 							log.error(e, "Inside EcsCommandHandler Error setting state");
 						}
+						ecsHcd.tell(GetEcsDefaultUpdate, self());
 						commandOriginator.ifPresent(actorRef -> actorRef.tell(Completed, self()));
 
 					} else if (configKey.equals(EcsConfig.followCK)) {

@@ -39,7 +39,7 @@ import tmt.tcs.test.common.TcsTestData;
 import tmt.tcs.test.common.TpkTestData;
 
 /**
- * Servlet implementation class TcsServlet
+ * Servlet implementation class for handling HTTP Requests
  */
 @WebServlet(description = "TCS Servlet", urlPatterns = { "/tcsProcessor", "/tcsProcessor.do" }, loadOnStartup = 1)
 public class TcsHttpServlet extends HttpServlet {
@@ -49,6 +49,8 @@ public class TcsHttpServlet extends HttpServlet {
 	private static LoggingAdapter logger;
 
 	private static ActorRef tcsAssembly;
+
+	private static TestProbe tcsClient;
 
 	private static Timeout timeout = Timeout.durationToTimeout(FiniteDuration.apply(10, TimeUnit.SECONDS));
 	@SuppressWarnings("unused")
@@ -107,8 +109,12 @@ public class TcsHttpServlet extends HttpServlet {
 			SequencerEnv.resolveHcd(mcsHcdName);
 			SequencerEnv.resolveHcd(ecsHcdName);
 			SequencerEnv.resolveHcd(m3HcdName);
+
+			tcsClient = new TestProbe(system);
+
+			executeInitCommand();
 		} catch (Exception ex) {
-			System.out.println("Inside TcsHttpServlet: exception is: " + ex);
+			logger.error("Inside TcsHttpServlet: exception is: " + ex);
 		}
 	}
 
@@ -122,7 +128,7 @@ public class TcsHttpServlet extends HttpServlet {
 	 */
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
-		System.out.println("Inside CommandServlet: GET");
+		logger.debug("Inside TcsHttpServlet: GET");
 	}
 
 	/**
@@ -132,7 +138,7 @@ public class TcsHttpServlet extends HttpServlet {
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 
-		System.out.println("Inside CommandServlet: POST: " + request.getParameter("ra"));
+		logger.debug("Inside TcsHttpServlet: POST: " + request.getParameter("ra"));
 
 		String targetName = request.getParameter("targetName");
 		Double ra = new Double(request.getParameter("ra"));
@@ -140,8 +146,8 @@ public class TcsHttpServlet extends HttpServlet {
 		String frame = request.getParameter("frame");
 		String command = request.getParameter("command");
 
-		System.out.println("Target Name is: " + targetName + "Ra is: " + ra + ": Dec is: " + dec + ": Frame is: "
-				+ frame + ": Command is: " + command);
+		logger.debug("Target Name is: " + targetName + "Ra is: " + ra + ": Dec is: " + dec + ": Frame is: " + frame
+				+ ": Command is: " + command);
 
 		if (TcsConfig.followPrefix.equals(command)) {
 			executeFollowCommand(targetName, ra, dec, frame);
@@ -153,32 +159,44 @@ public class TcsHttpServlet extends HttpServlet {
 				+ "&frame=" + frame);
 	}
 
+	public static void executeInitCommand() {
+		logger.debug("Inside TcsHttpServlet executeInitCommand Starts");
+
+		SetupConfig initSc = jadd(new SetupConfig(TcsConfig.initCK.prefix()));
+
+		SetupConfigArg sca = Configurations.createSetupConfigArg("tcsInitCommand", initSc);
+
+		tcsClient.send(tcsAssembly, new Submit(sca));
+
+	}
+
 	public void executeFollowCommand(String targetValue, Double raValue, Double decValue, String frameValue) {
-		logger.debug("Inside CommandServlet executeFollowCommand Starts");
+		logger.debug("Inside TcsHttpServlet executeFollowCommand Starts");
 
-		TestProbe fakeClient = new TestProbe(system);
-
-		SetupConfig positionSc = jadd(new SetupConfig(TcsConfig.followCK.prefix()), jset(TcsConfig.target, targetValue),
+		SetupConfig followSc = jadd(new SetupConfig(TcsConfig.followCK.prefix()), jset(TcsConfig.target, targetValue),
 				jset(TcsConfig.ra, raValue), jset(TcsConfig.dec, decValue), jset(TcsConfig.frame, frameValue));
 
-		SetupConfigArg sca = Configurations.createSetupConfigArg("tcsPositionCommand", positionSc);
+		SetupConfigArg sca = Configurations.createSetupConfigArg("tcsFollowCommand", followSc);
 
-		fakeClient.send(tcsAssembly, new Submit(sca));
+		tcsClient.send(tcsAssembly, new Submit(sca));
 
 	}
 
 	public void executeOffsetCommand(Double raOffsetValue, Double decOffsetValue) {
-		logger.debug("Inside CommandServlet executeOffsetCommand Starts");
-
-		TestProbe fakeClient = new TestProbe(system);
+		logger.debug("Inside TcsHttpServlet executeOffsetCommand Starts");
 
 		SetupConfig offsetSc = jadd(new SetupConfig(TcsConfig.offsetCK.prefix()), jset(TcsConfig.ra, raOffsetValue),
 				jset(TcsConfig.dec, decOffsetValue));
 
 		SetupConfigArg sca = Configurations.createSetupConfigArg("tcsOffsetCommand", offsetSc);
 
-		fakeClient.send(tcsAssembly, new Submit(sca));
+		tcsClient.send(tcsAssembly, new Submit(sca));
 
+	}
+
+	@Override
+	public void destroy() {
+		super.destroy();
 	}
 
 }

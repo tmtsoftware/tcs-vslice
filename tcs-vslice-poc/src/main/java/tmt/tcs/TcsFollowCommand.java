@@ -28,18 +28,17 @@ import tmt.tcs.ecs.EcsConfig;
 import tmt.tcs.m3.M3Config;
 import tmt.tcs.mcs.McsConfig;
 import tmt.tcs.tpk.TpkConfig;
-import tmt.tcs.web.WebEventSubscriber;
 
 /**
  * This is an actor class which receives command specific to Position Operation
  * And after any modifications if required, redirect the same to TPK This also
  * issue follow command to MCS, ECS and M3 Assemblies
  */
+@SuppressWarnings("unused")
 public class TcsFollowCommand extends BaseCommand {
 
 	private LoggingAdapter log = Logging.getLogger(getContext().system(), this);
 
-	@SuppressWarnings("unused")
 	private final Optional<ActorRef> tcsStateActor;
 
 	private final Optional<ActorRef> eventPublisher;
@@ -66,10 +65,6 @@ public class TcsFollowCommand extends BaseCommand {
 		this.assemblyContext = assemblyContext;
 		this.eventPublisher = eventPublisher;
 
-		createEventSubscriber(eventService);
-
-		createWebEventSubscriber(eventService);
-
 		receive(followReceive(sc, mcsRefActor, ecsRefActor, m3RefActor, tpkRefActor));
 	}
 
@@ -79,13 +74,13 @@ public class TcsFollowCommand extends BaseCommand {
 			log.debug("Inside TcsFollowCommand: Follow command -- START: " + t + ": Config Key is: " + sc.configKey());
 
 			SetupConfigArg mcsSetupConfigArg = Configurations.createSetupConfigArg("mcsFollowCommand",
-					new SetupConfig(McsConfig.initPrefix), new SetupConfig(McsConfig.followPrefix));
+					new SetupConfig(McsConfig.followPrefix));
 
 			SetupConfigArg ecsSetupConfigArg = Configurations.createSetupConfigArg("ecsFollowCommand",
-					new SetupConfig(EcsConfig.initPrefix), new SetupConfig(EcsConfig.followPrefix));
+					new SetupConfig(EcsConfig.followPrefix));
 
 			SetupConfigArg m3SetupConfigArg = Configurations.createSetupConfigArg("m3FollowCommand",
-					new SetupConfig(M3Config.initPrefix), new SetupConfig(M3Config.followPrefix));
+					new SetupConfig(M3Config.followPrefix));
 
 			log.debug("Inside TcsFollowCommand: Follow command -- mcsRefActor is: " + mcsRefActor);
 
@@ -114,18 +109,6 @@ public class TcsFollowCommand extends BaseCommand {
 		}).matchEquals(JSequentialExecutor.StopCurrentCommand(), t -> {
 			log.debug("Inside TcsFollowCommand: Follow command -- STOP: " + t);
 		}).matchAny(t -> log.warning("Inside TcsFollowCommand: Unknown message received: " + t)).build();
-	}
-
-	private ActorRef createEventSubscriber(IEventService eventService) {
-		log.debug("Inside TcsFollowCommand createEventSubscriber: Creating Event Subscriber ");
-		return context().actorOf(TcsEventSubscriber.props(assemblyContext, eventPublisher, eventService),
-				"tcseventsubscriber");
-	}
-
-	private ActorRef createWebEventSubscriber(IEventService eventService) {
-		log.debug("Inside TcsFollowCommand createWebEventSubscriber: Creating Event Subscriber ");
-		return context().actorOf(WebEventSubscriber.props(assemblyContext, Optional.empty(), eventService),
-				"webeventsubscriber");
 	}
 
 	public static Props props(AssemblyContext ac, SetupConfig sc, ActorRef mcsRefActor, ActorRef ecsRefActor,

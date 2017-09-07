@@ -60,6 +60,9 @@ public class M3Config {
 	
 	public static final Double defaultRotationValue = 3.1;
 	public static final Double defaultTiltValue = 3.2;
+	
+	public static final Double defaultRotationIncrementer = 0.1;
+	public static final Double defaultTiltIncrementer = 0.1;
 
 	public static DoubleItem rotation(double rotationValue) {
 		return jset(rotation, rotationValue);

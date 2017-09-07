@@ -15,14 +15,17 @@ import akka.event.LoggingAdapter;
 import akka.japi.Creator;
 import akka.japi.pf.ReceiveBuilder;
 import akka.util.Timeout;
+import csw.services.ccs.AssemblyController;
 import csw.services.ccs.CommandStatus.CommandStatus;
 import csw.services.ccs.SequentialExecutor.ExecuteOne;
 import csw.services.loc.LocationService.Location;
 import csw.services.loc.LocationService.ResolvedAkkaLocation;
 import csw.services.loc.LocationService.ResolvedTcpLocation;
 import csw.services.loc.LocationService.Unresolved;
+import csw.util.config.Configurations;
 import csw.util.config.Configurations.ConfigKey;
 import csw.util.config.Configurations.SetupConfig;
+import csw.util.config.Configurations.SetupConfigArg;
 import javacsw.services.ccs.JSequentialExecutor;
 import javacsw.services.events.IEventService;
 import scala.PartialFunction;
@@ -30,6 +33,10 @@ import scala.runtime.BoxedUnit;
 import tmt.tcs.common.AssemblyContext;
 import tmt.tcs.common.AssemblyStateActor;
 import tmt.tcs.common.BaseCommandHandler;
+import tmt.tcs.ecs.EcsConfig;
+import tmt.tcs.m3.M3Config;
+import tmt.tcs.mcs.McsConfig;
+import tmt.tcs.web.WebEventSubscriber;
 
 /**
  * This is an actor class which receives commands forwarded by TCS Assembly And
@@ -106,6 +113,10 @@ public class TcsCommandHandler extends BaseCommandHandler {
 				log.debug("Inside TcsCommandHandler: Assembly received ES connection: " + t);
 				eventService = Optional.of(IEventService.getEventService(t.host(), t.port(), context().system()));
 				log.debug("Inside TcsCommandHandler: Event Service at: " + eventService);
+
+				createTcsEventSubscriber(eventService.get());
+
+				createWebEventSubscriber(eventService.get());
 			}
 
 		} else if (location instanceof Unresolved) {
@@ -134,11 +145,31 @@ public class TcsCommandHandler extends BaseCommandHandler {
 			log.debug("Inside TcsCommandHandler initReceive: ExecuteOne: SetupConfig is: " + sc + ": configKey is: "
 					+ configKey);
 
-			if (configKey.equals(TcsConfig.followCK)) {
+			if (configKey.equals(TcsConfig.initCK)) {
+				log.debug("Inside TcsCommandHandler initReceive: ExecuteOne: initCK Command ");
+				SetupConfigArg mcsSetupConfigArg = Configurations.createSetupConfigArg("mcsFollowCommand",
+						new SetupConfig(McsConfig.initPrefix));
+
+				SetupConfigArg ecsSetupConfigArg = Configurations.createSetupConfigArg("ecsFollowCommand",
+						new SetupConfig(EcsConfig.initPrefix));
+
+				SetupConfigArg m3SetupConfigArg = Configurations.createSetupConfigArg("m3FollowCommand",
+						new SetupConfig(M3Config.initPrefix));
+
+				log.debug("Inside TcsCommandHandler: Init command: mcsRefActor is: " + mcsRefActor);
+
+				mcsRefActor.tell(new AssemblyController.Submit(mcsSetupConfigArg), self());
+
+				ecsRefActor.tell(new AssemblyController.Submit(ecsSetupConfigArg), self());
+
+				m3RefActor.tell(new AssemblyController.Submit(m3SetupConfigArg), self());
+
+				commandOriginator.ifPresent(actorRef -> actorRef.tell(Completed, self()));
+			} else if (configKey.equals(TcsConfig.followCK)) {
 				log.debug("Inside TcsCommandHandler initReceive: ExecuteOne: followCK Command ");
-				ActorRef followActorRef = context()
-						.actorOf(TcsFollowCommand.props(assemblyContext, sc, mcsRefActor, ecsRefActor, m3RefActor,
-								tpkRefActor, currentState(), Optional.of(tcsStateActor), eventService.get(), allEventPublisher));
+				ActorRef followActorRef = context().actorOf(
+						TcsFollowCommand.props(assemblyContext, sc, mcsRefActor, ecsRefActor, m3RefActor, tpkRefActor,
+								currentState(), Optional.of(tcsStateActor), eventService.get(), allEventPublisher));
 				context().become(actorExecutingReceive(followActorRef, commandOriginator));
 
 				self().tell(JSequentialExecutor.CommandStart(), self());
@@ -146,9 +177,9 @@ public class TcsCommandHandler extends BaseCommandHandler {
 				commandOriginator.ifPresent(actorRef -> actorRef.tell(Completed, self()));
 			} else if (configKey.equals(TcsConfig.offsetCK)) {
 				log.debug("Inside TcsCommandHandler initReceive: ExecuteOne: offsetCK Command ");
-				ActorRef offsetActorRef = context()
-						.actorOf(TcsOffsetCommand.props(assemblyContext, sc, mcsRefActor, ecsRefActor, m3RefActor,
-								tpkRefActor, currentState(), Optional.of(tcsStateActor), eventService.get(), allEventPublisher));
+				ActorRef offsetActorRef = context().actorOf(
+						TcsOffsetCommand.props(assemblyContext, sc, mcsRefActor, ecsRefActor, m3RefActor, tpkRefActor,
+								currentState(), Optional.of(tcsStateActor), eventService.get(), allEventPublisher));
 				context().become(actorExecutingReceive(offsetActorRef, commandOriginator));
 
 				self().tell(JSequentialExecutor.CommandStart(), self());
@@ -180,6 +211,8 @@ public class TcsCommandHandler extends BaseCommandHandler {
 				currentCommand.tell(PoisonPill.getInstance(), self());
 				return null;
 			});
+			
+			context().become(initReceive());
 		}).
 
 				match(CommandDone.class, t -> {
@@ -189,16 +222,16 @@ public class TcsCommandHandler extends BaseCommandHandler {
 
 				match(SetupConfig.class, sc -> {
 					log.debug("Inside TcsCommandHandler actorExecutingReceive: SetupConfig is: " + sc);
-					if (TcsConfig.offsetCK.equals(sc.configKey())) {
-						ActorRef offsetActorRef = context().actorOf(
-								TcsOffsetCommand.props(assemblyContext, sc, mcsRefActor, ecsRefActor, m3RefActor,
-										tpkRefActor, currentState(), Optional.of(tcsStateActor), eventService.get(), allEventPublisher));
+					/*if (TcsConfig.offsetCK.equals(sc.configKey())) {
+						ActorRef offsetActorRef = context().actorOf(TcsOffsetCommand.props(assemblyContext, sc,
+								mcsRefActor, ecsRefActor, m3RefActor, tpkRefActor, currentState(),
+								Optional.of(tcsStateActor), eventService.get(), allEventPublisher));
 						context().become(actorExecutingReceive(offsetActorRef, commandOriginator));
 
 						offsetActorRef.tell(JSequentialExecutor.CommandStart(), self());
 
 						commandOriginator.ifPresent(actorRef -> actorRef.tell(Completed, self()));
-					}
+					}*/
 				}).
 
 				match(ExecuteOne.class, t -> {
@@ -207,6 +240,18 @@ public class TcsCommandHandler extends BaseCommandHandler {
 				.matchAny(t -> log
 						.warning("Inside TcsCommandHandler actorExecutingReceive: received an unknown message: " + t))
 				.build();
+	}
+
+	private ActorRef createTcsEventSubscriber(IEventService eventService) {
+		log.debug("Inside TcsCommandHandler createTcsEventSubscriber: Creating Event Subscriber ");
+		return context().actorOf(TcsEventSubscriber.props(assemblyContext, allEventPublisher, eventService),
+				"tcseventsubscriber");
+	}
+
+	private ActorRef createWebEventSubscriber(IEventService eventService) {
+		log.debug("Inside TcsCommandHandler createWebEventSubscriber: Creating Event Subscriber ");
+		return context().actorOf(WebEventSubscriber.props(assemblyContext, Optional.empty(), eventService),
+				"webeventsubscriber");
 	}
 
 	public static Props props(AssemblyContext ac, Optional<ActorRef> mcsRefActor, Optional<ActorRef> ecsRefActor,

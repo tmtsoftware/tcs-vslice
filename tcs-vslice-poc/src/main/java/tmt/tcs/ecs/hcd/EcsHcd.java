@@ -31,6 +31,7 @@ import scala.PartialFunction;
 import scala.runtime.BoxedUnit;
 import tmt.tcs.common.BaseHcd;
 import tmt.tcs.ecs.EcsConfig;
+import tmt.tcs.ecs.EcsConfig.EcsState;
 import tmt.tcs.ecs.hcd.EcsSimulator.EcsPosUpdate;
 
 /**
@@ -46,6 +47,7 @@ public class EcsHcd extends BaseHcd {
 
 	ActorRef ecsSimulator;
 	EcsPosUpdate current;
+	private static boolean publishDefaultEvent = true;
 
 	public static File ecsConfigFile = new File("ecs/hcd/ecsHcd.conf");
 	public static File resource = new File("ecsHcd.conf");
@@ -55,6 +57,7 @@ public class EcsHcd extends BaseHcd {
 
 		this.supervisor = supervisor;
 		this.ecsSimulator = getSimulator();
+		this.current = new EcsPosUpdate(EcsState.ECS_IDLE, EcsConfig.defaultAzValue, EcsConfig.defaultElValue);
 
 		try {
 			supervisor.tell(Initialized, self());
@@ -98,6 +101,17 @@ public class EcsHcd extends BaseHcd {
 			log.error("Inside EcsHcd Received failed state: " + e.state() + " for reason: " + e.reason());
 		}).matchEquals(EcsMessage.GetEcsUpdateNow, e -> {
 			sender().tell(current, self());
+		}).matchEquals(EcsMessage.GetEcsDefaultUpdate, e -> {
+			log.debug("Inside EcsHcd Received GetEcsDefaultUpdate: publishDefaultEvent is: " + publishDefaultEvent);
+			Thread.sleep(1000);
+			CurrentState ecsState = cs(EcsConfig.currentPosPrefix, jset(ecsStateKey, Choice(current.state.toString())),
+					jset(EcsConfig.azPosKey, current.azPosition), jset(EcsConfig.elPosKey, current.elPosition));
+			notifySubscribers(ecsState);
+			if (publishDefaultEvent) {
+				current.azPosition += EcsConfig.defaultAzIncrementer;
+				current.elPosition += EcsConfig.defaultElIncrementer;
+				self().tell(EcsMessage.GetEcsDefaultUpdate, self());
+			}
 		}).match(EcsPosUpdate.class, e -> {
 			log.debug("Inside EcsHcd Received EcsUpdate");
 			current = e;
@@ -115,10 +129,12 @@ public class EcsHcd extends BaseHcd {
 
 		if (configKey.equals(EcsConfig.followCK)) {
 			log.debug("Inside EcsHcd process received move command");
+			publishDefaultEvent = false;
 			ecsSimulator.tell(new EcsSimulator.Move(jvalue(jitem(sc, EcsConfig.az)), jvalue(jitem(sc, EcsConfig.el))),
 					self());
 		} else {
 			log.debug("Inside EcsHcd process received offset command");
+			publishDefaultEvent = false;
 			ecsSimulator.tell(new EcsSimulator.Move(jvalue(jitem(sc, EcsConfig.az)), jvalue(jitem(sc, EcsConfig.el))),
 					self());
 		}
@@ -139,9 +155,8 @@ public class EcsHcd extends BaseHcd {
 		});
 	}
 
-	// Testing messages for MEHcd
 	public enum EcsMessage {
-		GetEcsUpdate,
+		GetEcsDefaultUpdate,
 
 		/**
 		 * Directly returns an EcsPosUpdate to sender

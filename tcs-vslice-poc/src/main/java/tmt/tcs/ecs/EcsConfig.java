@@ -61,6 +61,9 @@ public class EcsConfig {
 	
 	public static final Double defaultAzValue = 2.1;
 	public static final Double defaultElValue = 2.2;
+	
+	public static final Double defaultAzIncrementer = 0.1;
+	public static final Double defaultElIncrementer = 0.1;
 
 	public static DoubleItem az(double azValue) {
 		return jset(az, azValue);

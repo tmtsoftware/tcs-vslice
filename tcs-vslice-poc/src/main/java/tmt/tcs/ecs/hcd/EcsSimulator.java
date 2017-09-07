@@ -67,9 +67,9 @@ public class EcsSimulator extends AbstractActor {
 	}
 
 	public static class EcsPosUpdate {
-		public final EcsState state;
-		public final Double azPosition;
-		public final Double elPosition;
+		public EcsState state;
+		public Double azPosition;
+		public Double elPosition;
 
 		public EcsPosUpdate(EcsState state, Double azPosition, Double elPosition) {
 			this.state = state;

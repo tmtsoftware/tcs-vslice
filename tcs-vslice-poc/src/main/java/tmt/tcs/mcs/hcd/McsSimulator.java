@@ -67,9 +67,9 @@ public class McsSimulator extends AbstractActor {
 	}
 
 	public static class McsPosUpdate {
-		public final McsState state;
-		public final Double azPosition;
-		public final Double elPosition;
+		public McsState state;
+		public Double azPosition;
+		public Double elPosition;
 
 		public McsPosUpdate(McsState state, Double azPosition, Double elPosition) {
 			this.state = state;
