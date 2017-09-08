@@ -19,6 +19,11 @@ import scala.PartialFunction;
 import scala.runtime.BoxedUnit;
 import tmt.tcs.common.AssemblyContext;
 
+/**
+ * This Class will receive Position parameters from Follow Actor and forward the
+ * same to HCD Class and also publish Telemetry Message for positions being sent
+ *
+ */
 public class McsControl extends AbstractActor {
 
 	private LoggingAdapter log = Logging.getLogger(getContext().system(), this);
@@ -34,6 +39,13 @@ public class McsControl extends AbstractActor {
 		receive(controlReceive(mcsHcd));
 	}
 
+	/**
+	 * This helps in receiving the position parameters from follow actor and
+	 * sends the same to MCS HCD and publish Telemetry
+	 * 
+	 * @param mcsHcd
+	 * @return
+	 */
 	private PartialFunction<Object, BoxedUnit> controlReceive(Optional<ActorRef> mcsHcd) {
 		return ReceiveBuilder.match(GoToPosition.class, t -> {
 			log.info("Inside McsControl controlReceive: Got GoToPosition");
@@ -50,7 +62,13 @@ public class McsControl extends AbstractActor {
 		}).matchAny(t -> log.warning("Inside McsControl: controlReceive Unexpected message received : " + t)).build();
 	}
 
-	// Props for creating the McsControl actor
+	/**
+	 * Props for creating the McsControl actor
+	 * 
+	 * @param ac
+	 * @param mcsHcd
+	 * @return
+	 */
 	public static Props props(AssemblyContext ac, Optional<ActorRef> mcsHcd) {
 		return Props.create(new Creator<McsControl>() {
 			private static final long serialVersionUID = 1L;
@@ -62,7 +80,9 @@ public class McsControl extends AbstractActor {
 		});
 	}
 
-	// Used to send a position that requires transformation from
+	/**
+	 * Used to send a position that requires transformation from
+	 */
 	static class GoToPosition {
 		final DoubleItem azimuth;
 		final DoubleItem elevation;

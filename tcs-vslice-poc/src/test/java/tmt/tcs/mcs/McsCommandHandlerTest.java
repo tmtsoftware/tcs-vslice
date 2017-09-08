@@ -136,7 +136,7 @@ public class McsCommandHandlerTest extends JavaTestKit {
 
 		ActorRef commandHandler = newCommandHandler(mcsHcd, Optional.empty());
 
-		setupState(new AssemblyState(azItem(azDrivePowerOn), elItem(elDrivePowerOn)));
+		setupState(new AssemblyState(azItem(azDrivePowerOn), elItem(elDrivePowerOn), null, null));
 
 		SetupConfigArg sca = Configurations.createSetupConfigArg("testobsId",
 				jadd(sc(McsConfig.setAzimuthCK.prefix()), az(2.0)));
@@ -177,7 +177,7 @@ public class McsCommandHandlerTest extends JavaTestKit {
 		commandHandler.tell(evLocation, self());
 
 		// set the state so the command succeeds
-		setupState(new AssemblyState(azItem(azDrivePowerOn), elItem(elDrivePowerOn)));
+		setupState(new AssemblyState(azItem(azDrivePowerOn), elItem(elDrivePowerOn), null, null));
 
 		SetupConfigArg sca = Configurations.createSetupConfigArg("testobsId", sc(McsConfig.followCK.prefix()));
 		ActorRef se = system.actorOf(SequentialExecutor.props(commandHandler, sca, Optional.of(fakeAssembly.ref())));
@@ -208,7 +208,7 @@ public class McsCommandHandlerTest extends JavaTestKit {
 				.getEventServiceLocation(IEventService.defaultName, system, timeout).get();
 		commandHandler.tell(evLocation, self());
 
-		setupState(new AssemblyState(azItem(azDrivePowerOn), elItem(elDrivePowerOn)));
+		setupState(new AssemblyState(azItem(azDrivePowerOn), elItem(elDrivePowerOn), null, null));
 
 		SetupConfigArg sca = Configurations.createSetupConfigArg("testobsId", sc(McsConfig.followCK.prefix()));
 		ActorRef se = system.actorOf(SequentialExecutor.props(commandHandler, sca, Optional.of(fakeAssembly.ref())));

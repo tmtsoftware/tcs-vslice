@@ -68,8 +68,6 @@ public class TcsAssembly extends BaseAssembly {
 	private final Optional<ITelemetryService> badTelemetryService = Optional.empty();
 	private Optional<ITelemetryService> telemetryService = badTelemetryService;
 
-	private ActorRef diagnosticPublisher;
-
 	public static File tcsConfigFile = new File("tcs/assembly/tcsAssembly.conf");
 	public static File resource = new File("tcsAssembly.conf");
 
@@ -106,9 +104,6 @@ public class TcsAssembly extends BaseAssembly {
 
 			commandHandler = context().actorOf(TcsCommandHandler.props(assemblyContext, mcsRefActor, ecsRefActor,
 					m3RefActor, tpkRefActor, Optional.of(eventPublisher)));
-
-			diagnosticPublisher = context()
-					.actorOf(TcsDiagnosticPublisher.props(assemblyContext, mcsRefActor, Optional.of(eventPublisher)));
 
 			LocationSubscriberActor.trackConnections(info.connections(), trackerSubscriber);
 			LocationSubscriberActor.trackConnection(IEventService.eventServiceConnection(), trackerSubscriber);
@@ -218,10 +213,8 @@ public class TcsAssembly extends BaseAssembly {
 	public PartialFunction<Object, BoxedUnit> diagnosticReceive() {
 		return ReceiveBuilder.match(AssemblyMessages.DiagnosticMode.class, t -> {
 			log.debug("Inside TcsAssembly diagnosticReceive: diagnostic mode: " + t.hint());
-			diagnosticPublisher.tell(new TcsDiagnosticPublisher.DiagnosticState(), self());
 		}).matchEquals(JAssemblyMessages.OperationsMode, t -> {
 			log.debug("Inside TcsAssembly diagnosticReceive: operations mode");
-			diagnosticPublisher.tell(new TcsDiagnosticPublisher.OperationsState(), self());
 		}).build();
 	}
 

@@ -24,8 +24,10 @@ import tmt.tcs.common.AssemblyContext;
 import tmt.tcs.common.BaseEventSubscriber;
 
 /**
- * This Class provides Event Subscription functionality for MCS It extends
- * BaseEventSubscriber
+ * This Class provides Event Subscription functionality for MCS. It extends
+ * BaseEventSubscriber and subscribes to MCS specific demands being published by
+ * TPK. It also forward the same to Follow Actor for further processing based
+ * upon demand
  */
 @SuppressWarnings("unused")
 public class McsEventSubscriber extends BaseEventSubscriber {

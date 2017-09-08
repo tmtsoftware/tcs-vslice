@@ -152,6 +152,9 @@ public class TpkEventPublisher extends AbstractActor implements ILocationSubscri
 		});
 	}
 
+	/**
+	 * This is the class specific for MCS Position Demand Generation
+	 */
 	public static class McsPosDemand {
 		public final ConfigKey configKey;
 		public final DoubleItem azItem;
@@ -207,6 +210,9 @@ public class TpkEventPublisher extends AbstractActor implements ILocationSubscri
 
 	}
 
+	/**
+	 * This is the class specific for ECS Position Demand Generation
+	 */
 	public static class EcsPosDemand {
 		public final ConfigKey configKey;
 		public final DoubleItem azItem;
@@ -262,6 +268,9 @@ public class TpkEventPublisher extends AbstractActor implements ILocationSubscri
 
 	}
 
+	/**
+	 * This is the class specific for M3 Position Demand Generation
+	 */
 	public static class M3PosDemand {
 		public final ConfigKey configKey;
 		public final DoubleItem rotationItem;

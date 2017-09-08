@@ -43,7 +43,7 @@ import scala.concurrent.duration.FiniteDuration;
  * Assembly -> HCD It also check for Command Acceptance Status and response
  * returned
  */
-public class TpkTest extends JavaTestKit {
+public class TpkAssemblyTest extends JavaTestKit {
 	private static ActorSystem system;
 	private static LoggingAdapter logger;
 
@@ -58,7 +58,7 @@ public class TpkTest extends JavaTestKit {
 	public static final Double ra0Value = 5.0;
 	public static final Double dec0Value = -5.0;
 
-	public TpkTest() {
+	public TpkAssemblyTest() {
 		super(system);
 	}
 
@@ -75,7 +75,7 @@ public class TpkTest extends JavaTestKit {
 		system = ActorSystem.create("TpkAssemeblyTest");
 		logger = Logging.getLogger(system, system);
 
-		logger.debug("Inside TpkTest setup");
+		logger.debug("Inside TpkAssemblyTest setup");
 
 		eventService = IEventService.getEventService(IEventService.defaultName, system, timeout).get(5,
 				TimeUnit.SECONDS);
@@ -88,7 +88,7 @@ public class TpkTest extends JavaTestKit {
 	 */
 	@Test
 	public void test1() {
-		logger.debug("Inside TpkTest test1 Follow Command: STARTS");
+		logger.debug("Inside TpkAssemblyTest test1 Follow Command: STARTS");
 
 		TestProbe fakeSupervisor = new TestProbe(system);
 		ActorRef tpkAssembly = newTpkAssembly(fakeSupervisor.ref());
@@ -108,14 +108,14 @@ public class TpkTest extends JavaTestKit {
 
 		CommandResult acceptedMsg = fakeClient.expectMsgClass(duration("3 seconds"), CommandResult.class);
 		assertEquals(acceptedMsg.overall(), Accepted);
-		logger.debug("Inside TpkTest test1 Command Accepted Result: " + acceptedMsg);
+		logger.debug("Inside TpkAssemblyTest test1 Command Accepted Result: " + acceptedMsg);
 
 		CommandResult completeMsg = fakeClient.expectMsgClass(duration("3 seconds"), CommandResult.class);
-		logger.debug("Inside TpkTest test1 Command Result: " + completeMsg.details().status(0));
+		logger.debug("Inside TpkAssemblyTest test1 Command Result: " + completeMsg.details().status(0));
 
 		assertEquals(completeMsg.overall(), AllCompleted);
 
-		logger.debug("Inside TpkTest test1 Follow Command: ENDS");
+		logger.debug("Inside TpkAssemblyTest test1 Follow Command: ENDS");
 	}
 
 	/**
@@ -124,7 +124,7 @@ public class TpkTest extends JavaTestKit {
 	 */
 	@Test
 	public void test2() {
-		logger.debug("Inside TpkTest test2 Offset Command: STARTS");
+		logger.debug("Inside TpkAssemblyTest test2 Offset Command: STARTS");
 
 		TestProbe fakeSupervisor = new TestProbe(system);
 		ActorRef tpkAssembly = newTpkAssembly(fakeSupervisor.ref());
@@ -144,15 +144,15 @@ public class TpkTest extends JavaTestKit {
 
 		CommandResult acceptedMsg = fakeClient.expectMsgClass(duration("3 seconds"), CommandResult.class);
 		assertEquals(acceptedMsg.overall(), Accepted);
-		logger.debug("Inside TpkTest test2 Command Accepted Result: " + acceptedMsg);
+		logger.debug("Inside TpkAssemblyTest test2 Command Accepted Result: " + acceptedMsg);
 
 		CommandResult completeMsg = fakeClient.expectMsgClass(duration("3 seconds"), CommandResult.class);
-		logger.debug("Inside TpkTest test2 Command Result: " + completeMsg + ": completeMsg.overall(): "
+		logger.debug("Inside TpkAssemblyTest test2 Command Result: " + completeMsg + ": completeMsg.overall(): "
 				+ completeMsg.overall());
 
 		assertEquals(completeMsg.overall(), AllCompleted);
 
-		logger.debug("Inside TpkTest test2 Offset Comman: ENDS");
+		logger.debug("Inside TpkAssemblyTest test2 Offset Comman: ENDS");
 	}
 
 	Props getTpkProps(AssemblyInfo assemblyInfo, Optional<ActorRef> supervisorIn) {
@@ -182,7 +182,7 @@ public class TpkTest extends JavaTestKit {
 	 */
 	@AfterClass
 	public static void teardown() throws InterruptedException {
-		logger.debug("Inside TpkTest teardown");
+		logger.debug("Inside TpkAssemblyTest teardown");
 
 		JavaTestKit.shutdownActorSystem(system);
 		system = null;

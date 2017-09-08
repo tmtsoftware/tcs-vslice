@@ -13,6 +13,10 @@ import scala.PartialFunction;
 import scala.runtime.BoxedUnit;
 import tmt.tcs.m3.M3Config.M3State;
 
+/**
+ * This class simulates M3 move operation and send back current position to HCD
+ * for publishing
+ */
 public class M3Simulator extends AbstractActor {
 
 	LoggingAdapter log = Logging.getLogger(getContext().system(), this);

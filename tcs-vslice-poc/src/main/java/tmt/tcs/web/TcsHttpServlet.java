@@ -63,6 +63,10 @@ public class TcsHttpServlet extends HttpServlet {
 	private static List<ActorRef> ecsRefActors = Collections.emptyList();
 	private static List<ActorRef> m3RefActors = Collections.emptyList();
 
+	/**
+	 * Below block will help in initializing TCS along with its dependent
+	 * components at time of application startup
+	 */
 	static {
 		try {
 			LocationService.initInterface();
@@ -132,8 +136,9 @@ public class TcsHttpServlet extends HttpServlet {
 	}
 
 	/**
-	 * @see HttpServlet#doPost(HttpServletRequest request, HttpServletResponse
-	 *      response)
+	 * This will receive requests being submitted by UI and will redirect the
+	 * same to TCS Assembly i.e. the top level assembly. Based upon the command
+	 * type, specific action will be taken by the TCS Assembly
 	 */
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
@@ -159,6 +164,9 @@ public class TcsHttpServlet extends HttpServlet {
 				+ "&frame=" + frame);
 	}
 
+	/**
+	 * This will help initializing TCS and lower lying assemblies to initialize
+	 */
 	public static void executeInitCommand() {
 		logger.debug("Inside TcsHttpServlet executeInitCommand Starts");
 
@@ -170,6 +178,15 @@ public class TcsHttpServlet extends HttpServlet {
 
 	}
 
+	/**
+	 * This will help in redirecting Follow Command along with required
+	 * parameters to TCS Assembly
+	 * 
+	 * @param targetValue
+	 * @param raValue
+	 * @param decValue
+	 * @param frameValue
+	 */
 	public void executeFollowCommand(String targetValue, Double raValue, Double decValue, String frameValue) {
 		logger.debug("Inside TcsHttpServlet executeFollowCommand Starts");
 
@@ -182,6 +199,13 @@ public class TcsHttpServlet extends HttpServlet {
 
 	}
 
+	/**
+	 * This will help in redirecting Offset Command along with required
+	 * parameters to TCS Assembly
+	 * 
+	 * @param raOffsetValue
+	 * @param decOffsetValue
+	 */
 	public void executeOffsetCommand(Double raOffsetValue, Double decOffsetValue) {
 		logger.debug("Inside TcsHttpServlet executeOffsetCommand Starts");
 

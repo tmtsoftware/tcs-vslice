@@ -13,6 +13,10 @@ import scala.PartialFunction;
 import scala.runtime.BoxedUnit;
 import tmt.tcs.mcs.McsConfig.McsState;
 
+/**
+ * This class simulates MCS move operation and send back current position to HCD
+ * for publishing
+ */
 public class McsSimulator extends AbstractActor {
 
 	LoggingAdapter log = Logging.getLogger(getContext().system(), this);
@@ -30,6 +34,11 @@ public class McsSimulator extends AbstractActor {
 		receive(idleReceive());
 	}
 
+	/**
+	 * This helps in receiving messages being send from HCD to Simulator
+	 * 
+	 * @return
+	 */
 	PartialFunction<Object, BoxedUnit> idleReceive() {
 		return ReceiveBuilder.match(Move.class, e -> {
 			// Setting currentState to Moving while performing move operation
@@ -46,11 +55,22 @@ public class McsSimulator extends AbstractActor {
 		}).matchAny(x -> log.warning("Inside McsSimulator Unexpected message in idleReceive: " + x)).build();
 	}
 
+	/**
+	 * This helps in sending Current position to HCD for publishing
+	 * 
+	 * @param replyTo
+	 * @param msg
+	 */
 	void update(Optional<ActorRef> replyTo, Object msg) {
 		log.debug("Inside McsSimulator update: msg is: " + msg);
 		replyTo.ifPresent(actorRef -> actorRef.tell(msg, self()));
 	}
 
+	/**
+	 * This helps in generating Current Position into specific format
+	 * 
+	 * @return
+	 */
 	McsPosUpdate getState() {
 		return new McsPosUpdate(currentState, currentAz, currentEl);
 	}

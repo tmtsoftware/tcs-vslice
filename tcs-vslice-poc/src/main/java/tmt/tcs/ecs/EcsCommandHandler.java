@@ -150,7 +150,8 @@ public class EcsCommandHandler extends BaseCommandHandler {
 						log.info(
 								"Inside EcsCommandHandler initReceive: Init not fully implemented -- only sets state ready!");
 						try {
-							ask(ecsStateActor, new AssemblySetState(azItem(azDrivePowerOn), elItem(elDrivePowerOn)),
+							ask(ecsStateActor,
+									new AssemblySetState(azItem(azDrivePowerOn), elItem(elDrivePowerOn), null, null),
 									5000).toCompletableFuture().get();
 						} catch (Exception e) {
 							log.error(e, "Inside EcsCommandHandler Error setting state");
@@ -182,8 +183,9 @@ public class EcsCommandHandler extends BaseCommandHandler {
 							context().become(followReceive(followCommandActor));
 
 							try {
-								ask(ecsStateActor, new AssemblySetState(azItem(azFollowing), elItem(elFollowing)), 5000)
-										.toCompletableFuture().get();
+								ask(ecsStateActor,
+										new AssemblySetState(azItem(azFollowing), elItem(elFollowing), null, null),
+										5000).toCompletableFuture().get();
 							} catch (Exception e) {
 								log.error(e, "Inside EcsCommandHandler initReceive: Error setting state");
 							}
@@ -232,7 +234,7 @@ public class EcsCommandHandler extends BaseCommandHandler {
 			if (configKey.equals(EcsConfig.setAzimuthCK)) {
 				log.debug("Inside EcsCommandHandler followReceive: Started for: " + configKey);
 				try {
-					ask(ecsStateActor, new AssemblySetState(azItem(azFollowing), elItem(elFollowing)), 5000)
+					ask(ecsStateActor, new AssemblySetState(azItem(azFollowing), elItem(elFollowing), null, null), 5000)
 							.toCompletableFuture().get();
 				} catch (Exception e) {
 					log.error(e, "Inside EcsCommandHandler followReceive: Error setting state");
@@ -248,8 +250,9 @@ public class EcsCommandHandler extends BaseCommandHandler {
 					if (status == Completed) {
 						try {
 							log.debug("Inside EcsCommandHandler followReceive: Command Completed for: " + configKey);
-							ask(ecsStateActor, new AssemblySetState(azItem(azFollowing), elItem(elFollowing)), 5000)
-									.toCompletableFuture().get();
+							ask(ecsStateActor,
+									new AssemblySetState(azItem(azFollowing), elItem(elFollowing), null, null), 5000)
+											.toCompletableFuture().get();
 						} catch (Exception e) {
 							log.error(e, "Inside EcsCommandHandler followReceive: Error setting state");
 						}
@@ -260,7 +263,7 @@ public class EcsCommandHandler extends BaseCommandHandler {
 			} else if (configKey.equals(EcsConfig.setElevationCK)) {
 				log.debug("Inside EcsCommandHandler followReceive: Started for: " + configKey);
 				try {
-					ask(ecsStateActor, new AssemblySetState(azItem(azFollowing), elItem(elFollowing)), 5000)
+					ask(ecsStateActor, new AssemblySetState(azItem(azFollowing), elItem(elFollowing), null, null), 5000)
 							.toCompletableFuture().get();
 				} catch (Exception e) {
 					log.error(e, "Inside EcsCommandHandler followReceive: Error setting state");
@@ -276,8 +279,9 @@ public class EcsCommandHandler extends BaseCommandHandler {
 					if (status == Completed) {
 						try {
 							log.debug("Inside EcsCommandHandler followReceive: Command Completed for: " + configKey);
-							ask(ecsStateActor, new AssemblySetState(azItem(azFollowing), elItem(elFollowing)), 5000)
-									.toCompletableFuture().get();
+							ask(ecsStateActor,
+									new AssemblySetState(azItem(azFollowing), elItem(elFollowing), null, null), 5000)
+											.toCompletableFuture().get();
 						} catch (Exception e) {
 							log.error(e, "Inside EcsCommandHandler followReceive: Error setting state");
 						}
@@ -342,21 +346,19 @@ public class EcsCommandHandler extends BaseCommandHandler {
 	}
 
 	/**
-	 * Based upon command parameters being passed to move command this helps in
-	 * generating DemandMatcher which can be used to track for command
+	 * Based upon command parameters being passed to offset command this helps
+	 * in generating DemandMatcher which can be used to track for command
 	 * completion status
 	 * 
-	 * @param az
-	 * @param el
+	 * @param x
+	 * @param y
 	 * @return DemandMatcher
 	 */
 	public static DemandMatcher posMatcher(double az, double el) {
-		System.out.println("Inside EcsCommandHandler posMatcher Move: Starts");
+		System.out.println("Inside EcsCommandHandler posMatcher Offset: Starts");
 
 		DemandState ds = jadd(new DemandState(EcsConfig.currentPosPrefix), jset(ecsStateKey, ECS_IDLE),
 				jset(EcsConfig.azPosKey, az), jset(EcsConfig.elPosKey, el));
-
-		System.out.println("Inside EcsCommandHandler posMatcher Move: DemandState is: " + ds);
 		return new DemandMatcher(ds, false);
 	}
 

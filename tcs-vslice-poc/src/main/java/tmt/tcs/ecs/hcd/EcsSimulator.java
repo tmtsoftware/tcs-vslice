@@ -13,6 +13,10 @@ import scala.PartialFunction;
 import scala.runtime.BoxedUnit;
 import tmt.tcs.ecs.EcsConfig.EcsState;
 
+/**
+ * This class simulates ECS move operation and send back current position to HCD
+ * for publishing
+ */
 public class EcsSimulator extends AbstractActor {
 
 	LoggingAdapter log = Logging.getLogger(getContext().system(), this);

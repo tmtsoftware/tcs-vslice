@@ -193,7 +193,7 @@ public class TpkAssembly extends JAssemblyController {
 
 	/**
 	 * This overrides JAssemblyController setup function which processes
-	 * incoming SetupConfigArg messages
+	 * incoming SetupConfigArg messages and redirects the same to Command Handler
 	 * 
 	 * @param sca
 	 *            received SetupConfgiArg

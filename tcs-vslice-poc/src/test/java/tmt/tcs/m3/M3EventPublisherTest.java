@@ -3,6 +3,10 @@ package tmt.tcs.m3;
 import static javacsw.util.config.JItems.jadd;
 import static javacsw.util.config.JItems.jset;
 import static junit.framework.TestCase.assertEquals;
+import static tmt.tcs.common.AssemblyStateActor.rotationFollowing;
+import static tmt.tcs.common.AssemblyStateActor.rotationItem;
+import static tmt.tcs.common.AssemblyStateActor.tiltFollowing;
+import static tmt.tcs.common.AssemblyStateActor.tiltItem;
 import static tmt.tcs.m3.M3Config.rotation;
 import static tmt.tcs.m3.M3Config.tilt;
 import static tmt.tcs.test.common.M3TestData.newRotationAndTiltData;
@@ -41,6 +45,7 @@ import javacsw.services.events.IEventService;
 import javacsw.services.events.ITelemetryService;
 import scala.concurrent.duration.FiniteDuration;
 import tmt.tcs.common.AssemblyContext;
+import tmt.tcs.common.AssemblyStateActor.AssemblyState;
 import tmt.tcs.m3.M3FollowActor.UpdatedEventData;
 import tmt.tcs.test.common.M3TestData;
 import tmt.tcs.test.common.TestEnvUtil;
@@ -181,6 +186,9 @@ public class M3EventPublisherTest extends JavaTestKit {
 		ActorRef publisher = newTestPublisher(Optional.of(eventService), Optional.of(telemetryService));
 		ActorRef follower = newTestFollower(Optional.empty(), Optional.of(publisher), Optional.empty());
 
+		// set the state so that Follow Actor Receive Position Parameters
+		setupState(new AssemblyState(null, null, rotationItem(rotationFollowing), tiltItem(tiltFollowing)));
+
 		ActorRef resultSubscriber = system.actorOf(TestSubscriber.props());
 		telemetryService.subscribe(resultSubscriber, false, M3Config.telemetryEventPrefix);
 		expectNoMsg(duration("1 second")); // Wait for the connection
@@ -213,6 +221,9 @@ public class M3EventPublisherTest extends JavaTestKit {
 		ActorRef publisher = newTestPublisher(Optional.of(eventService), Optional.of(telemetryService));
 		ActorRef follower = newTestFollower(Optional.empty(), Optional.of(publisher), Optional.empty());
 
+		// set the state so that Follow Actor Receive Position Parameters
+		setupState(new AssemblyState(null, null, rotationItem(rotationFollowing), tiltItem(tiltFollowing)));
+
 		ActorRef resultSubscriber = system.actorOf(TestSubscriber.props());
 		telemetryService.subscribe(resultSubscriber, false, M3Config.telemetryEventPrefix);
 		expectNoMsg(duration("1 second")); // Wait for the connection
@@ -244,6 +255,15 @@ public class M3EventPublisherTest extends JavaTestKit {
 
 		cleanup(publisher, follower);
 		logger.debug("Inside M3EventPublisherTest test2: ENDS");
+	}
+
+	void setupState(AssemblyState assemblyState) {
+		// These times are important to allow time for test actors to get and
+		// process the state updates when running tests
+		expectNoMsg(FiniteDuration.apply(200, TimeUnit.MILLISECONDS));
+		system.eventStream().publish(assemblyState);
+		// This is here to allow the destination to run and set its state
+		expectNoMsg(FiniteDuration.apply(200, TimeUnit.MILLISECONDS));
 	}
 
 }

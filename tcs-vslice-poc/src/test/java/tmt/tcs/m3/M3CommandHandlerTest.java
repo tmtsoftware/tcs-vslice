@@ -11,10 +11,10 @@ import static javacsw.util.config.JItems.jadd;
 import static javacsw.util.config.JItems.jset;
 import static junit.framework.TestCase.assertTrue;
 import static org.junit.Assert.assertEquals;
-import static tmt.tcs.common.AssemblyStateActor.azDrivePowerOn;
-import static tmt.tcs.common.AssemblyStateActor.azItem;
-import static tmt.tcs.common.AssemblyStateActor.elDrivePowerOn;
-import static tmt.tcs.common.AssemblyStateActor.elItem;
+import static tmt.tcs.common.AssemblyStateActor.rotationDrivePowerOn;
+import static tmt.tcs.common.AssemblyStateActor.rotationItem;
+import static tmt.tcs.common.AssemblyStateActor.tiltDrivePowerOn;
+import static tmt.tcs.common.AssemblyStateActor.tiltItem;
 import static tmt.tcs.m3.M3Config.rotation;
 import static tmt.tcs.m3.hcd.M3Hcd.M3Message.GetM3UpdateNow;
 
@@ -136,7 +136,7 @@ public class M3CommandHandlerTest extends JavaTestKit {
 
 		ActorRef commandHandler = newCommandHandler(m3Hcd, Optional.empty());
 
-		setupState(new AssemblyState(azItem(azDrivePowerOn), elItem(elDrivePowerOn)));
+		setupState(new AssemblyState(null, null, rotationItem(rotationDrivePowerOn), tiltItem(tiltDrivePowerOn)));
 
 		SetupConfigArg sca = Configurations.createSetupConfigArg("testobsId",
 				jadd(sc(M3Config.setRotationCK.prefix()), rotation(2.0)));
@@ -177,7 +177,7 @@ public class M3CommandHandlerTest extends JavaTestKit {
 		commandHandler.tell(evLocation, self());
 
 		// set the state so the command succeeds
-		setupState(new AssemblyState(azItem(azDrivePowerOn), elItem(elDrivePowerOn)));
+		setupState(new AssemblyState(null, null, rotationItem(rotationDrivePowerOn), tiltItem(tiltDrivePowerOn)));
 
 		SetupConfigArg sca = Configurations.createSetupConfigArg("testobsId", sc(M3Config.followCK.prefix()));
 		ActorRef se = system.actorOf(SequentialExecutor.props(commandHandler, sca, Optional.of(fakeAssembly.ref())));
@@ -208,7 +208,7 @@ public class M3CommandHandlerTest extends JavaTestKit {
 				.getEventServiceLocation(IEventService.defaultName, system, timeout).get();
 		commandHandler.tell(evLocation, self());
 
-		setupState(new AssemblyState(azItem(azDrivePowerOn), elItem(elDrivePowerOn)));
+		setupState(new AssemblyState(null, null, rotationItem(rotationDrivePowerOn), tiltItem(tiltDrivePowerOn)));
 
 		SetupConfigArg sca = Configurations.createSetupConfigArg("testobsId", sc(M3Config.followCK.prefix()));
 		ActorRef se = system.actorOf(SequentialExecutor.props(commandHandler, sca, Optional.of(fakeAssembly.ref())));

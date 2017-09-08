@@ -154,12 +154,13 @@ public class McsCommandHandler extends BaseCommandHandler {
 						log.info(
 								"Inside McsCommandHandler initReceive: Init not fully implemented -- only sets state ready!");
 						try {
-							ask(mcsStateActor, new AssemblySetState(azItem(azDrivePowerOn), elItem(elDrivePowerOn)),
+							ask(mcsStateActor,
+									new AssemblySetState(azItem(azDrivePowerOn), elItem(elDrivePowerOn), null, null),
 									5000).toCompletableFuture().get();
 						} catch (Exception e) {
 							log.error(e, "Inside McsCommandHandler initReceive: Error setting state");
 						}
-						
+
 						mcsHcd.tell(GetMcsDefaultUpdate, self());
 						commandOriginator.ifPresent(actorRef -> actorRef.tell(Completed, self()));
 
@@ -184,8 +185,9 @@ public class McsCommandHandler extends BaseCommandHandler {
 							context().become(followReceive(followCommandActor));
 
 							try {
-								ask(mcsStateActor, new AssemblySetState(azItem(azFollowing), elItem(elFollowing)), 5000)
-										.toCompletableFuture().get();
+								ask(mcsStateActor,
+										new AssemblySetState(azItem(azFollowing), elItem(elFollowing), null, null),
+										5000).toCompletableFuture().get();
 							} catch (Exception e) {
 								log.error(e, "Inside McsCommandHandler initReceive: Error setting state");
 							}
@@ -211,7 +213,8 @@ public class McsCommandHandler extends BaseCommandHandler {
 
 								context().become(actorExecutingReceive(offsetActorRef, commandOriginator));
 								try {
-									ask(mcsStateActor, new AssemblySetState(azItem(azFollowing), elItem(elFollowing)),
+									ask(mcsStateActor,
+											new AssemblySetState(azItem(azFollowing), elItem(elFollowing), null, null),
 											5000).toCompletableFuture().get();
 								} catch (Exception e) {
 									log.error(e, "Inside McsCommandHandler initReceive: Error setting state");
@@ -246,6 +249,13 @@ public class McsCommandHandler extends BaseCommandHandler {
 				self()));
 	}
 
+	/**
+	 * This method helps in receiving commands once MCS Assembly is in Following
+	 * State
+	 * 
+	 * @param followActor
+	 * @return
+	 */
 	private PartialFunction<Object, BoxedUnit> followReceive(ActorRef followActor) {
 		return stateReceive().orElse(ReceiveBuilder.match(ExecuteOne.class, t -> {
 			SetupConfig sc = t.sc();
@@ -257,7 +267,7 @@ public class McsCommandHandler extends BaseCommandHandler {
 			if (configKey.equals(McsConfig.setAzimuthCK)) {
 				log.debug("Inside McsCommandHandler followReceive: Started for: " + configKey);
 				try {
-					ask(mcsStateActor, new AssemblySetState(azItem(azFollowing), elItem(elFollowing)), 5000)
+					ask(mcsStateActor, new AssemblySetState(azItem(azFollowing), elItem(elFollowing), null, null), 5000)
 							.toCompletableFuture().get();
 				} catch (Exception e) {
 					log.error(e, "Inside McsCommandHandler followReceive: Error setting state");
@@ -273,8 +283,9 @@ public class McsCommandHandler extends BaseCommandHandler {
 					if (status == Completed) {
 						try {
 							log.debug("Inside McsCommandHandler followReceive: Command Completed for: " + configKey);
-							ask(mcsStateActor, new AssemblySetState(azItem(azFollowing), elItem(elFollowing)), 5000)
-									.toCompletableFuture().get();
+							ask(mcsStateActor,
+									new AssemblySetState(azItem(azFollowing), elItem(elFollowing), null, null), 5000)
+											.toCompletableFuture().get();
 						} catch (Exception e) {
 							log.error(e, "Inside McsCommandHandler followReceive: Error setting state");
 						}
@@ -285,7 +296,7 @@ public class McsCommandHandler extends BaseCommandHandler {
 			} else if (configKey.equals(McsConfig.setElevationCK)) {
 				log.debug("Inside McsCommandHandler followReceive: Started for: " + configKey);
 				try {
-					ask(mcsStateActor, new AssemblySetState(azItem(azFollowing), elItem(elFollowing)), 5000)
+					ask(mcsStateActor, new AssemblySetState(azItem(azFollowing), elItem(elFollowing), null, null), 5000)
 							.toCompletableFuture().get();
 				} catch (Exception e) {
 					log.error(e, "Inside McsCommandHandler followReceive: Error setting state");
@@ -301,8 +312,9 @@ public class McsCommandHandler extends BaseCommandHandler {
 					if (status == Completed) {
 						try {
 							log.debug("Inside McsCommandHandler followReceive: Command Completed for: " + configKey);
-							ask(mcsStateActor, new AssemblySetState(azItem(azFollowing), elItem(elFollowing)), 5000)
-									.toCompletableFuture().get();
+							ask(mcsStateActor,
+									new AssemblySetState(azItem(azFollowing), elItem(elFollowing), null, null), 5000)
+											.toCompletableFuture().get();
 						} catch (Exception e) {
 							log.error(e, "Inside McsCommandHandler followReceive: Error setting state");
 						}
@@ -312,16 +324,15 @@ public class McsCommandHandler extends BaseCommandHandler {
 				});
 			} else if (configKey.equals(McsConfig.offsetCK)) {
 				if (!(az(currentState()).equals(azDatumed) || az(currentState()).equals(azDrivePowerOn))
-						&& !(el(currentState()).equals(elDatumed)
-								|| el(currentState()).equals(elDrivePowerOn))) {
-					String errorMessage = "Mcs Assembly state of " + az(currentState()) + "/"
-							+ el(currentState()) + " does not allow Offset";
+						&& !(el(currentState()).equals(elDatumed) || el(currentState()).equals(elDrivePowerOn))) {
+					String errorMessage = "Mcs Assembly state of " + az(currentState()) + "/" + el(currentState())
+							+ " does not allow Offset";
 					log.debug("Inside McsCommandHandler followReceive: Error Message is: " + errorMessage);
 					sender().tell(new NoLongerValid(new WrongInternalStateIssue(errorMessage)), self());
 				} else {
 					Double initialAz = 0.0;
 					Double initialEl = 0.0;
-					
+
 					if (isHcdAvailable()) {
 						log.debug("Inside McsCommandHandler followReceive: ExecuteOne: offsetCK Command ");
 						Props props = McsOffsetCommand.props(assemblyContext, jset(McsConfig.az, initialAz),
@@ -332,8 +343,9 @@ public class McsCommandHandler extends BaseCommandHandler {
 
 						context().become(actorExecutingReceive(offsetActorRef, commandOriginator));
 						try {
-							ask(mcsStateActor, new AssemblySetState(azItem(azFollowing), elItem(elFollowing)),
-									5000).toCompletableFuture().get();
+							ask(mcsStateActor,
+									new AssemblySetState(azItem(azFollowing), elItem(elFollowing), null, null), 5000)
+											.toCompletableFuture().get();
 						} catch (Exception e) {
 							log.error(e, "Inside McsCommandHandler followReceive: Error setting state");
 						}
@@ -342,13 +354,14 @@ public class McsCommandHandler extends BaseCommandHandler {
 						hcdNotAvailableResponse(commandOriginator);
 					}
 				}
-			} 
+			}
 		}).matchAny(t -> log.warning("Inside McsCommandHandler followReceive:  received an unknown message: " + t))
 				.build());
 	}
 
 	/**
-	 * This method helps in executing receive operation
+	 * This method helps in executing command and forwarding the same to Command
+	 * Class
 	 * 
 	 * @param currentCommand
 	 * @param commandOriginator

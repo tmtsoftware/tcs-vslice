@@ -3,6 +3,10 @@ package tmt.tcs.m3;
 import static javacsw.services.pkg.JSupervisor.HaltComponent;
 import static javacsw.util.config.JItems.jset;
 import static junit.framework.TestCase.assertEquals;
+import static tmt.tcs.common.AssemblyStateActor.rotationFollowing;
+import static tmt.tcs.common.AssemblyStateActor.rotationItem;
+import static tmt.tcs.common.AssemblyStateActor.tiltFollowing;
+import static tmt.tcs.common.AssemblyStateActor.tiltItem;
 import static tmt.tcs.m3.M3Config.rotation;
 import static tmt.tcs.m3.M3Config.tilt;
 import static tmt.tcs.test.common.M3TestData.newRotationAndTiltData;
@@ -41,6 +45,7 @@ import javacsw.services.events.IEventService;
 import javacsw.services.events.ITelemetryService;
 import scala.concurrent.duration.FiniteDuration;
 import tmt.tcs.common.AssemblyContext;
+import tmt.tcs.common.AssemblyStateActor.AssemblyState;
 import tmt.tcs.m3.M3Control.GoToPosition;
 import tmt.tcs.m3.M3EventPublisher.TelemetryUpdate;
 import tmt.tcs.m3.M3FollowActor.UpdatedEventData;
@@ -203,6 +208,9 @@ public class M3FollowActorTest extends JavaTestKit {
 		TestActorRef<M3FollowActor> followActor = newFollower(Optional.of(fakeM3Control.ref()),
 				Optional.of(fakePublisher.ref()), Optional.of(fakeStateActor.ref()));
 
+		// set the state so that Follow Actor Receive Position Parameters
+		setupState(new AssemblyState(null, null, rotationItem(rotationFollowing), tiltItem(tiltFollowing)));
+
 		followActor.tell(new UpdatedEventData(rotation(0), tilt(0), Events.getEventTime()), self());
 
 		fakeM3Control.expectMsgClass(GoToPosition.class);
@@ -214,6 +222,9 @@ public class M3FollowActorTest extends JavaTestKit {
 	public void test4() {
 		TestActorRef<M3FollowActor> followActor = newFollower(Optional.of(fakeM3Control.ref()),
 				Optional.of(fakePublisher.ref()), Optional.of(fakeStateActor.ref()));
+
+		// set the state so that Follow Actor Receive Position Parameters
+		setupState(new AssemblyState(null, null, rotationItem(rotationFollowing), tiltItem(tiltFollowing)));
 
 		double testEl = 10.0;
 
@@ -248,6 +259,15 @@ public class M3FollowActorTest extends JavaTestKit {
 		assertEquals(positionExpected, m3Position);
 
 		cleanup(Optional.empty(), followActor);
+	}
+
+	void setupState(AssemblyState assemblyState) {
+		// These times are important to allow time for test actors to get and
+		// process the state updates when running tests
+		expectNoMsg(FiniteDuration.apply(200, TimeUnit.MILLISECONDS));
+		system.eventStream().publish(assemblyState);
+		// This is here to allow the destination to run and set its state
+		expectNoMsg(FiniteDuration.apply(200, TimeUnit.MILLISECONDS));
 	}
 
 }

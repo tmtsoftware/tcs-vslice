@@ -7,16 +7,16 @@ import static javacsw.util.config.JItems.jitem;
 import static javacsw.util.config.JItems.jset;
 import static javacsw.util.config.JItems.jvalue;
 import static scala.compat.java8.OptionConverters.toJava;
-import static tmt.tcs.common.AssemblyStateActor.az;
-import static tmt.tcs.common.AssemblyStateActor.azDatumed;
-import static tmt.tcs.common.AssemblyStateActor.azDrivePowerOn;
-import static tmt.tcs.common.AssemblyStateActor.azFollowing;
-import static tmt.tcs.common.AssemblyStateActor.azItem;
-import static tmt.tcs.common.AssemblyStateActor.el;
-import static tmt.tcs.common.AssemblyStateActor.elDatumed;
-import static tmt.tcs.common.AssemblyStateActor.elDrivePowerOn;
-import static tmt.tcs.common.AssemblyStateActor.elFollowing;
-import static tmt.tcs.common.AssemblyStateActor.elItem;
+import static tmt.tcs.common.AssemblyStateActor.rotation;
+import static tmt.tcs.common.AssemblyStateActor.rotationDatumed;
+import static tmt.tcs.common.AssemblyStateActor.rotationDrivePowerOn;
+import static tmt.tcs.common.AssemblyStateActor.rotationFollowing;
+import static tmt.tcs.common.AssemblyStateActor.rotationItem;
+import static tmt.tcs.common.AssemblyStateActor.tilt;
+import static tmt.tcs.common.AssemblyStateActor.tiltDatumed;
+import static tmt.tcs.common.AssemblyStateActor.tiltDrivePowerOn;
+import static tmt.tcs.common.AssemblyStateActor.tiltFollowing;
+import static tmt.tcs.common.AssemblyStateActor.tiltItem;
 import static tmt.tcs.m3.M3Config.M3_IDLE;
 import static tmt.tcs.m3.M3Config.m3StateKey;
 import static tmt.tcs.m3.hcd.M3Hcd.M3Message.GetM3DefaultUpdate;
@@ -150,8 +150,8 @@ public class M3CommandHandler extends BaseCommandHandler {
 						log.info(
 								"Inside M3CommandHandler initReceive: Init not fully implemented -- only sets state ready!");
 						try {
-							ask(m3StateActor, new AssemblySetState(azItem(azDrivePowerOn), elItem(elDrivePowerOn)),
-									5000).toCompletableFuture().get();
+							ask(m3StateActor, new AssemblySetState(null, null, rotationItem(rotationDrivePowerOn),
+									tiltItem(tiltDrivePowerOn)), 5000).toCompletableFuture().get();
 						} catch (Exception e) {
 							log.error(e, "Inside M3CommandHandler Error setting state");
 						}
@@ -159,11 +159,12 @@ public class M3CommandHandler extends BaseCommandHandler {
 						commandOriginator.ifPresent(actorRef -> actorRef.tell(Completed, self()));
 
 					} else if (configKey.equals(M3Config.followCK)) {
-						if (!(az(currentState()).equals(azDatumed) || az(currentState()).equals(azDrivePowerOn))
-								&& !(el(currentState()).equals(elDatumed)
-										|| az(currentState()).equals(elDrivePowerOn))) {
-							String errorMessage = "M3 Assembly state of " + az(currentState()) + "/"
-									+ el(currentState()) + " does not allow follow";
+						if (!(rotation(currentState()).equals(rotationDatumed)
+								|| rotation(currentState()).equals(rotationDrivePowerOn))
+								&& !(tilt(currentState()).equals(tiltDatumed)
+										|| tilt(currentState()).equals(tiltDrivePowerOn))) {
+							String errorMessage = "M3 Assembly state of " + rotation(currentState()) + "/"
+									+ tilt(currentState()) + " does not allow follow";
 							log.debug("Inside M3CommandHandler initReceive: Error Message is: " + errorMessage);
 							sender().tell(new NoLongerValid(new WrongInternalStateIssue(errorMessage)), self());
 						} else {
@@ -183,8 +184,8 @@ public class M3CommandHandler extends BaseCommandHandler {
 							context().become(followReceive(followCommandActor));
 
 							try {
-								ask(m3StateActor, new AssemblySetState(azItem(azFollowing), elItem(elFollowing)), 5000)
-										.toCompletableFuture().get();
+								ask(m3StateActor, new AssemblySetState(null, null, rotationItem(rotationFollowing),
+										tiltItem(tiltFollowing)), 5000).toCompletableFuture().get();
 							} catch (Exception e) {
 								log.error(e, "Inside M3CommandHandler initReceive: Error setting state");
 							}
@@ -231,8 +232,9 @@ public class M3CommandHandler extends BaseCommandHandler {
 			if (configKey.equals(M3Config.setRotationCK)) {
 				log.debug("Inside M3CommandHandler followReceive: Started for: " + configKey);
 				try {
-					ask(m3StateActor, new AssemblySetState(azItem(azFollowing), elItem(elFollowing)), 5000)
-							.toCompletableFuture().get();
+					ask(m3StateActor,
+							new AssemblySetState(null, null, rotationItem(rotationFollowing), tiltItem(tiltFollowing)),
+							5000).toCompletableFuture().get();
 				} catch (Exception e) {
 					log.error(e, "Inside M3CommandHandler followReceive: Error setting state");
 				}
@@ -247,8 +249,8 @@ public class M3CommandHandler extends BaseCommandHandler {
 					if (status == Completed) {
 						try {
 							log.debug("Inside M3CommandHandler followReceive: Command Completed for: " + configKey);
-							ask(m3StateActor, new AssemblySetState(azItem(azFollowing), elItem(elFollowing)), 5000)
-									.toCompletableFuture().get();
+							ask(m3StateActor, new AssemblySetState(null, null, rotationItem(rotationFollowing),
+									tiltItem(tiltFollowing)), 5000).toCompletableFuture().get();
 						} catch (Exception e) {
 							log.error(e, "Inside M3CommandHandler followReceive: Error setting state");
 						}
@@ -259,8 +261,9 @@ public class M3CommandHandler extends BaseCommandHandler {
 			} else if (configKey.equals(M3Config.setTiltCK)) {
 				log.debug("Inside M3CommandHandler followReceive: Started for: " + configKey);
 				try {
-					ask(m3StateActor, new AssemblySetState(azItem(azFollowing), elItem(elFollowing)), 5000)
-							.toCompletableFuture().get();
+					ask(m3StateActor,
+							new AssemblySetState(null, null, rotationItem(rotationFollowing), tiltItem(tiltFollowing)),
+							5000).toCompletableFuture().get();
 				} catch (Exception e) {
 					log.error(e, "Inside M3CommandHandler followReceive: Error setting state");
 				}
@@ -275,8 +278,8 @@ public class M3CommandHandler extends BaseCommandHandler {
 					if (status == Completed) {
 						try {
 							log.debug("Inside M3CommandHandler followReceive: Command Completed for: " + configKey);
-							ask(m3StateActor, new AssemblySetState(azItem(azFollowing), elItem(elFollowing)), 5000)
-									.toCompletableFuture().get();
+							ask(m3StateActor, new AssemblySetState(null, null, rotationItem(rotationFollowing),
+									tiltItem(tiltFollowing)), 5000).toCompletableFuture().get();
 						} catch (Exception e) {
 							log.error(e, "Inside M3CommandHandler followReceive: Error setting state");
 						}

@@ -3,6 +3,10 @@ package tmt.tcs.mcs;
 import static javacsw.util.config.JItems.jadd;
 import static javacsw.util.config.JItems.jset;
 import static junit.framework.TestCase.assertEquals;
+import static tmt.tcs.common.AssemblyStateActor.azFollowing;
+import static tmt.tcs.common.AssemblyStateActor.azItem;
+import static tmt.tcs.common.AssemblyStateActor.elFollowing;
+import static tmt.tcs.common.AssemblyStateActor.elItem;
 import static tmt.tcs.mcs.McsConfig.az;
 import static tmt.tcs.mcs.McsConfig.el;
 import static tmt.tcs.test.common.McsTestData.newAzAndElData;
@@ -41,6 +45,7 @@ import javacsw.services.events.IEventService;
 import javacsw.services.events.ITelemetryService;
 import scala.concurrent.duration.FiniteDuration;
 import tmt.tcs.common.AssemblyContext;
+import tmt.tcs.common.AssemblyStateActor.AssemblyState;
 import tmt.tcs.mcs.McsFollowActor.UpdatedEventData;
 import tmt.tcs.test.common.McsTestData;
 import tmt.tcs.test.common.TestEnvUtil;
@@ -183,6 +188,9 @@ public class McsEventPublisherTest extends JavaTestKit {
 		ActorRef publisher = newTestPublisher(Optional.of(eventService), Optional.of(telemetryService));
 		ActorRef follower = newTestFollower(Optional.empty(), Optional.of(publisher), Optional.empty());
 
+		// set the state so that Follow Actor Receive Position Parameters
+		setupState(new AssemblyState(azItem(azFollowing), elItem(elFollowing), null, null));
+
 		ActorRef resultSubscriber = system.actorOf(TestSubscriber.props());
 		telemetryService.subscribe(resultSubscriber, false, McsConfig.telemetryEventPrefix);
 		expectNoMsg(duration("1 second")); // Wait for the connection
@@ -215,6 +223,9 @@ public class McsEventPublisherTest extends JavaTestKit {
 		ActorRef publisher = newTestPublisher(Optional.of(eventService), Optional.of(telemetryService));
 		ActorRef follower = newTestFollower(Optional.empty(), Optional.of(publisher), Optional.empty());
 
+		// set the state so that Follow Actor Receive Position Parameters
+		setupState(new AssemblyState(azItem(azFollowing), elItem(elFollowing), null, null));
+
 		ActorRef resultSubscriber = system.actorOf(TestSubscriber.props());
 		telemetryService.subscribe(resultSubscriber, false, McsConfig.telemetryEventPrefix);
 		expectNoMsg(duration("1 second")); // Wait for the connection
@@ -246,6 +257,15 @@ public class McsEventPublisherTest extends JavaTestKit {
 
 		cleanup(publisher, follower);
 		logger.debug("Inside McsEventPublisherTest test2: ENDS");
+	}
+
+	void setupState(AssemblyState assemblyState) {
+		// These times are important to allow time for test actors to get and
+		// process the state updates when running tests
+		expectNoMsg(FiniteDuration.apply(200, TimeUnit.MILLISECONDS));
+		system.eventStream().publish(assemblyState);
+		// This is here to allow the destination to run and set its state
+		expectNoMsg(FiniteDuration.apply(200, TimeUnit.MILLISECONDS));
 	}
 
 }

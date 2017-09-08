@@ -114,10 +114,11 @@ public class M3Hcd extends BaseHcd {
 				self().tell(M3Message.GetM3DefaultUpdate, self());
 			}
 		}).match(M3PosUpdate.class, e -> {
-			log.debug("Inside M3Hcd Received M3Update");
+			log.debug("Inside M3Hcd Received M3Update: " + e);
 			current = e;
 			CurrentState m3State = cs(M3Config.currentPosPrefix, jset(m3StateKey, Choice(e.state.toString())),
 					jset(M3Config.rotationPosKey, e.rotationPosition), jset(M3Config.tiltPosKey, e.tiltPosition));
+			log.debug("Inside M3Hcd Sending CurrentState: " + m3State);
 			notifySubscribers(m3State);
 		}).matchAny(x -> log.warning("Inside M3Hcd Unexpected message :unhandledPF: " + x)).build());
 	}

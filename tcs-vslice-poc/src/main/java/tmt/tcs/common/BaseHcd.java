@@ -11,7 +11,7 @@ import scala.runtime.BoxedUnit;
 public abstract class BaseHcd extends JHcdController {
 
 	/**
-	 * HDC's intializing receive method receives HCD messages
+	 * HDC's initializing receive method receives HCD messages
 	 * 
 	 * @param supervisor
 	 * @return

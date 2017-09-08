@@ -1,9 +1,9 @@
 package tmt.tcs.m3;
 
-import static tmt.tcs.common.AssemblyStateActor.az;
-import static tmt.tcs.common.AssemblyStateActor.azFollowing;
-import static tmt.tcs.common.AssemblyStateActor.el;
-import static tmt.tcs.common.AssemblyStateActor.elFollowing;
+import static tmt.tcs.common.AssemblyStateActor.rotation;
+import static tmt.tcs.common.AssemblyStateActor.rotationFollowing;
+import static tmt.tcs.common.AssemblyStateActor.tilt;
+import static tmt.tcs.common.AssemblyStateActor.tiltFollowing;
 
 import java.time.Instant;
 import java.util.Optional;
@@ -24,6 +24,10 @@ import tmt.tcs.common.AssemblyStateActor.AssemblyState;
 import tmt.tcs.common.BaseFollowActor;
 import tmt.tcs.m3.M3EventPublisher.TelemetryUpdate;
 
+/**
+ * This class receives M3 specific demand being forwarded by Event Subscriber
+ * and send the same to M3Control
+ */
 public class M3FollowActor extends BaseFollowActor {
 
 	LoggingAdapter log = Logging.getLogger(getContext().system(), this);
@@ -59,20 +63,20 @@ public class M3FollowActor extends BaseFollowActor {
 		}).match(UpdatedEventData.class, t -> {
 			m3StateActor.ifPresent(actorRef -> actorRef.tell(new AssemblyGetState(), self()));
 
-			log.info("Inside M3FollowActor followingReceive: Rotation state is: " + az(currentState())
-					+ ": Tilt state is: " + el(currentState()));
+			log.info("Inside M3FollowActor followingReceive: Rotation state is: " + rotation(currentState())
+					+ ": Tilt state is: " + tilt(currentState()));
 
-			if (az(currentState()).equals(azFollowing) && el(currentState()).equals(elFollowing)) {
+			if (rotation(currentState()).equals(rotationFollowing) && tilt(currentState()).equals(tiltFollowing)) {
 				log.info("Inside M3FollowActor followingReceive: Got an Update Event: " + t);
 
-				sendEcsPosition(t.rotation, t.tilt);
+				sendM3Position(t.rotation, t.tilt);
 
 				// Post a StatusEvent for telemetry updates
 				sendTelemetryUpdate(t.rotation, t.tilt);
 
 				context().become(followingReceive(t.rotation, t.tilt));
 			} else {
-				String errorMessage = "Assembly State " + az(currentState()) + "/" + el(currentState())
+				String errorMessage = "Assembly State " + rotation(currentState()) + "/" + tilt(currentState())
 						+ " does not allow moving M3";
 				log.error("Inside M3FollowActor followingReceive: Error Message is: " + errorMessage);
 			}
@@ -89,8 +93,8 @@ public class M3FollowActor extends BaseFollowActor {
 		}).matchAny(t -> log.warning("Inside M3FollowActor followingReceive: Unexpected message is: " + t)).build());
 	}
 
-	private void sendEcsPosition(DoubleItem rotation, DoubleItem tilt) {
-		log.debug("Inside M3FollowActor sendEcsPosition: rotation is: " + rotation + ": tilt is: " + tilt);
+	private void sendM3Position(DoubleItem rotation, DoubleItem tilt) {
+		log.debug("Inside M3FollowActor sendM3Position: rotation is: " + rotation + ": tilt is: " + tilt);
 		m3Control.ifPresent(actorRef -> actorRef.tell(new M3Control.GoToPosition(rotation, tilt), self()));
 	}
 

@@ -211,7 +211,7 @@ public class TcsCommandHandler extends BaseCommandHandler {
 				currentCommand.tell(PoisonPill.getInstance(), self());
 				return null;
 			});
-			
+
 			context().become(initReceive());
 		}).
 
@@ -222,16 +222,6 @@ public class TcsCommandHandler extends BaseCommandHandler {
 
 				match(SetupConfig.class, sc -> {
 					log.debug("Inside TcsCommandHandler actorExecutingReceive: SetupConfig is: " + sc);
-					/*if (TcsConfig.offsetCK.equals(sc.configKey())) {
-						ActorRef offsetActorRef = context().actorOf(TcsOffsetCommand.props(assemblyContext, sc,
-								mcsRefActor, ecsRefActor, m3RefActor, tpkRefActor, currentState(),
-								Optional.of(tcsStateActor), eventService.get(), allEventPublisher));
-						context().become(actorExecutingReceive(offsetActorRef, commandOriginator));
-
-						offsetActorRef.tell(JSequentialExecutor.CommandStart(), self());
-
-						commandOriginator.ifPresent(actorRef -> actorRef.tell(Completed, self()));
-					}*/
 				}).
 
 				match(ExecuteOne.class, t -> {
@@ -242,18 +232,43 @@ public class TcsCommandHandler extends BaseCommandHandler {
 				.build();
 	}
 
+	/**
+	 * This helps creating TcsEventSubscriber ActorRef when EventService is
+	 * being received by Location Handler
+	 * 
+	 * @param eventService
+	 * @return ActorRef
+	 */
 	private ActorRef createTcsEventSubscriber(IEventService eventService) {
 		log.debug("Inside TcsCommandHandler createTcsEventSubscriber: Creating Event Subscriber ");
 		return context().actorOf(TcsEventSubscriber.props(assemblyContext, allEventPublisher, eventService),
 				"tcseventsubscriber");
 	}
 
+	/**
+	 * This helps creating WebEventSubscriber ActorRef when EventService is
+	 * being received by Location Handler
+	 * 
+	 * @param eventService
+	 * @return ActorRef
+	 */
 	private ActorRef createWebEventSubscriber(IEventService eventService) {
 		log.debug("Inside TcsCommandHandler createWebEventSubscriber: Creating Event Subscriber ");
 		return context().actorOf(WebEventSubscriber.props(assemblyContext, Optional.empty(), eventService),
 				"webeventsubscriber");
 	}
 
+	/**
+	 * This helps in creating TcsCommandHandler Prop
+	 * 
+	 * @param ac
+	 * @param mcsRefActor
+	 * @param ecsRefActor
+	 * @param m3RefActor
+	 * @param tpkRefActor
+	 * @param allEventPublisher
+	 * @return Props
+	 */
 	public static Props props(AssemblyContext ac, Optional<ActorRef> mcsRefActor, Optional<ActorRef> ecsRefActor,
 			Optional<ActorRef> m3RefActor, Optional<ActorRef> tpkRefActor, Optional<ActorRef> allEventPublisher) {
 		return Props.create(new Creator<TcsCommandHandler>() {

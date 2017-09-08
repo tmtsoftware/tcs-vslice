@@ -113,10 +113,11 @@ public class EcsHcd extends BaseHcd {
 				self().tell(EcsMessage.GetEcsDefaultUpdate, self());
 			}
 		}).match(EcsPosUpdate.class, e -> {
-			log.debug("Inside EcsHcd Received EcsUpdate");
+			log.debug("Inside EcsHcd Received EcsUpdate: " + e);
 			current = e;
 			CurrentState ecsState = cs(EcsConfig.currentPosPrefix, jset(ecsStateKey, Choice(e.state.toString())),
 					jset(EcsConfig.azPosKey, e.azPosition), jset(EcsConfig.elPosKey, e.elPosition));
+			log.debug("Inside EcsHcd Sending CurrentState: " + ecsState);
 			notifySubscribers(ecsState);
 		}).matchAny(x -> log.warning("Inside EcsHcd Unexpected message :unhandledPF: " + x)).build());
 	}

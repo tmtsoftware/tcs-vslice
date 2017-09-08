@@ -3,6 +3,10 @@ package tmt.tcs.ecs;
 import static javacsw.services.pkg.JSupervisor.HaltComponent;
 import static javacsw.util.config.JItems.jset;
 import static junit.framework.TestCase.assertEquals;
+import static tmt.tcs.common.AssemblyStateActor.azFollowing;
+import static tmt.tcs.common.AssemblyStateActor.azItem;
+import static tmt.tcs.common.AssemblyStateActor.elFollowing;
+import static tmt.tcs.common.AssemblyStateActor.elItem;
 import static tmt.tcs.ecs.EcsConfig.az;
 import static tmt.tcs.ecs.EcsConfig.el;
 import static tmt.tcs.test.common.EcsTestData.newAzAndElData;
@@ -41,6 +45,7 @@ import javacsw.services.events.IEventService;
 import javacsw.services.events.ITelemetryService;
 import scala.concurrent.duration.FiniteDuration;
 import tmt.tcs.common.AssemblyContext;
+import tmt.tcs.common.AssemblyStateActor.AssemblyState;
 import tmt.tcs.ecs.EcsControl.GoToPosition;
 import tmt.tcs.ecs.EcsEventPublisher.TelemetryUpdate;
 import tmt.tcs.ecs.EcsFollowActor.UpdatedEventData;
@@ -202,6 +207,9 @@ public class EcsFollowActorTest extends JavaTestKit {
 		TestActorRef<EcsFollowActor> followActor = newFollower(Optional.of(fakeEcsControl.ref()),
 				Optional.of(fakePublisher.ref()), Optional.of(fakeStateActor.ref()));
 
+		// set the state so that Follow Actor Receive Position Parameters
+		setupState(new AssemblyState(azItem(azFollowing), elItem(elFollowing), null, null));
+
 		followActor.tell(new UpdatedEventData(az(0), el(0), Events.getEventTime()), self());
 
 		fakeEcsControl.expectMsgClass(GoToPosition.class);
@@ -213,6 +221,9 @@ public class EcsFollowActorTest extends JavaTestKit {
 	public void test4() {
 		TestActorRef<EcsFollowActor> followActor = newFollower(Optional.of(fakeEcsControl.ref()),
 				Optional.of(fakePublisher.ref()), Optional.of(fakeStateActor.ref()));
+
+		// set the state so that Follow Actor Receive Position Parameters
+		setupState(new AssemblyState(azItem(azFollowing), elItem(elFollowing), null, null));
 
 		double testEl = 10.0;
 
@@ -246,6 +257,15 @@ public class EcsFollowActorTest extends JavaTestKit {
 		assertEquals(positionExpected, ecsPosition);
 
 		cleanup(Optional.empty(), followActor);
+	}
+
+	void setupState(AssemblyState assemblyState) {
+		// These times are important to allow time for test actors to get and
+		// process the state updates when running tests
+		expectNoMsg(FiniteDuration.apply(200, TimeUnit.MILLISECONDS));
+		system.eventStream().publish(assemblyState);
+		// This is here to allow the destination to run and set its state
+		expectNoMsg(FiniteDuration.apply(200, TimeUnit.MILLISECONDS));
 	}
 
 }

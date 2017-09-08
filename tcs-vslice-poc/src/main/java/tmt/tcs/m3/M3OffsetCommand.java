@@ -6,14 +6,14 @@ import static javacsw.util.config.JItems.jadd;
 import static javacsw.util.config.JItems.jitem;
 import static javacsw.util.config.JItems.jset;
 import static javacsw.util.config.JItems.jvalue;
-import static tmt.tcs.common.AssemblyStateActor.az;
-import static tmt.tcs.common.AssemblyStateActor.azFollowing;
-import static tmt.tcs.common.AssemblyStateActor.azItem;
-import static tmt.tcs.common.AssemblyStateActor.azPointing;
-import static tmt.tcs.common.AssemblyStateActor.el;
-import static tmt.tcs.common.AssemblyStateActor.elFollowing;
-import static tmt.tcs.common.AssemblyStateActor.elItem;
-import static tmt.tcs.common.AssemblyStateActor.elPointing;
+import static tmt.tcs.common.AssemblyStateActor.rotation;
+import static tmt.tcs.common.AssemblyStateActor.rotationFollowing;
+import static tmt.tcs.common.AssemblyStateActor.rotationItem;
+import static tmt.tcs.common.AssemblyStateActor.rotationPointing;
+import static tmt.tcs.common.AssemblyStateActor.tilt;
+import static tmt.tcs.common.AssemblyStateActor.tiltFollowing;
+import static tmt.tcs.common.AssemblyStateActor.tiltItem;
+import static tmt.tcs.common.AssemblyStateActor.tiltPointing;
 
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -73,8 +73,8 @@ public class M3OffsetCommand extends BaseCommand {
 			AssemblyState m3StartState) {
 
 		return ReceiveBuilder.matchEquals(JSequentialExecutor.CommandStart(), t -> {
-			if (!(az(m3StartState).equals(azPointing) && az(m3StartState).equals(elPointing))) {
-				String errorMessage = "M3 Assembly state of " + az(m3StartState) + "/" + el(m3StartState)
+			if (!(rotation(m3StartState).equals(rotationPointing) && tilt(m3StartState).equals(tiltPointing))) {
+				String errorMessage = "M3 Assembly state of " + rotation(m3StartState) + "/" + tilt(m3StartState)
 						+ " does not allow move";
 				log.debug("Inside M3OffsetCommand: Error Message is: " + errorMessage);
 				sender().tell(new NoLongerValid(new WrongInternalStateIssue(errorMessage)), self());
@@ -92,7 +92,8 @@ public class M3OffsetCommand extends BaseCommand {
 				DemandMatcher stateMatcher = M3CommandHandler.posMatcher(x, y);
 				SetupConfig scOut = jadd(sc(M3Config.offsetPrefix), jset(M3Config.rotation, x), jset(M3Config.tilt, y));
 
-				sendState(m3StateActor, new AssemblySetState(azItem(azFollowing), elItem(elFollowing)));
+				sendState(m3StateActor,
+						new AssemblySetState(null, null, rotationItem(rotationFollowing), tiltItem(tiltFollowing)));
 
 				m3Hcd.tell(new HcdController.Submit(scOut), self());
 
@@ -101,7 +102,8 @@ public class M3OffsetCommand extends BaseCommand {
 						status -> {
 							if (status == Completed) {
 								log.debug("Inside M3OffsetCommand: Move Command Completed");
-								sendState(m3StateActor, new AssemblySetState(azItem(azPointing), elItem(elPointing)));
+								sendState(m3StateActor, new AssemblySetState(null, null, rotationItem(rotationPointing),
+										tiltItem(tiltPointing)));
 							} else if (status instanceof Error) {
 								log.error("Inside M3OffsetCommand: Offset command match failed with message: "
 										+ ((Error) status).message());

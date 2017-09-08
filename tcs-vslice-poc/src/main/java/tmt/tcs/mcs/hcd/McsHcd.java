@@ -123,14 +123,19 @@ public class McsHcd extends BaseHcd {
 				self().tell(McsMessage.GetMcsDefaultUpdate, self());
 			}
 		}).match(McsPosUpdate.class, e -> {
-			log.debug("Inside McsHcd Received McsUpdate");
+			log.debug("Inside McsHcd Received McsUpdate: " + e);
 			current = e;
 			CurrentState mcsState = cs(McsConfig.currentPosPrefix, jset(mcsStateKey, Choice(e.state.toString())),
 					jset(McsConfig.azPosKey, e.azPosition), jset(McsConfig.elPosKey, e.elPosition));
+			log.debug("Inside McsHcd Sending CurrentState: " + mcsState);
 			notifySubscribers(mcsState);
 		}).matchAny(x -> log.warning("Inside McsHcd Unexpected message :unhandledPF: " + x)).build());
 	}
 
+	/**
+	 * This method helps in receiving commands being sent to HCD Class and based
+	 * upon Config Key it performs command specific operation
+	 */
 	@Override
 	public void process(SetupConfig sc) {
 		log.debug("Inside McsHcd process received sc: " + sc);
@@ -150,6 +155,11 @@ public class McsHcd extends BaseHcd {
 		}
 	}
 
+	/**
+	 * This helps in instantiating Simulator Class
+	 * 
+	 * @return
+	 */
 	private ActorRef getSimulator() {
 		return context().actorOf(McsSimulator.props(Optional.of(self())), "McsSimulator");
 	}

@@ -10,6 +10,11 @@ import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import tmt.tcs.common.AssemblyStateActor.AssemblySetState;
 
+/**
+ * This is Base Command Class with some common features being extended by all
+ * Command Classes
+ *
+ */
 public abstract class BaseCommand extends AbstractActor {
 
 	private LoggingAdapter log = Logging.getLogger(getContext().system(), this);

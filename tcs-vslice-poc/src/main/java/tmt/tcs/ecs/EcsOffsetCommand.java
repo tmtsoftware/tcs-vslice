@@ -92,7 +92,7 @@ public class EcsOffsetCommand extends BaseCommand {
 				DemandMatcher stateMatcher = EcsCommandHandler.posMatcher(x, y);
 				SetupConfig scOut = jadd(sc(EcsConfig.offsetPrefix), jset(EcsConfig.az, x), jset(EcsConfig.el, y));
 
-				sendState(ecsStateActor, new AssemblySetState(azItem(azFollowing), elItem(elFollowing)));
+				sendState(ecsStateActor, new AssemblySetState(azItem(azFollowing), elItem(elFollowing), null, null));
 
 				ecsHcd.tell(new HcdController.Submit(scOut), self());
 
@@ -101,7 +101,8 @@ public class EcsOffsetCommand extends BaseCommand {
 						status -> {
 							if (status == Completed) {
 								log.debug("Inside EcsOffsetCommand: Move Command Completed");
-								sendState(ecsStateActor, new AssemblySetState(azItem(azPointing), elItem(elPointing)));
+								sendState(ecsStateActor,
+										new AssemblySetState(azItem(azPointing), elItem(elPointing), null, null));
 							} else if (status instanceof Error) {
 								log.error("Inside EcsOffsetCommand: Offset command match failed with message: "
 										+ ((Error) status).message());

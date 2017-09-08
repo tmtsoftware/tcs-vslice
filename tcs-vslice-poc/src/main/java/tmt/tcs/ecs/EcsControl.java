@@ -19,6 +19,11 @@ import scala.PartialFunction;
 import scala.runtime.BoxedUnit;
 import tmt.tcs.common.AssemblyContext;
 
+/**
+ * This Class will receive Position parameters from Follow Actor and forward the
+ * same to HCD Class and also publish Telemetry Message for positions being sent
+ *
+ */
 public class EcsControl extends AbstractActor {
 
 	private LoggingAdapter log = Logging.getLogger(getContext().system(), this);

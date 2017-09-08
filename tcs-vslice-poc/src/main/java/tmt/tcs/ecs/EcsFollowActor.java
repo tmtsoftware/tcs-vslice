@@ -24,6 +24,10 @@ import tmt.tcs.common.AssemblyStateActor.AssemblyState;
 import tmt.tcs.common.BaseFollowActor;
 import tmt.tcs.ecs.EcsEventPublisher.TelemetryUpdate;
 
+/**
+ * This class receives ECS specific demand being forwarded by Event Subscriber
+ * and send the same to EcsControl
+ */
 public class EcsFollowActor extends BaseFollowActor {
 
 	LoggingAdapter log = Logging.getLogger(getContext().system(), this);

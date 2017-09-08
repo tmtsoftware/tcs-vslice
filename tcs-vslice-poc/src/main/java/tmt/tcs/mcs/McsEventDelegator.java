@@ -24,8 +24,8 @@ import tmt.tcs.common.BaseEventDelegator;
 import tmt.tcs.mcs.McsEventPublisher.McsStateUpdate;
 
 /**
- * This class provides diagnostic for MCS telemetry in the form of two events.
- * It operates in the 'OperationsState' or 'DiagnosticState'.
+ * This class helps in receiving Current State being published by HCD and
+ * redirects to Event Publisher as specific class type
  */
 @SuppressWarnings({ "unused" })
 public class McsEventDelegator extends BaseEventDelegator {

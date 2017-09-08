@@ -28,8 +28,10 @@ import tmt.tcs.mcs.McsConfig;
 import tmt.tcs.mcs.McsEventPublisher.McsStateUpdate;
 
 /**
- * This Class provides Event Subcription functionality for TCS It extends
- * BaseEventSubscriber
+ * This Class provides Event Subscription functionality for TCS It extends
+ * BaseEventSubscriber. This subscribes to events being published by MCS, ECS
+ * and M3 and forward the same to TCSEventPublisher so that same can be
+ * published to external systems
  */
 @SuppressWarnings("unused")
 public class TcsEventSubscriber extends BaseEventSubscriber {

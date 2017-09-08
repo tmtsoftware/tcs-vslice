@@ -30,8 +30,8 @@ import tmt.tcs.mcs.McsConfig;
 import tmt.tcs.tpk.TpkConfig;
 
 /**
- * This is an actor class which receives command specific to Position Operation
- * And after any modifications if required, redirect the same to TPK This also
+ * This is an actor class which receives command specific to Follow Operation
+ * And after any modifications if required, redirect the same to TPK. This also
  * issue follow command to MCS, ECS and M3 Assemblies
  */
 @SuppressWarnings("unused")
@@ -47,7 +47,7 @@ public class TcsFollowCommand extends BaseCommand {
 
 	/**
 	 * Constructor Methods helps subscribing to events checks for Assembly state
-	 * before enabling command execution creats hcd specific setupconfig and
+	 * before enabling command execution creates hcd specific setupconfig and
 	 * forwards the same And marks command as complete or failed
 	 * 
 	 * @param ac
@@ -68,6 +68,17 @@ public class TcsFollowCommand extends BaseCommand {
 		receive(followReceive(sc, mcsRefActor, ecsRefActor, m3RefActor, tpkRefActor));
 	}
 
+	/**
+	 * This method receives Command being redirected by Command Handler and
+	 * forward Follow command to MCS, ECS , M3 and TPK
+	 * 
+	 * @param sc
+	 * @param mcsRefActor
+	 * @param ecsRefActor
+	 * @param m3RefActor
+	 * @param tpkRefActor
+	 * @return
+	 */
 	public PartialFunction<Object, BoxedUnit> followReceive(SetupConfig sc, ActorRef mcsRefActor, ActorRef ecsRefActor,
 			ActorRef m3RefActor, ActorRef tpkRefActor) {
 		return ReceiveBuilder.matchEquals(JSequentialExecutor.CommandStart(), t -> {

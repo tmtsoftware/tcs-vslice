@@ -25,8 +25,9 @@ import tmt.tcs.m3.M3Config;
 import tmt.tcs.mcs.McsConfig;
 
 /**
- * This Class provides Event Subscription functionality for External System It
- * extends BaseEventSubscriber
+ * This Class provides Event Subscription functionality for External System.
+ * This extends BaseEventSubscriber and subscribes to Events being pubslished by
+ * TCS Position Events
  */
 @SuppressWarnings("unused")
 public class WebEventSubscriber extends BaseEventSubscriber {

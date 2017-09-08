@@ -21,8 +21,9 @@ import tmt.tcs.mcs.McsFollowActor.SetElevation;
 import tmt.tcs.mcs.McsFollowActor.UpdatedEventData;
 
 /**
- * This is an actor class which receives command specific to Move Operation And
- * after any modifications if required, redirect the same to MCS HCD
+ * This is an actor class which receives command specific to Follow Operation
+ * And after any modifications if required. This also helps in initializing
+ * Follow Actor and Event Subscriber.
  */
 @SuppressWarnings("unused")
 public class McsFollowCommand extends BaseCommand {
@@ -53,7 +54,8 @@ public class McsFollowCommand extends BaseCommand {
 	 * @param eventService
 	 */
 	public McsFollowCommand(AssemblyContext assemblyContext, DoubleItem initialAzimuth, DoubleItem initialElevation,
-			Optional<ActorRef> mcsHcd, Optional<ActorRef> eventPublisher, IEventService eventService, Optional<ActorRef> mcsStateActor) {
+			Optional<ActorRef> mcsHcd, Optional<ActorRef> eventPublisher, IEventService eventService,
+			Optional<ActorRef> mcsStateActor) {
 
 		this.assemblyContext = assemblyContext;
 		this.initialAzimuth = initialAzimuth;
@@ -97,7 +99,8 @@ public class McsFollowCommand extends BaseCommand {
 	}
 
 	private ActorRef createFollower(DoubleItem initialAzimuth, DoubleItem initialElevation, ActorRef mcsControl,
-			Optional<ActorRef> eventPublisher, Optional<ActorRef> telemetryPublisher, Optional<ActorRef> mcsStateActor) {
+			Optional<ActorRef> eventPublisher, Optional<ActorRef> telemetryPublisher,
+			Optional<ActorRef> mcsStateActor) {
 		log.debug("Inside McsFollowCommand createFollower: Creating Follower ");
 		return context().actorOf(McsFollowActor.props(assemblyContext, initialAzimuth, initialElevation,
 				Optional.of(mcsControl), eventPublisher, mcsStateActor), "follower");
@@ -110,13 +113,15 @@ public class McsFollowCommand extends BaseCommand {
 	}
 
 	public static Props props(AssemblyContext ac, DoubleItem initialAzimuth, DoubleItem initialElevation,
-			Optional<ActorRef> mcsHcd, Optional<ActorRef> eventPublisher, IEventService eventService, Optional<ActorRef> mcsStateActor) {
+			Optional<ActorRef> mcsHcd, Optional<ActorRef> eventPublisher, IEventService eventService,
+			Optional<ActorRef> mcsStateActor) {
 		return Props.create(new Creator<McsFollowCommand>() {
 			private static final long serialVersionUID = 1L;
 
 			@Override
 			public McsFollowCommand create() throws Exception {
-				return new McsFollowCommand(ac, initialAzimuth, initialElevation, mcsHcd, eventPublisher, eventService, mcsStateActor);
+				return new McsFollowCommand(ac, initialAzimuth, initialElevation, mcsHcd, eventPublisher, eventService,
+						mcsStateActor);
 			}
 		});
 	}

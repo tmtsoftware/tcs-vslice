@@ -33,9 +33,25 @@ public abstract class BaseEventPublisher extends AbstractActor
 		return internalState;
 	}
 
+	/**
+	 * This method will help in publishing events, based upon the type being
+	 * received , Implementation will be specific to implementor
+	 * 
+	 * @param eventService
+	 * @param telemetryService
+	 * @return
+	 */
 	public abstract PartialFunction<Object, BoxedUnit> publishingEnabled(Optional<IEventService> eventService,
 			Optional<ITelemetryService> telemetryService);
 
+	/**
+	 * This method will help in receiving location updates, Implementation will
+	 * be specific to implementor
+	 * 
+	 * @param location
+	 * @param currentEventService
+	 * @param currentTelemetryService
+	 */
 	public abstract void handleLocations(LocationService.Location location, Optional<IEventService> currentEventService,
 			Optional<ITelemetryService> currentTelemetryService);
 
