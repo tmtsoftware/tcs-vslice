@@ -43,6 +43,8 @@ public class EcsFollowActor extends BaseFollowActor {
 
 	private EcsFollowActor(AssemblyContext assemblyContext, DoubleItem initialAzimuth, DoubleItem initialElevation,
 			Optional<ActorRef> ecsControl, Optional<ActorRef> eventPublisher, Optional<ActorRef> ecsStateActor) {
+		log.info("Inside EcsFollowActor");
+
 		this.assemblyContext = assemblyContext;
 		this.initialAzimuth = initialAzimuth;
 		this.initialElevation = initialElevation;

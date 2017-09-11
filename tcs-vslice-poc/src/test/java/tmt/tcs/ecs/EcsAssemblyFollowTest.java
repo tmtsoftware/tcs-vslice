@@ -1,4 +1,4 @@
-package tmt.tcs.mcs;
+package tmt.tcs.ecs;
 
 import static javacsw.services.ccs.JCommandStatus.Accepted;
 import static javacsw.services.ccs.JCommandStatus.AllCompleted;
@@ -48,14 +48,14 @@ import javacsw.services.pkg.JComponent;
 import scala.concurrent.duration.FiniteDuration;
 
 /**
- * This is test class for MCS which checks for Command Flow from Test Class ->
+ * This is test class for ECS which checks for Command Flow from Test Class ->
  * Assembly -> HCD It also check for Command Acceptance Status and response
  * returned
  */
-public class McsAssemblyTest extends JavaTestKit {
+public class EcsAssemblyFollowTest extends JavaTestKit {
 	private static ActorSystem system;
 	private static LoggingAdapter logger;
-	private static String hcdName = "mcsHcd";
+	private static String hcdName = "ecsHcd";
 
 	private static Timeout timeout = Timeout.durationToTimeout(FiniteDuration.apply(10, TimeUnit.SECONDS));
 	@SuppressWarnings("unused")
@@ -65,11 +65,8 @@ public class McsAssemblyTest extends JavaTestKit {
 
 	public static final Double azValue = 1.0;
 	public static final Double elValue = 2.0;
-	public static final Double timeValue = 3.0;
-	public static final Double offsetAzValue = 0.1;
-	public static final Double offsetElValue = 0.2;
 
-	public McsAssemblyTest() {
+	public EcsAssemblyFollowTest() {
 		super(system);
 	}
 
@@ -83,19 +80,19 @@ public class McsAssemblyTest extends JavaTestKit {
 	public static void setup() throws Exception {
 		LocationService.initInterface();
 
-		system = ActorSystem.create("mcsHcd");
+		system = ActorSystem.create("EcsAssemblyFollowTest");
 		logger = Logging.getLogger(system, system);
 
-		logger.debug("Inside McsAssemblyTest setup");
+		logger.debug("Inside EcsAssemblyTest setup");
 
 		eventService = IEventService.getEventService(IEventService.defaultName, system, timeout).get(5,
 				TimeUnit.SECONDS);
 
-		Map<String, String> configMap = Collections.singletonMap("", "hcd/mcsHcd.conf");
-		ContainerCmd cmd = new ContainerCmd("mcsHcd", new String[] { "--standalone" }, configMap);
+		Map<String, String> configMap = Collections.singletonMap("", "hcd/ecsHcd.conf");
+		ContainerCmd cmd = new ContainerCmd("ecsHcd", new String[] { "--standalone" }, configMap);
 		hcdActors = cmd.getActors();
 		if (hcdActors.size() == 0)
-			logger.error("Inside McsAssemblyTest Failed to create Mcs HCD");
+			logger.error("Inside EcsAssemblyTest Failed to create Ecs HCD");
 		Thread.sleep(2000);// XXX FIXME Make sure components have time to
 							// register from location service
 
@@ -104,99 +101,61 @@ public class McsAssemblyTest extends JavaTestKit {
 	}
 
 	/**
-	 * This test case checks for offset command flow from Test Class to Assembly
-	 * to HCD
-	 */
-	@Test
-	public void test1() {
-		logger.debug("Inside McsAssemblyTest test1 Offset Command");
-
-		TestProbe fakeSupervisor = new TestProbe(system);
-		ActorRef mcsAssembly = newMcsAssembly(fakeSupervisor.ref());
-		TestProbe fakeClient = new TestProbe(system);
-
-		SetupConfig offsetSc = jadd(new SetupConfig(McsConfig.offsetCK.prefix()),
-				jset(McsConfig.azDemandKey, offsetAzValue), jset(McsConfig.elDemandKey, offsetElValue));
-
-		fakeSupervisor.expectMsg(Initialized);
-		fakeSupervisor.send(mcsAssembly, Running);
-
-		SetupConfigArg sca = Configurations.createSetupConfigArg("mcsOffsetCommand",
-				new SetupConfig(McsConfig.initCK.prefix()), offsetSc);
-
-		fakeClient.send(mcsAssembly, new Submit(sca));
-
-		CommandResult acceptedMsg = fakeClient.expectMsgClass(duration("3 seconds"), CommandResult.class);
-		assertEquals(acceptedMsg.overall(), Accepted);
-		logger.debug("Inside McsAssemblyTest test1 Command Accepted Result: " + acceptedMsg);
-
-		CommandResult completeMsg = fakeClient.expectMsgClass(duration("3 seconds"), CommandResult.class);
-		logger.debug("Inside McsAssemblyTest test1 Command Result: " + completeMsg + ": completeMsg.overall(): "
-				+ completeMsg.overall());
-
-		assertEquals(completeMsg.overall(), AllCompleted);
-
-	}
-
-	/**
 	 * This test case checks for follow command flow from Test Class to Assembly
 	 * to HCD
 	 */
 	@Test
-	public void test2() {
-		logger.debug("Inside McsAssemblyTest test2 Follow Command");
+	public void test1() {
+		logger.debug("Inside EcsAssemblyTest test1 Follow Command");
 
 		TestProbe fakeSupervisor = new TestProbe(system);
-		ActorRef mcsAssembly = newMcsAssembly(fakeSupervisor.ref());
+		ActorRef EcsAssembly = newEcsAssembly(fakeSupervisor.ref());
 		TestProbe fakeClient = new TestProbe(system);
 
-		SetupConfig followSc = jadd(new SetupConfig(McsConfig.followCK.prefix()));
+		SetupConfig followSc = jadd(new SetupConfig(EcsConfig.followCK.prefix()));
 
-		SetupConfig setAzimuthSc = jadd(new SetupConfig(McsConfig.setAzimuthCK.prefix()),
-				jset(McsConfig.azDemandKey, 4.0));
+		SetupConfig setAzimuthSc = jadd(new SetupConfig(EcsConfig.setAzimuthCK.prefix()),
+				jset(EcsConfig.azDemandKey, azValue));
 
-		SetupConfig setElevationSc = jadd(new SetupConfig(McsConfig.setElevationCK.prefix()),
-				jset(McsConfig.elDemandKey, 5.0));
-
-		SetupConfig setAzimuthSc2 = jadd(new SetupConfig(McsConfig.setAzimuthCK.prefix()),
-				jset(McsConfig.azDemandKey, 7.0));
+		SetupConfig setElevationSc = jadd(new SetupConfig(EcsConfig.setElevationCK.prefix()),
+				jset(EcsConfig.elDemandKey, elValue));
 
 		fakeSupervisor.expectMsg(Initialized);
-		fakeSupervisor.send(mcsAssembly, Running);
+		fakeSupervisor.send(EcsAssembly, Running);
 
-		SetupConfigArg sca = Configurations.createSetupConfigArg("mcsFollowCommand",
-				new SetupConfig(McsConfig.initCK.prefix()), followSc, setAzimuthSc, setElevationSc, setAzimuthSc2);
+		SetupConfigArg sca = Configurations.createSetupConfigArg("ecsFollowCommand",
+				new SetupConfig(EcsConfig.initCK.prefix()), followSc, setAzimuthSc, setElevationSc);
 
-		fakeClient.send(mcsAssembly, new Submit(sca));
+		fakeClient.send(EcsAssembly, new Submit(sca));
 
 		CommandResult acceptedMsg = fakeClient.expectMsgClass(duration("3 seconds"), CommandResult.class);
 		assertEquals(acceptedMsg.overall(), Accepted);
-		logger.debug("Inside McsAssemblyTest test2 Command Accepted Result: " + acceptedMsg);
+		logger.debug("Inside EcsAssemblyTest test1 Command Accepted Result: " + acceptedMsg);
 
 		CommandResult completeMsg = fakeClient.expectMsgClass(duration("3 seconds"), CommandResult.class);
-		logger.debug("Inside McsAssemblyTest test2 Command Result: " + completeMsg.details().status(0));
+		logger.debug("Inside EcsAssemblyTest test1 Command Result: " + completeMsg.details().status(0));
 
 		assertEquals(completeMsg.overall(), AllCompleted);
 
 	}
 
-	Props getMcsProps(AssemblyInfo assemblyInfo, Optional<ActorRef> supervisorIn) {
+	Props getEcsProps(AssemblyInfo assemblyInfo, Optional<ActorRef> supervisorIn) {
 		if (!supervisorIn.isPresent())
-			return McsAssembly.props(assemblyInfo, new TestProbe(system).ref());
-		return McsAssembly.props(assemblyInfo, supervisorIn.get());
+			return EcsAssembly.props(assemblyInfo, new TestProbe(system).ref());
+		return EcsAssembly.props(assemblyInfo, supervisorIn.get());
 	}
 
-	ActorRef newMcsAssembly(ActorRef supervisor) {
-		String componentName = "mcsAssembly";
-		String componentClassName = "tmt.tcs.mcs.McsAssembly";
-		String componentPrefix = "tcs.mcs";
+	ActorRef newEcsAssembly(ActorRef supervisor) {
+		String componentName = "EcsAssembly";
+		String componentClassName = "tmt.tcs.ecs.EcsAssembly";
+		String componentPrefix = "tcs.ecs";
 
-		ComponentId hcdId = JComponentId.componentId("mcsHcd", JComponentType.HCD);
+		ComponentId hcdId = JComponentId.componentId("ecsHcd", JComponentType.HCD);
 		Component.AssemblyInfo assemblyInfo = JComponent.assemblyInfo(componentName, componentPrefix,
 				componentClassName, RegisterAndTrackServices, Collections.singleton(AkkaType),
 				Collections.singleton(new Connection.AkkaConnection(hcdId)));
 
-		Props props = getMcsProps(assemblyInfo, Optional.of(supervisor));
+		Props props = getEcsProps(assemblyInfo, Optional.of(supervisor));
 		expectNoMsg(duration("300 millis"));
 		return system.actorOf(props);
 	}
@@ -209,7 +168,7 @@ public class McsAssemblyTest extends JavaTestKit {
 	 */
 	@AfterClass
 	public static void teardown() throws InterruptedException {
-		logger.debug("Inside McsAssemblyTest teardown");
+		logger.debug("Inside EcsAssemblyTest teardown");
 
 		hcdActors.forEach(actorRef -> {
 			TestProbe probe = new TestProbe(system);

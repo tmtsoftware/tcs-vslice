@@ -1,8 +1,7 @@
-package tmt.tcs.m3;
+package tmt.tcs.mcs;
 
 import static javacsw.services.ccs.JCommandStatus.Accepted;
 import static javacsw.services.ccs.JCommandStatus.AllCompleted;
-import static javacsw.services.ccs.JCommandStatus.Incomplete;
 import static javacsw.services.loc.JConnectionType.AkkaType;
 import static javacsw.services.pkg.JComponent.RegisterAndTrackServices;
 import static javacsw.services.pkg.JSupervisor.HaltComponent;
@@ -49,14 +48,14 @@ import javacsw.services.pkg.JComponent;
 import scala.concurrent.duration.FiniteDuration;
 
 /**
- * This is test class for M3 which checks for Command Flow from Test Class ->
+ * This is test class for MCS which checks for Command Flow from Test Class ->
  * Assembly -> HCD It also check for Command Acceptance Status and response
  * returned
  */
-public class M3AssemblyTest extends JavaTestKit {
+public class McsAssemblyOffsetTest extends JavaTestKit {
 	private static ActorSystem system;
 	private static LoggingAdapter logger;
-	private static String hcdName = "m3Hcd";
+	private static String hcdName = "mcsHcd";
 
 	private static Timeout timeout = Timeout.durationToTimeout(FiniteDuration.apply(10, TimeUnit.SECONDS));
 	@SuppressWarnings("unused")
@@ -64,13 +63,10 @@ public class M3AssemblyTest extends JavaTestKit {
 
 	private static List<ActorRef> hcdActors = Collections.emptyList();
 
-	public static final Double rotationValue = 1.0;
-	public static final Double tiltValue = 2.0;
-	public static final Double timeValue = 3.0;
-	public static final Double offsetRotationValue = 0.1;
-	public static final Double offsetTiltValue = 0.2;
+	public static final Double offsetAzValue = 0.1;
+	public static final Double offsetElValue = 0.2;
 
-	public M3AssemblyTest() {
+	public McsAssemblyOffsetTest() {
 		super(system);
 	}
 
@@ -84,19 +80,19 @@ public class M3AssemblyTest extends JavaTestKit {
 	public static void setup() throws Exception {
 		LocationService.initInterface();
 
-		system = ActorSystem.create("m3Hcd");
+		system = ActorSystem.create("McsAssemblyOffsetTest");
 		logger = Logging.getLogger(system, system);
 
-		logger.debug("Inside M3AssemblyTest setup");
+		logger.debug("Inside McsAssemblyTest setup");
 
 		eventService = IEventService.getEventService(IEventService.defaultName, system, timeout).get(5,
 				TimeUnit.SECONDS);
 
-		Map<String, String> configMap = Collections.singletonMap("", "hcd/m3Hcd.conf");
-		ContainerCmd cmd = new ContainerCmd("m3Hcd", new String[] { "--standalone" }, configMap);
+		Map<String, String> configMap = Collections.singletonMap("", "hcd/mcsHcd.conf");
+		ContainerCmd cmd = new ContainerCmd("mcsHcd", new String[] { "--standalone" }, configMap);
 		hcdActors = cmd.getActors();
 		if (hcdActors.size() == 0)
-			logger.error("Inside M3AssemblyTest Failed to create M3 HCD");
+			logger.error("Inside McsAssemblyTest Failed to create Mcs HCD");
 		Thread.sleep(2000);// XXX FIXME Make sure components have time to
 							// register from location service
 
@@ -110,89 +106,51 @@ public class M3AssemblyTest extends JavaTestKit {
 	 */
 	@Test
 	public void test1() {
-		logger.debug("Inside M3AssemblyTest test1 Offset Command");
+		logger.debug("Inside McsAssemblyTest test1 Offset Command");
 
 		TestProbe fakeSupervisor = new TestProbe(system);
-		ActorRef M3Assembly = newM3Assembly(fakeSupervisor.ref());
+		ActorRef mcsAssembly = newMcsAssembly(fakeSupervisor.ref());
 		TestProbe fakeClient = new TestProbe(system);
 
-		SetupConfig offsetSc = jadd(new SetupConfig(M3Config.offsetDemandCK.prefix()),
-				jset(M3Config.rotationDemandKey, offsetRotationValue), jset(M3Config.tiltDemandKey, offsetTiltValue));
+		SetupConfig offsetSc = jadd(new SetupConfig(McsConfig.offsetCK.prefix()),
+				jset(McsConfig.azDemandKey, offsetAzValue), jset(McsConfig.elDemandKey, offsetElValue));
 
 		fakeSupervisor.expectMsg(Initialized);
-		fakeSupervisor.send(M3Assembly, Running);
+		fakeSupervisor.send(mcsAssembly, Running);
 
-		SetupConfigArg sca = Configurations.createSetupConfigArg("m3OffsetCommand",
-				new SetupConfig(M3Config.initCK.prefix()), offsetSc);
+		SetupConfigArg sca = Configurations.createSetupConfigArg("mcsOffsetCommand",
+				new SetupConfig(McsConfig.initCK.prefix()), offsetSc);
 
-		fakeClient.send(M3Assembly, new Submit(sca));
+		fakeClient.send(mcsAssembly, new Submit(sca));
 
 		CommandResult acceptedMsg = fakeClient.expectMsgClass(duration("3 seconds"), CommandResult.class);
 		assertEquals(acceptedMsg.overall(), Accepted);
-		logger.debug("Inside M3AssemblyTest test1 Command Accepted Result: " + acceptedMsg);
+		logger.debug("Inside McsAssemblyTest test1 Command Accepted Result: " + acceptedMsg);
 
 		CommandResult completeMsg = fakeClient.expectMsgClass(duration("3 seconds"), CommandResult.class);
-		logger.debug("Inside M3AssemblyTest test1 Command Result: " + completeMsg.details().status(0));
-
-		assertEquals(completeMsg.overall(), Incomplete);
-
-	}
-
-	/**
-	 * This test case checks for follow command flow from Test Class to Assembly
-	 * to HCD
-	 */
-	@Test
-	public void test2() {
-		logger.debug("Inside M3AssemblyTest test2 Follow Command");
-
-		TestProbe fakeSupervisor = new TestProbe(system);
-		ActorRef M3Assembly = newM3Assembly(fakeSupervisor.ref());
-		TestProbe fakeClient = new TestProbe(system);
-
-		SetupConfig followSc = jadd(new SetupConfig(M3Config.followCK.prefix()));
-
-		SetupConfig setRotationSc = jadd(new SetupConfig(M3Config.setRotationCK.prefix()),
-				jset(M3Config.rotationDemandKey, 4.0));
-
-		SetupConfig setTiltSc = jadd(new SetupConfig(M3Config.setTiltCK.prefix()), jset(M3Config.tiltDemandKey, 5.0));
-
-		fakeSupervisor.expectMsg(Initialized);
-		fakeSupervisor.send(M3Assembly, Running);
-
-		SetupConfigArg sca = Configurations.createSetupConfigArg("m3FollowCommand",
-				new SetupConfig(M3Config.initCK.prefix()), followSc, setRotationSc, setTiltSc);
-
-		fakeClient.send(M3Assembly, new Submit(sca));
-
-		CommandResult acceptedMsg = fakeClient.expectMsgClass(duration("3 seconds"), CommandResult.class);
-		assertEquals(acceptedMsg.overall(), Accepted);
-		logger.debug("Inside M3AssemblyTest test2 Command Accepted Result: " + acceptedMsg);
-
-		CommandResult completeMsg = fakeClient.expectMsgClass(duration("3 seconds"), CommandResult.class);
-		logger.debug("Inside M3AssemblyTest test2 Command Result: " + completeMsg.details().status(0));
+		logger.debug("Inside McsAssemblyTest test1 Command Result: " + completeMsg + ": completeMsg.overall(): "
+				+ completeMsg.overall());
 
 		assertEquals(completeMsg.overall(), AllCompleted);
-
 	}
 
-	Props getM3Props(AssemblyInfo assemblyInfo, Optional<ActorRef> supervisorIn) {
+	Props getMcsProps(AssemblyInfo assemblyInfo, Optional<ActorRef> supervisorIn) {
 		if (!supervisorIn.isPresent())
-			return M3Assembly.props(assemblyInfo, new TestProbe(system).ref());
-		return M3Assembly.props(assemblyInfo, supervisorIn.get());
+			return McsAssembly.props(assemblyInfo, new TestProbe(system).ref());
+		return McsAssembly.props(assemblyInfo, supervisorIn.get());
 	}
 
-	ActorRef newM3Assembly(ActorRef supervisor) {
-		String componentName = "M3Assembly";
-		String componentClassName = "tmt.tcs.m3.M3Assembly";
-		String componentPrefix = "tcs.m3";
+	ActorRef newMcsAssembly(ActorRef supervisor) {
+		String componentName = "mcsAssembly";
+		String componentClassName = "tmt.tcs.mcs.McsAssembly";
+		String componentPrefix = "tcs.mcs";
 
-		ComponentId hcdId = JComponentId.componentId("m3Hcd", JComponentType.HCD);
+		ComponentId hcdId = JComponentId.componentId("mcsHcd", JComponentType.HCD);
 		Component.AssemblyInfo assemblyInfo = JComponent.assemblyInfo(componentName, componentPrefix,
 				componentClassName, RegisterAndTrackServices, Collections.singleton(AkkaType),
 				Collections.singleton(new Connection.AkkaConnection(hcdId)));
 
-		Props props = getM3Props(assemblyInfo, Optional.of(supervisor));
+		Props props = getMcsProps(assemblyInfo, Optional.of(supervisor));
 		expectNoMsg(duration("300 millis"));
 		return system.actorOf(props);
 	}
@@ -205,7 +163,7 @@ public class M3AssemblyTest extends JavaTestKit {
 	 */
 	@AfterClass
 	public static void teardown() throws InterruptedException {
-		logger.debug("Inside M3AssemblyTest teardown");
+		logger.debug("Inside McsAssemblyTest teardown");
 
 		hcdActors.forEach(actorRef -> {
 			TestProbe probe = new TestProbe(system);

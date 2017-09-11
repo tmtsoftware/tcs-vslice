@@ -43,6 +43,8 @@ public class McsFollowActor extends BaseFollowActor {
 
 	private McsFollowActor(AssemblyContext assemblyContext, DoubleItem initialAzimuth, DoubleItem initialElevation,
 			Optional<ActorRef> mcsControl, Optional<ActorRef> eventPublisher, Optional<ActorRef> mcsStateActor) {
+		log.info("Inside McsFollowActor");
+
 		this.assemblyContext = assemblyContext;
 		this.initialAzimuth = initialAzimuth;
 		this.initialElevation = initialElevation;
