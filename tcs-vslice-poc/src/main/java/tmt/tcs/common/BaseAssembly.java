@@ -2,6 +2,7 @@ package tmt.tcs.common;
 
 import static javacsw.services.pkg.JSupervisor.DoRestart;
 import static javacsw.services.pkg.JSupervisor.DoShutdown;
+import static javacsw.services.pkg.JSupervisor.Initialized;
 import static javacsw.services.pkg.JSupervisor.Running;
 import static javacsw.services.pkg.JSupervisor.RunningOffline;
 import static javacsw.services.pkg.JSupervisor.ShutdownComplete;
@@ -49,7 +50,9 @@ public abstract class BaseAssembly extends JAssemblyController {
 	 * @return a partial function
 	 */
 	public PartialFunction<Object, BoxedUnit> lifecycleReceivePF(ActorRef supervisor) {
-		return ReceiveBuilder.matchEquals(Running, t -> {
+		return ReceiveBuilder.matchEquals(Initialized, t -> {
+			log.debug("Inside BaseAssembly lifecycleReceivePF: Initialized");
+		}).matchEquals(Running, t -> {
 			// Already running so ignore
 			log.debug("Inside BaseAssembly lifecycleReceivePF: Already running");
 		}).matchEquals(RunningOffline, t -> {
@@ -70,7 +73,7 @@ public abstract class BaseAssembly extends JAssemblyController {
 	 * @return a partial function
 	 */
 	public PartialFunction<Object, BoxedUnit> unhandledPF() {
-		return ReceiveBuilder.matchAny(t -> log.error("Inside BaseAssembly Unexpected message:unhandledPF: " + t))
+		return ReceiveBuilder.matchAny(t -> log.debug("Inside BaseAssembly Unexpected message:unhandledPF: " + t))
 				.build();
 	}
 

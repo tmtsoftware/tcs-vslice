@@ -89,7 +89,7 @@ public class WebEventSubscriber extends BaseEventSubscriber {
 
 				}).
 
-				matchAny(t -> log.error("Inside WebEventSubscriber Unexpected message received:subscribeReceive: " + t))
+				matchAny(t -> log.debug("Inside WebEventSubscriber Unexpected message received:subscribeReceive: " + t))
 				.build();
 	}
 

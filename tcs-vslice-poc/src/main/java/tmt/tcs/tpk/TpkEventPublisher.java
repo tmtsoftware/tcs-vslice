@@ -65,6 +65,7 @@ public class TpkEventPublisher extends AbstractActor implements ILocationSubscri
 		if (location instanceof ResolvedTcpLocation) {
 			ResolvedTcpLocation t = (ResolvedTcpLocation) location;
 			log.debug("Inside TpkEventPublisher Received TCP Location: " + t.connection());
+			System.out.println("*********TpkEventPublisher Received TCP Location: " + t.connection());
 			// Verify that it is the event service
 			if (location.connection().equals(IEventService.eventServiceConnection())) {
 				log.debug("Inside TpkEventPublisher received connection: " + t);

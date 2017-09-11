@@ -109,6 +109,7 @@ public class TcsCommandHandler extends BaseCommandHandler {
 		} else if (location instanceof ResolvedTcpLocation) {
 			ResolvedTcpLocation t = (ResolvedTcpLocation) location;
 			log.debug("Inside TcsCommandHandler: Received TCP Location: " + t.connection());
+			System.out.println("*********Inside TcsCommandHandler: Received TCP Location: " + t.connection());
 			if (location.connection().equals(IEventService.eventServiceConnection())) {
 				log.debug("Inside TcsCommandHandler: Assembly received ES connection: " + t);
 				eventService = Optional.of(IEventService.getEventService(t.host(), t.port(), context().system()));

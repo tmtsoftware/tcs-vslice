@@ -89,8 +89,7 @@ public class M3EventSubscriber extends BaseEventSubscriber {
 					context().stop(self());
 				}).
 
-				matchAny(t -> System.out
-						.println("Inside M3EventSubscriber Unexpected message received:subscribeReceive: " + t))
+				matchAny(t -> log.debug("Inside M3EventSubscriber Unexpected message received:subscribeReceive: " + t))
 				.build();
 	}
 

@@ -91,8 +91,7 @@ public class McsEventSubscriber extends BaseEventSubscriber {
 					context().stop(self());
 				}).
 
-				matchAny(t -> System.out
-						.println("Inside McsEventSubscriber Unexpected message received:subscribeReceive: " + t))
+				matchAny(t -> log.debug("Inside McsEventSubscriber Unexpected message received:subscribeReceive: " + t))
 				.build();
 	}
 

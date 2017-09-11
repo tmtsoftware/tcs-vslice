@@ -120,7 +120,7 @@ public class TcsEventSubscriber extends BaseEventSubscriber {
 
 				}).
 
-				matchAny(t -> log.error("Inside TcsEventSubscriber Unexpected message received:subscribeReceive: " + t))
+				matchAny(t -> log.debug("Inside TcsEventSubscriber Unexpected message received:subscribeReceive: " + t))
 				.build();
 	}
 

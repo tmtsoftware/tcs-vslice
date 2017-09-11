@@ -110,6 +110,7 @@ public class M3CommandHandler extends BaseCommandHandler {
 		} else if (location instanceof ResolvedTcpLocation) {
 			ResolvedTcpLocation t = (ResolvedTcpLocation) location;
 			log.debug("Inside M3CommandHandler: Received TCP Location: " + t.connection());
+			System.out.println("*********Inside M3CommandHandler: Received TCP Location: " + t.connection());
 			if (location.connection().equals(IEventService.eventServiceConnection())) {
 				log.debug("Inside M3CommandHandler: Assembly received ES connection: " + t);
 				eventService = Optional.of(IEventService.getEventService(t.host(), t.port(), context().system()));
